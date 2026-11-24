@@ -329,6 +329,17 @@ EXTRA_CSS = u"""
 .content .codehilite { position: relative; }
 .content .codehilite pre { margin-top: 0; }
 
+/* 语法高亮：python-markdown(codehilite) 的类名映射 */
+.content .codehilite .c, .content .codehilite .c1, .content .codehilite .cm { color: var(--hl-comment); font-style: italic; }
+.content .codehilite .k, .content .codehilite .kd, .content .codehilite .kn, .content .codehilite .kp { color: var(--hl-keyword); }
+.content .codehilite .s, .content .codehilite .s1, .content .codehilite .s2, .content .codehilite .sb, .content .codehilite .sd { color: var(--hl-string); }
+.content .codehilite .na, .content .codehilite .nv, .content .codehilite .nb { color: var(--hl-name); }
+.content .codehilite .mi, .content .codehilite .mf, .content .codehilite .m { color: var(--hl-number); }
+.content .codehilite .o, .content .codehilite .p { color: var(--text-soft); }
+.content .codehilite .err { color: #ff7b72; }
+.content .codehilite .gp { color: var(--hl-comment); }
+.content .codehilite .hll { background: rgba(255, 214, 10, .12); display: block; }
+
 /* 代码复制按钮 */
 .copy-btn {
   position: absolute;
@@ -496,14 +507,16 @@ def main():
                 f.write(html)
             count += 1
 
-    # 3) 样式：基础 css + 增强 css
+    # 3) 样式：基础 css + 增强 css（每次重建，保证增强块与脚本一致）
     css_path = os.path.join(ROOT, "assets", "css", "site.css")
+    marker = "/* ---------- 组播站点增强 ---------- */"
     with open(css_path, "r", encoding="utf-8") as f:
         css = f.read()
-    if "组播站点增强" not in css:
-        with open(css_path, "w", encoding="utf-8") as f:
-            f.write(css + EXTRA_CSS)
-        print("  + appended extra css")
+    if marker in css:
+        css = css.split(marker)[0].rstrip()
+    css = css + "\n\n" + marker + "\n" + EXTRA_CSS
+    with open(css_path, "w", encoding="utf-8") as f:
+        f.write(css)
 
     # 4) .nojekyll（GitHub Pages 直接按静态文件发布，避免 Jekyll 处理）
     nojekyll = os.path.join(ROOT, ".nojekyll")

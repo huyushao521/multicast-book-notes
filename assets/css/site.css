@@ -412,6 +412,8 @@ body {
 }
 
 /* ---------- 组播站点增强 ---------- */
+
+/* ---------- 组播站点增强 ---------- */
 .progress {
   position: fixed;
   top: 0; left: 0;
@@ -454,6 +456,17 @@ body {
 /* python-markdown 的 codehilite 容器与 Rouge 保持一致 */
 .content .codehilite { position: relative; }
 .content .codehilite pre { margin-top: 0; }
+
+/* 语法高亮：python-markdown(codehilite) 的类名映射 */
+.content .codehilite .c, .content .codehilite .c1, .content .codehilite .cm { color: var(--hl-comment); font-style: italic; }
+.content .codehilite .k, .content .codehilite .kd, .content .codehilite .kn, .content .codehilite .kp { color: var(--hl-keyword); }
+.content .codehilite .s, .content .codehilite .s1, .content .codehilite .s2, .content .codehilite .sb, .content .codehilite .sd { color: var(--hl-string); }
+.content .codehilite .na, .content .codehilite .nv, .content .codehilite .nb { color: var(--hl-name); }
+.content .codehilite .mi, .content .codehilite .mf, .content .codehilite .m { color: var(--hl-number); }
+.content .codehilite .o, .content .codehilite .p { color: var(--text-soft); }
+.content .codehilite .err { color: #ff7b72; }
+.content .codehilite .gp { color: var(--hl-comment); }
+.content .codehilite .hll { background: rgba(255, 214, 10, .12); display: block; }
 
 /* 代码复制按钮 */
 .copy-btn {
