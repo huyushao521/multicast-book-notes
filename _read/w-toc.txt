@@ -1,0 +1,376 @@
+===== PAGE 9 =====
+ 
+viii 
+ 
+Multicast Distribution Trees 34
+Source Trees 35
+Shared Trees 36
+Multicast Forwarding 40
+Reverse Path Forwarding 41
+Multicast Forwarding Cache 42
+TTL Thresholds 43
+Administratively Scoped Boundaries 45
+Multicast Routing Protocol Categories 47
+Dense Mode Protocols 47
+Sparse Mode Protocols 50
+Link-State Protocols 53
+Summary 54
+ 
+Chapter 3
+ 
+Internet Group Management Protocol 56
+ 
+IGMP Version 1 58
+IGMPv1 Message Format 58
+The IGMPv1 Query-Response Process 59
+Report Suppression Mechanism 61
+IGMPv1 Querier 61
+The IGMPv1 Join Process 61
+The IGMPv1 Leave Process 62
+IGMP Version 2 64
+IGMPv2 Message Format 65
+Query-Response Tuning 66
+IGMPv2 Leave Group Messages 68
+IGMPv2 Group-Specific Query Messages 69
+IGMPv2 Leave Process 69
+Querier Election Process 72
+Early IGMPv2 Implementations 73
+IGMPv1—IGMPv2 Interoperability 73
+V2 Host/V1 Routers Interoperability 73
+V1 Host / V2 Routers 75
+Mixed V1 and V2 Routers Interoperability 76
+The Possibilities of IGMPv3 76
+Summary 77
+ 
+0779.book  Page viii  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 10 =====
+ 
+ix
+ 
+Chapter 4
+ 
+Multimedia Multicast Applications 78
+ 
+Real-Time Protocol 79
+Using RTP and RTCP to Audio Conference: An Example 80
+RTP Control Protocol 81
+Session Announcement Protocol 82
+SAP Announcements 82
+SAP Bandwidth Limits 83
+Session Description Protocol 84
+SDP Message Format 84
+SDP Information Description Types 84
+Sample SDP Session Description 86
+MBone Multimedia Conferencing Applications 86
+SDR—Session Directory Tool 87
+VAT—MBone Multimedia Audio Tool 91
+VIC—MBone Multimedia Video Tool 94
+WB—Shared Whiteboard Tool 100
+Summary 102
+ 
+Part II Multicast Routing Protocol Overview
+Chapter 5
+ 
+Distance Vector Multicast Routing Protocol 106
+ 
+DVMRP Neighbor Discovery 107
+DVMRP Route Table 108
+Exchanging DVMRP Route Reports 110
+DVMRP Truncated Broadcast Trees 113
+DVMRP Multicast Forwarding 117
+DVMRP Pruning 118
+DVMRP Grafting 123
+DVMRP Scalability 126
+Summary 127
+ 
+Chapter 6
+ 
+PIM Dense Mode 128
+ 
+PIM Neighbor Discovery 130
+PIM Hello Messages 130
+PIM-DM Source Distribution Trees 132
+PIM-DM Multicast Forwarding 133
+ 
+0779.book  Page ix  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 11 =====
+ 
+x 
+ 
+PIM-DM Pruning 136
+Prune Override 138
+Prune Delay Accumulation 140
+PIM-DM Asserts 141
+PIM-DM Grafting 143
+Future PIM-DM Enhancement—State-Refresh 145
+PIM-DM Scalability 146
+Summary 147
+ 
+Chapter 7
+ 
+PIM Sparse Mode 148
+ 
+Explicit Join Model 150
+PIM-SM Shared Trees 150
+Shared Tree Joins 151
+Shared Tree Prunes 154
+PIM-SM Shortest Path Trees 156
+Shortest Path Tree Joins 157
+Shortest Path Tree Prunes 159
+PIM Join/Prune Messages 161
+PIM-SM State-Refresh 162
+Source Registration 163
+PIM Register Messages 164
+PIM Register-Stop Messages 165
+Source Registration Example 165
+Shortest Path Tree Switchover 169
+SPT Switchover Example 169
+Pruning Sources from the Shared Tree 171
+PIM-SM Designated Router 174
+The Role of the Designated Router 174
+Designated Router Failover 175
+RP Discovery 176
+PIM-SM Suitability/Scalability 176
+Summary 177
+ 
+0779.book  Page x  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 12 =====
+ 
+xi
+ 
+Chapter 8
+ 
+Core-Based Trees 178
+ 
+CBT Overview 179
+Joining the Shared Tree 183
+Transient State 183
+Forwarding Cache 184
+Multicast Forwarding 185
+Nonmember Sending 185
+CBT State Maintenance 187
+Echo-Request Messages 187
+Echo-Response Messages 187
+Flush-Tree Messages 188
+Pruning the Shared Tree 188
+CBT Designated Router 189
+CBT Hello Protocol 189
+DR Join Brokering 190
+Core Router Discovery 191
+CBT Version 3 191
+CBT Suitability/Scalability 191
+Summary 192
+ 
+Chapter 9
+ 
+Multicast Open Shortest Path First 194
+ 
+MOSPF Intra-Area Multicast Routing 196
+Group Membership Link-State Advertisements 196
+Intra-Area Shortest Path Trees 198
+MOSPF Forwarding Cache 199
+MOSPF Interarea Multicast Routing 201
+Multicast Area Border Routers 201
+Interarea Group Membership Summary 202
+Wildcard Multicast Receivers 204
+MOSPF Inter-AS Multicast Routing 207
+Multicast Autonomous System Border Routers 207
+MOSPF Suitability/Scalability 209
+Summary 211
+ 
+0779.book  Page xi  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 13 =====
+ 
+xii 
+ 
+Part III Implementing Cisco Multicast Networks
+Chapter 10
+ 
+Using PIM Dense Mode 214
+ 
+Configuring PIM-DM 215
+PIM-DM State Rules 217
+PIM-DM (*, G) State Rules 218
+PIM-DM (S, G) State Rules 218
+PIM-DM State Maintenance Rules 220
+PIM-DM State Entries 222
+PIM-DM State Flags 222
+PIM-DM State Example 223
+PIM Forwarding 226
+PIM-DM Flooding 227
+PIM-DM Pruning 229
+Dense Mode Grafting 232
+New PIM Neighbor Adjacencies 234
+Summary 238
+ 
+Chapter 11
+ 
+Using PIM Sparse Mode 240
+ 
+Configuring PIM-SM 241
+PIM-SM State Rules 242
+PIM-SM (*, G) State Rules 243
+PIM-SM (S, G) State Rules 244
+PIM-SM Outgoing Interface Rules 244
+PIM-SM Outgoing Interface Timers 246
+PIM-SM State Maintenance Rules 246
+Special PIM-SM (S, G)RP-Bit State Rules 247
+PIM-SM State Entries 251
+PIM-SM State Flags 254
+Joining the Shared Tree 255
+PIM Register Process 259
+Receivers Join First 260
+Source Registers First 268
+Receivers Along the SPT 276
+ 
+0779.book  Page xii  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 14 =====
+ 
+xiii
+ 
+SPT-Switchover 279
+Exceeding the SPT-Threshold 279
+SPT-Switchover Process 280
+SPT-Switchback Process 289
+Pruning 289
+Pruning the Shared Tree 289
+Pruning the Source Tree 293
+PIM-SM Special Cases 300
+Unexpected Data Arrival 301
+RP on a Stick 303
+Turnaround Router 308
+Proxy-Join Timer 309
+Summary 312
+ 
+Chapter 12
+ 
+PIM Rendezvous Points 314
+ 
+Auto-RP 315
+Overview of Auto-RP 316
+Configuring Auto-RP Candidate RPs 318
+Configuring Auto-RP Mapping Agents 318
+Using Multiple Mapping Agents for Redundancy 319
+Using Multiple RPs for Redundancy 320
+The Birth of Sparse-Dense Mode 320
+A Simple Auto-RP Configuration 322
+RP Failover in Auto-RP Networks 323
+Constraining Auto-RP Messages 324
+Preventing Candidate RP Spoofing 327
+PIMv2 Bootstrap Router Mechanism 328
+Overview of PIMv2 Bootstrap Router 328
+Configuring PIMv2 Candidate RPs 331
+Configuring PIMv2 Candidate BSRs 331
+Using Multiple C-RPs for Redundancy & RP Load Balancing 332
+RP Selection—The RP Hash Algorithm 333
+Using Multiple C-BSRs for Redundancy 333
+RP Failover in PIMv2 BSR Networks 335
+Constraining BSR Messages 336
+RP Placement and Tuning 337
+Selecting RP Placement 337
+Resource Demands on RPs 338
+Forcing Groups to Remain in Dense Mode 341
+Forcing Groups to Remain in Sparse Mode 348
+Summary 350
+ 
+0779.book  Page xiii  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 15 =====
+ 
+xiv 
+ 
+Chapter 13
+ 
+Connecting to DVMRP Networks 352
+ 
+Cisco DVMRP Interoperability 353
+Enabling DVMRP Interoperability 354
+PIM-DVMRP Interaction 355
+DVMRP Route Exchanges 367
+Advertising Connected Routes (Default Behavior) 369
+Classful Summarization of DVMRP Routes 370
+Controlling DVMRP Route Advertisement 372
+Controlling DVMRP Route Acceptance 379
+Adjusting the Default DVMRP Distance 379
+Offsetting DVMRP Metrics 380
+Special MBone Features 380
+PIM-DVMRP Boundary Issues 382
+Unicast-Multicast Congruency 383
+PIM Sparse Mode Issues 387
+DVMRP Network Connection Examples 390
+Physically Congruent Networks 391
+Separate MBone Router 394
+Debugging Tips 397
+Verifying DVMRP Tunnel Status 399
+Verifying DVMRP Route Exchanges 401
+Summary 404
+ 
+Part IV Multicast at Layer 2
+Chapter 14
+ 
+Multicast over Campus Networks 408
+ 
+The Flat Earth Society 409
+Characteristics of LAN Switches 410
+Broadcast/Multicast Flooding 411
+Constraining Multicast Flooding 412
+IGMP Snooping 413
+Joining a Group Using IGMP Snooping 413
+Performance Impact of IGMP Snooping 416
+Leaving a Group with IGMP Snooping 418
+Maintaining the Group with IGMP Snooping 422
+IGMP Snooping and Send-Only Sources 424
+Detecting Routers with IGMP Snooping 426
+IGMP Snooping Summary 427
+ 
+0779.book  Page xiv  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 16 =====
+ 
+xv
+ 
+Cisco Group Management Protocol 428
+CGMP Messages 428
+Joining a Group with CGMP 430
+Maintaining the Group with CGMP 431
+Leaving a Group with CGMP 432
+CGMP Local Leave Processing 432
+Performance Impact of CGMP 435
+CGMP and Send-Only Sources 435
+Detecting Routers with CGMP 436
+CGMP Summary 436
+Other LAN Switching Issues 437
+IGMPv1 Leave Latency Problem 437
+Interswitch Link Problem 438
+Router Core Switch Problem 440
+Summary 442
+ 
+Chapter 15
+ 
+Multicast over NBMA Networks 444
+ 
+Traditional NBMA Networks 445
+Multicast over Traditional NBMA Networks 448
+Pseudobroadcast 449
+PIM and Partial Mesh NBMA Networks 452
+PIM NBMA Mode 454
+Auto-RP over NBMA Networks 458
+Multicast over ATM NBMA Clouds 461
+ATM Point-to-Multipoint Broadcast Virtual Circuit 461
+ATM Point-to-Multipoint VC per Group 463
+PIM Multipoint Signaling 464
+Limiting the Number of PIM Multipoint VCs 465
+Debugging ATM P2MP Virtual Circuits 466
+Classical IP over ATM Networks 468
+Summary 470
+ 
+Part V Advanced Multicast Topics
+Chapter 16
+ 
+Multicast Traffic Engineering 474
+ 
+Controlling Multicast Bandwidth Usage 475
+Bandwidth Control with Rate Limiting 476
+Bandwidth Control with Scoped Zones 480
+Configuring Scoped Zones 483
+Scoped Zones and BSR 489
+ 
+0779.book  Page xv  Wednesday, September 22, 1999  5:46 PM

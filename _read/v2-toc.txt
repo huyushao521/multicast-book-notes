@@ -1,0 +1,316 @@
+===== PAGE 9 =====
+  vii
+Acknowledgments
+Josh Loveless: A special thank you goes to my coauthors, Ray Blair and Arvind Durai, 
+for the great work they have done completing this two-volume set on IP Multicast. 
+I would also like to thank the technical reviewers, Y ogi and Nick, and all the editors 
+at Pearson for all the tireless work they put into making this book pop!
+Ray Blair: As with everything else in my life, I thank my Lord and Savior for his faithful 
+leading that has brought me to this place. Thank you, Josh and Arvind, for partnering in 
+this endeavor, Nick and Y ogi for your excellent reviews, and Pearson for your support.
+Arvind Durai: Thank you, Monica and Akhhill, for your continuous support and 
+patience that helped me complete my fifth book.
+Thank you, Ray and Josh, for making this journey of writing IP Multicast, Volume 1 and 
+V olume 2 a joyful ride.
+A special thanks to Brett Bartow, Y ogi Raghunathan, and Nick Garner for your valuable 
+contributions.
+As always, thank you, God, for giving me guidance, opportunity , and support in all my 
+endeavors!
+===== PAGE 10 =====
+viii  IP Multicast, Volume II
+Contents at a Glance
+ Introduction xiv
+Chapter 1 Interdomain Routing and Internet Multicast 1
+Chapter 2 Multicast Scalability and Transport Diversification 99
+Chapter 3 Multicast MPLS VPNs 137
+Chapter 4 Multicast in Data Center Environments 207
+Chapter 5 Multicast Design Solutions 237
+Chapter 6 Advanced Multicast Troubleshooting 283
+ Index 327
+===== PAGE 11 =====
+  i x
+Contents
+Introduction xiv
+Chapter 1 Interdomain Routing and Internet Multicast 1
+Introduction to Interdomain Multicast 1
+What Is a Multicast Domain? A Refresher 6
+PIM Domain Design Types 14
+Domains by Group, or Group Scope 14
+Domains by RP Scope 16
+Overlapping Domains and Subdomains 17
+Forwarding Between Domains 19
+Autonomous System Borders and Multicast BGP 22
+Configuring and V erifying MBGP for Multicast 25
+Domain Borders and Configured Multicast Boundaries 32
+Multicast Source Discovery Protocol 38
+Understanding Source Actives (SA) and MSDP Mechanics 47
+Configuring and V erifying MSDP 50
+Basic MSDP Deployment Use Case 56
+Intradomain versus Interdomain Design Models 62
+Intra-AS Multidomain Design 62
+Inter-AS and Internet Design 72
+Protecting Domain Borders and Interdomain Resources 82
+Firewalling IP Multicast 83
+Controlling Domain Access through Filtering 84
+Service Filtering at the Edge 87
+Interdomain Multicast Without Active Source Learning 88
+SSM 88
+IPv6 with Embedded RP 90
+Summary 97
+References 97
+Chapter 2 Multicast Scalability and Transport Diversification 99
+Why Is Multicast Not Enabled Natively in a Public Cloud Environment? 99
+Enterprise Adoption of Cloud Services 99
+Cloud Connectivity to an Enterprise 101
+Virtual Services in a Cloud 103
+Service Reflection Feature 105
+===== PAGE 12 =====
+x  IP Multicast, Volume II
+Use Case 1: Multicast-to-Multicast Destination Conver sion 105
+Use Case 2: Unicast-to-Multicast Destination Conver sion 109
+Use Case 3: Multicast-to-Unicast Destination Conver sion 113
+Multicast Traffic Engineering 117
+Unicast Spoke-to-Spoke Intra-regional Communication 126
+Unicast Spoke-to-Spoke Interregional Commun ication 128
+Unicast Spoke-to-Central Hub Communication 128
+Traffic Path of a Multicast Stream Sourced at the Central Hub 129
+Intra-regional Multicast Flow Between Two Spokes 130
+Enabling Multicast to the CSP Use Case 1 132
+Point-to-Point VC Provided by the NSP 133
+MPLS Layer 3 VPN S ervices for the NSP 133
+Enabling Multicast to the CSP Use Case 2 134
+Summary 135
+Chapter 3 Multicast MPLS VPNs 137
+Multicast in an MPLS VPN Network 138
+Multicast Distribution Tree (MDT) 139
+Default MDT 139
+Data MDT 142
+Multicast Tunnel Interface (MTI) 143
+Multicast Signaling in the Core 144
+Default MDT in Action 148
+Data MDT Traffic Flow 148
+Default MDT Example 149
+MTI Example 152
+Data MDT Example 155
+Multicast LDP (MLDP) 160
+FEC Elements 161
+In-Band Signaling Operation 162
+Out-of-Band (Overlay) Signaling Operation 163
+Default MDT MLDP 164
+Default MDT MLDP Root High Availability 164
+MLDP in Action 165
+Default MDT MLDP Example 165
+Data MDT MLDP Example 176
+Profiles 181
+Migrating Between Profiles 185
+===== PAGE 13 =====
+Contents  xi
+Provider (P) Multicast Transport 186
+PE–CE Multicast Routing 186
+CE–CE Multicast Routing 187
+PE–PE Ingress Replication 187
+Multicast Extranet VPNs 192
+Route Leaking 192
+VRF Fallback 195
+VRF Select 199
+Fusion Router 199
+VRF-Aware Service Infrastructure (V ASI) 200
+IPv6 MVPN 202
+Bit Index Explicit Replication (BIER) 202
+Summary 205
+References 206
+Chapter 4 Multicast in Data Center Environments 207
+Multicast in a VPC Environment 207
+Multicast Flow over a VPC 208
+VXLAN 211
+VTEP 211
+VXLAN Flood and Learn 213
+VXLAN with EVPN 216
+Spine 1 Configuration 219
+Leaf Configuration 220
+Ingress Replication 224
+Host-to-Host Multicast Communication in VXLAN 224
+Layer 2 Commun ication Within the Boundary of the VNI 225
+Layer 3 Multicast Commun ication 226
+Multicast in ACI Data Center Networks 227
+ACI Fabrics and Overlay Elements 229
+Layer 2 IGMP Snooping in ACI 231
+Layer 3 Multicast in ACI 232
+Summary 235
+Chapter 5 Multicast Design Solutions 237
+Multicast-Enabled Clinical Networks 238
+Accommodating Medical Device Communications Through 
+Multicast 240
+Multicast Considerations for Wireless Networks 246
+===== PAGE 14 =====
+xii  IP Multicast, Volume II
+Multicast in Multitenant Data Centers 254
+ACI Multitenant Multicast 258
+Multicast and Software-Defined Networking 260
+LISP Map Resolver (MR)/Map Server (MS) 263
+LISP PETRs/PITRs 264
+LISP and Multicast 265
+Multicast in Utility Networks 267
+PMU 268
+Radio over IP Design 269
+Multicast-Enabled Markets 269
+Multicast Design in a Market Data Environment 271
+FSP Multicast Design 273
+Brokerage Multicast Design 273
+Service Provider Multicast 274
+Service Provider PIM-Type Selection and RP Placement 275
+IPTV Delivery over Multicast 279
+Summary 282
+References 282
+Chapter 6 Advanced Multicast Troubleshooting 283
+Troubleshooting Interdomain Multicast Networks 285
+Troubleshooting PIM with Traffic Engineering 301
+Troubleshooting MVPN 314
+V erifying Multicast in VXLAN 322
+Summary 326
+ Index 327
+===== PAGE 15 =====
+  xiii
+Command Syntax Conventions
+The conventions used to present command syntax in this book are the same  conventions 
+used in the IOS Command Reference. The Command Reference describes these 
+ conventions as follows:
+ ■Boldface indicates commands and keywords that are entered literally as shown. In 
+actual configuration examples and output (not general command syntax), boldface 
+indicates commands that are manually input by the user (such as a show command).
+ ■Italic indicates arguments for which you supply actual values.
+ ■V ertical bars (|) separate alternative, mutually exclusive elements.
+ ■Square brackets ([ ]) indicate an optional element.
+ ■Braces ({ }) indicate a required choice.
+ ■Braces within brackets ([{ }]) indicate a required choice within an optional element.
+Note This book covers multiple operating systems, and icons and router names indicate 
+the appropriate OS that is being referenced. IOS and IOS-XE use router names like R1 and 
+R2 and are referenced by the IOS router icon. IOS-XR routers use router names like XR1 
+and XR2 and are referenced by the IOS-XR router icon.
+Reader Services
+Register your copy at www.ciscopress.com/title/ISBN for convenient access to 
+ downloads, updates, and corrections as they become available. To start the registration 
+process, go to www.ciscopress.com/register and log in or create an account*. Enter the 
+product ISBN 9781587144936 and click Submit. When the process is complete, you will 
+find any available bonus content under Registered Products.
+*Be sure to check the box that you would like to hear from us to receive exclusive 
+ discounts on future editions of this product.
+===== PAGE 16 =====
+xiv  IP Multicast, Volume II
+Introduction
+IP Multicast, Volume 2 covers advanced IP Multicast designs and protocols specific 
+to Cisco Systems routers and switches. It includes pragmatic discussion of common 
+ features, deployment models, and field practices for advanced IP Multicast networks. 
+The discussion culminates with commands and methodologies for implementing and 
+troubleshooting advanced Cisco IP Multicast networks.
+Who Should Read This Book?
+IP Multicast, Volume 2 is intended for any professional supporting IP Multicast  networks. 
+This book primarily targets the following groups, but network  managers and administrators 
+will also find value from the included case studies and feature  explanations:
+ ■IP network engineers and architects
+ ■Network operations technicians
+ ■Network consultants
+ ■Security professionals
+ ■Collaboration specialists and architects
+How This Book Is Organized
+This book is organized into six chapters that cover the following topics:
+ ■Chapter 1, “Interdomain Routing and Internet Multicast”: This chapter explains 
+the fundamental requirements for interdomain multicast and the three pillars of 
+interdomain design: control plane for source identification, control plane for receiver 
+identification, and downstream control plane.
+ ■Chapter 2, “Multicast Scalability and Transport Diversification”: Transportation of 
+multicast messages requires consideration of several factors, especially when cloud 
+service providers do not support native multicast. This chapter introduces the key 
+concepts of cloud services and explains the elements required to support multicast 
+services.
+ ■Chapter 3, “Multicast MPLS VPNs”: Multicast VPNs provide the ability to 
+ logically separate traffic on the same physical infrastructure. Most service providers 
+and many enterprise customers implement Multiprotocol Label Switching (MPLS) 
+so they can separate or isolate traffic into logical domains or groups, generally 
+referred to as virtual private networks (VPNs). This chapter discusses the options for 
+ implementing multicast VPNs.
+===== PAGE 17 =====
+How This Book Is Organized  xv
+ ■Chapter 4, “Multicast in Data Center Environments”: This chapter explains the 
+use of multicast in the data center. Understanding the nuances of how  multicast 
+ functions in myriad solutions is critical to the success of your organization. The 
+goal of this chapter is to provide insight into the operation of multicast, using 
+the most popular methods for data center implementation, including virtual 
+port  channel (VPC), Virtual Extensible LAN (VXLAN), and Application Centric 
+Infrastructure (ACI).
+ ■Chapter 5, “Multicast Design Solutions”: This chapter examines several  archetypical 
+network design models. One of the models represents a specific network strategy 
+that meets a specific commercial purpose—a trade floor. Another model is a general 
+design for a specific industry , focusing on the deployment of multicast in a  hospital 
+environment. The intent of this chapter is to provide a baseline for each type of 
+design as well as examples of best practices for multicast deployments.
+ ■Chapter 6, “ Advanced Multicast Troubleshooting”: This chapter explains the basic 
+methodology for troubleshooting IP Multicast networks.
+===== PAGE 18 =====
+This page intentionally left blank 
+===== PAGE 19 =====
+This chapter explains the fundamental requirements for interdomain multicast and 
+the three pillars of interdomain design: the control plane for source identification, the 
+control plane for receiver identification, and the downstream control plane.
+Introduction to Interdomain Multicast
+Applications may require support for multicasting over large and diverse networks, 
+such as the Internet. It is possible that a sender may exist on one side of a diverse 
+network, far away from potential receivers. Multicast receivers could exist on any 
+network, including networks that are altogether foreign to the sender’s network, being 
+under completely different administrative control with different policies governing 
+multicast forwarding.
+In such scenarios, there is no reasonable expectation that all Layer 3 devices in the 
+forwarding path will share similar configurations or policies. This is certainly the real-
+ity of multicast applications that use the Internet. Therefore, additional protocols and 
+configuration outside basic multicast transport are required to provide internetwork 
+multicast service. Why is this the case? Aren’t large internetworks, such as the Internet, 
+using the same Internet Protocol (IP) for multicasting? If each network is administered 
+using different rules, how does anything on the Internet work? As discussed in the book 
+IP Multicast, Volume 1, the de facto standard forwarding protocol for IP Multicast is 
+Protocol Independent Multicast (PIM). If PIM is universal, why are different policies 
+required? A brief introduction to Internet principles will answer these questions and 
+help you understand why additional consideration is needed when designing multicast 
+ applications across internetworks.
+Internet Protocol was created as a “best effort” service. Even when IP was expanded to 
+enable the World Wide Web (WWW) and multinetwork connectivity, best effort was 
+a universal maxim. This maxim still exists; it dictates the forwarding behavior of today’s 
+Internet and also, therefore, that of any other large multidomain network. Best effort in 
+this context means that as IP traffic passes from one network to the next, it is assumed 
+Interdomain Routing and 
+Internet Multicast
+Chapter 1
+===== PAGE 20 =====
+2  Chapter 1: Interdomain Routing and Internet Multicast
+that each transit network is properly configured for optimal forwarding to any appropri-
+ate destinations. There are no guarantees of optimal forwarding—or even that packets 
+will make it to the final destination at all.
+ 
+Note The concept of best-effort forwarding is universal and applies to all IP traffic: 
+unicast, multicast, and broadcast. This introduction briefly explores this concept, which 
+further exposes the need for additional forwarding mechanisms for multicast traffic across 
+diverse networks. While basic in nature, this review establishes the foundation for multicast 
+forwarding across internetworks. An advanced understanding of unicast Internet forwarding, 
+including the use of Border Gateway Protocol (BGP), is assumed throughout this chapter.
+ 
+If you examine the Internet from a macro perspective, you see that it is essentially a 
+mesh of connections between many disparate networks. Typically, Internet service pro-
+viders (ISPs) connect to each other for transit and/or peering to provide interconnection 
+to other service providers or customers.
+End customers include all manner of connections, including homes, cellular networks, 
+small and medium-sized businesses, research institutions, hospitals, governments, 
+ enterprise businesses, and others. Figure 1-1 shows a small, isolated example of how this 
+interconnectivity works, using a fictional company called Mcast Enterprises.
+SP1-2
+SP2-1 SP3-2
+Home Office
+SP1-1
+SP3-1
+ISP Blue
+Mcast
+Enterprises
+ISP Green
+ISP Red
+BR
+The Internet
+Internetwork Connection
+Figure 1-1 Mcast Enterprises Interconnectivity

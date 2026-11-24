@@ -1,264 +1,309 @@
-# ch02 IGMP 与二层组播（IGMP Snooping / Proxy / Fast Leave）
+# 第 2 章 IGMP 与二层组播
 
-> **来源**：Aweya Ch2（P.86–P.167，IGMPv1/v2/v3、Snooping、Proxy、Query Solicitation）、Williamson Ch3/Ch14–15、P.413–P.470（IGMP Snooping 与 CGMP）、iPexpert Ch2（P.2-1–2-26）
-> **配图**：[D03 IGMP 交互](../../diagrams/d03-igmp-basic.svg)｜[D04 Snooping 效果](../../diagrams/d04-snooping.svg)
-
----
+> 精读来源：**Williamson Ch3（纸面 p.56–77，IGMPv1/v2 全文）**、**Williamson Ch14（p.408–443，Snooping/CGMP）**、**Aweya Ch2**、**iPexpert Ch2**
+> 本章解决的问题：接收者如何被"数出来"，以及这个"数"如何在二层不被放大成泛洪。
 
 ## 学习目标
 
-1. 说清 IGMPv1/v2/v3 的报文类型、定时器与行为差异，并判断该用哪一版；
-2. 解释 Querier 的选举机制与"为什么必须有 Querier"；
-3. 解释 IGMP Snooping 的工作原理、Report Suppression、Fast Leave 与 Querier 的关系；
-4. 能在现网选择并配置 IGMP Snooping / PIM Snooping / IGMP Proxy / Query Solicitation；
-5. 掌握 IGMP 类故障的定位命令与常见根因。
+1. 背出 IGMPv1/v2/v3 的报文类型与字段差异（尤其 Max Resp Time 的编码与单位）；
+2. 背出 6 个关键定时器（125/10/1/260/255/400 秒）并说明各自决定什么现象；
+3. 说清 Querier 选举规则，以及"两台 Querier 并存"的后果；
+4. 解释报告抑制为什么让"按 IGMP 数成员"永远不准；
+5. 说清 IGMPv1 主机在场时为什么**必须忽略 Leave**（原文规则）；
+6. 讲清 IGMPv3 的 INCLUDE/EXCLUDE 语义与 SSM 的关系；
+7. 掌握 Snooping/Proxy/CGMP/MVR 的取舍与 Fast Leave 的适用边界。
 
 ---
 
-## 1. IGMP 报文总览
+## 1. 三个版本：报文与语义
 
-| 版本 | 报文 | 方向 | 作用 |
+### 1.1 IGMPv1（RFC 1112）
+
+| 类型值 | 报文 | 说明 |
+|---|---|---|
+| 0x11 | Membership Query | Querier 周期发出，目的 `224.0.0.1`，TTL=1 |
+| 0x12 | Membership Report | 目的=组地址，TTL=1 |
+
+**没有 Leave**：主机离开静默，路由器只能等超时——原文给出的最坏值是 **3 分钟**（W p.69："worst-case leave latency of 3 minutes"）。Querier 由 PIM DR/IGP 兼任，IGMPv1 本身无选举。
+
+### 1.2 IGMPv2（RFC 2236）
+
+| 类型值 | 报文 | 目的地址 |
+|---|---|---|
+| 0x11 | Query（General / Group-Specific） | 224.0.0.1 |
+| 0x16 | V2 Membership Report | 组地址 |
+| 0x17 | **Leave Group** | **224.0.0.2**（All Routers） |
+| 0x12 | V1 Membership Report（兼容） | 组地址 |
+
+关键字段 **Max Resp Time（第 2 字节，单位 0.1 s）**：IGMPv1 查询该字段为 0，v2 主机按 **100 = 10 秒**解释——版本识别就看这一字节（W p.74）。
+
+### 1.3 IGMPv3（RFC 3376）
+
+- 报告 0x22，携带**源列表**与过滤模式 INCLUDE/EXCLUDE；
+- 六种记录：`IS_IN`(1) `IS_EX`(2) `TO_IN`(3) `TO_EX`(4) `ALLOW`(5) `BLOCK`(6)；
+- 查询 0x11，额外支持"组+源"特定查询。
+
+原文对 v3 的动机很工程化（W p.76）：音频会议里有人恶意 jam（放音乐/说话），用户只能本地 mute，**流量照样占满本子网链路**；v3 让主机对（S,G）做加入/离开，从网络上掐掉不要的源。
+
+| 场景 | 主机记录 |
+|---|---|
+| 加入 SSM 源 | `ALLOW(S,G)` / `IS_IN(S,G)` |
+| 屏蔽某源（ASM） | `BLOCK(S,G)` / `IS_EX` |
+| 不关心源 | `IS_IN` 空源列表（等价 v2 Join） |
+
+---
+
+## 2. 六个数字（排障全靠它们）
+
+| 参数 | 默认值 | 决定什么 | 调整后果 |
 |---|---|---|---|
-| v1 | **Membership Query**（`130`） | Querier → 全体 | 问"有没有人要这个组" |
-| v1 | **Membership Report**（`131`） | 主机 → Querier | 我要加入 G |
-| v2 | Query（`130`，含 Max Resp Time） | Querier → 全体 | 同 v1，但带响应时间窗 |
-| v2 | **Leave Group**（`132`） | 主机 → Querier | 我要走（触发具体查询） |
-| v2 | Report（`131`） | 主机 → Querier | 报告成员关系（可抑制） |
-| v3 | Membership Query（`130`，带 QRV 与 S/QRV） | Querier → 全体 | 支持 General / Group-Specific / Group-and-Source-Specific |
-| v3 | Membership Report（`131`，含 Record Type） | 主机 → Querier | 支持 `IS_INCLUDE`/`IS_EXCLUDE`/`TO_IN`/`TO_EX` |
-| v3 | **IGMPv3 Report 的特殊用法** | 主机 → 路由器 | `IGMPv3 Report` 也可作为**离开通知**（`TO_IN` 空源列表） |
+| **Query Interval** | **125 s** | 通用查询周期 | 调小→报文多、CPU 高；调大→收敛慢 |
+| **Max Response Time** | **10 s**（编码 100） | 主机应答窗口 | 调大→应答分散抗突发，但**离网延迟变大**（W p.68 明确点出 trade-off） |
+| Group-Specific Max Resp | **1 s** | Leave 后确认窗口 | 决定 Fast Leave 等待时长 |
+| **Group Membership Interval** | **260 s**（2×125+10） | 无应答后删组 | 调小→抖动掉组；调大→僵尸组 |
+| **Other Querier Present** | **255 s**（2×125+5） | 备 Querier 判定 | 决定双 Querier 收敛 |
+| **V1 Router Present** | **400 s** | v2 主机降级 v1 | 混跑兼容期 |
 
-### 1.1 IGMPv1
-
-- 只有 Query 与 Report；
-- **无 Leave 消息** → 主机离开后，路由器必须等 **3× Query Interval（约 3 分钟）** 才会把组从表项中删除 → "幽灵流量"；
-- **Report 抑制机制**：同一子网内多个主机加入同组时，只有第一个主机发 Report，其余主机**不发**，减少流量（也造成"交换机看不到全部成员"，需靠 Snooping 的 Report 抑制计数补偿）。
-
-### 1.2 IGMPv2
-
-改进三点：
-
-1. **Leave Group 消息**：主机离开立即通知，路由器随即发 Group-Specific Query 确认（无成员则删表项）；
-2. **Group-Specific Query**：路由器向 224.0.1.102（G）发送，只问该组还有没有人；
-3. **Report 抑制**：同一组同一时刻只允许一个主机发 Report（抑制窗口由 Query 携带的 Max Response Time 决定，默认为 10s）。
-
-**关键定时器（默认值）**：
-
-| 定时器 | 默认 | 含义 |
-|---|---|---|
-| Query Interval (QI) | 125 s | Querier 发送 General Query 的间隔 |
-| Max Response Time | 10 s | 主机回复 Report 的随机抖动上限 |
-| Group Membership Interval | 260 s ≈ 2×QI+10 | 组成员老化时间 |
-
-### 1.3 IGMPv3
-
-核心是**源过滤**与**精确订阅**：
-
-- Report 携带 `Record Type`：`IS_INCLUDE`（我要收 S1,S2）、`IS_EXCLUDE`（我要收"除 S3 外所有源"）、`TO_IN`、`TO_EX`；
-- 支持 **SSM**：`IGMPv3 Report (G,S)` 直接告诉路由器"只要 S 的这个组" → 不需要 RP，天然防伪源；
-- 主机可**一次报文完成加入与退出**（你的笔记已记录此点）；
-- Query 中带 **QRV（Querier Robustness Variable）**：接收端用它参与 Querier 选举——**数值大的优先**（v3 的选举规则与 v1/v2 的"IP 小者胜"相反！）。
-
-> **版本兼容坑**：IGMPv2 主机无法参与 v3 的 QRV 选举，因此混合版本环境下 Querier 选举会出现"v2 主机不支持 QRV"的兼容问题（RFC 3376 有专门的兼容处理）。
+> 记忆链：**125 → 260（×2+10）→ 255（×2+5）→ 400**。背住这四个数，`show ip igmp groups` 里 `Uptime/Expires` 的异常一眼能看出来。
 
 ---
 
-## 2. Querier：谁在问？
+## 3. Querier 选举
 
-![IGMP 交互](../../diagrams/d03-igmp-basic.svg)
+| 版本 | 规则 |
+|---|---|
+| IGMPv1 | 无选举，由 **PIM DR / IGP** 决定 |
+| IGMPv2 | **IP 最低者**当选（听到更低地址的 Query 就让位） |
+| IGMPv3 | 同 v2 |
 
-**为什么要 Querier**：二层交换机做 IGMP Snooping 后，需要知道"这个 VLAN 里谁是路由器"，才能把组播从路由器口转发到成员口。Querier 就是这个"锚点"。
+**双 Querier 并存**的后果：主机收到两份 Query、应答窗口被压缩、报告风暴；Snooping 表在两台设备上不一致。典型成因：二层把两个 VLAN 打通，或两台三层设备 Subnet 重叠。
 
-**选举规则**：
+---
 
-- **IGMPv1/v2**：所有启用了组播路由的路由器都发 Query，**IP 地址最小者**成为 Querier；
-- **IGMPv3**：比较 QRV，**QRV 大者**胜；QRV 相同比 IP，小者胜；
-- 选举失败风险：若 Querier 所在设备故障且无人接替，Snooping 表项将因老化被清空 → 组播中断。
+## 4. 报告抑制：省了带宽，废了统计
 
-**Querier 与 PIM DR 的关系**：PIM DR 本身就发送 IGMP Query（因为 PIM DR 需要维护 IGMP 成员关系以做最后一跳与 SPT 切换）。因此在纯 PIM 网络中，通常**不需要额外配置 querier**；只有当 VLAN 内**没有路由器的 IGMP 接口**（如纯二层旁路、嵌入式设备）时，才需要 `ip igmp snooping querier`。
+机制：主机收到**同组**其他 Report 后取消自己待发的 Report。原文（W p.61）承认它减少 IGMP 流量，但 NOTE 明确提醒 **"routers cannot keep track of the individual hosts"**。
 
+工程后果：
+
+1. 任何"按 IGMP 数成员"的方案都不准（运营商做频道热度统计常踩）；
+2. 与 Snooping 交互时，依赖"看到 Report 才建表"的实现会漏建端口（案例 2-1）；
+3. **IGMPv2 Report 不触发 v1 主机抑制**（v1 看不懂 v2 报文，W p.75），混跑时同时出现 v1/v2 两份 Report，属正常。
+
+**v1 主机在场规则（必记）**：v2 路由器为该组设置 **V1 Host Present 定时器（= Group Membership Interval）**，期间**忽略该组 Leave**。原因（W p.75）：v1 主机不理解 Group-Specific Query，若最后一个成员是 v1 主机，路由器查询无人应答会**错误超时删组**。
+
+---
+
+## 5. 二层：把"该发的口"找出来
+
+### 5.1 问题本质
+
+组播 MAC `01:00:5E:xx:xx:xx` 默认被交换机当未知单播/广播 → VLAN 内泛洪。10 路 4 Mbps 视频 = 40 Mbps 打到每个接入端口。
+
+### 5.2 四种收敛手段
+
+| 手段 | 原理 | 优点 | 代价 |
+|---|---|---|---|
+| **IGMP Snooping** | 偷听 Query/Report，建 `(VLAN,组) → 端口` 表 | 标准、跨厂商 | 需处理路由器端口；未知组仍泛洪；大表耗内存 |
+| **IGMP Proxy** | 交换机代主机向上游发 Report，向下游代理 Query | 减少上游 IGMP 报文 | 半透明，依赖厂商实现 |
+| **CGMP**（Cisco 私有） | 路由器把 `(组,MAC,端口)` 告知交换机 | 交换机零解析、CPU 省 | 仅 Cisco，需路由器参与 |
+| **MVR** | 独立组播 VLAN 跨 VLAN 复制 | 运营商 IPTV 单 VLAN 承载 | 配置复杂 |
+
+### 5.3 Snooping 的四个关键行为
+
+1. **路由器端口（mrouter port）**：从该口收到 IGMP Query 或 PIM Hello（`224.0.0.13`）→ 标记为 mrouter，所有组的 Report/数据往上送；
+2. **未知组泛洪**：没表项的组仍泛洪，所以"先有流量后建表"必然有一小段泛洪；
+3. **Fast Leave**：收到 Leave 立即删端口，不发 Group-Specific Query。**只在单端口单主机时安全**（案例 2-3）；
+4. **v3 需显式支持**：部分平台要 `ip igmp snooping v3`，否则 v3 报告被丢弃，SSM 不通。
+
+---
+
+## 6. 拓扑图
+
+![IGMPv2 查询、报告、离开的完整交互时序](../../diagrams/d03-igmp-basic.svg)
+
+**图 2-1 IGMP 交互时序**：Query（125 s 周期、目的 224.0.0.1）→ 随机 0–10 s 内 Report → Leave 发往 224.0.0.2 → Group-Specific Query（Max Resp 默认 1 s）→ 无人应答才删组。注意图中两条 Report 只有一条真正发出（报告抑制）。
+
+![IGMP Snooping 与泛洪的对比](../../diagrams/d04-snooping.svg)
+
+**图 2-2 Snooping 前后对比**：左侧未开 Snooping，视频流从所有接入口泛洪；右侧建立 `(VLAN,组)→端口` 表后只走成员口，mrouter 口（朝三层）始终保留。
+
+---
+
+## 7. 工程案例（8 例）
+
+### 案例 2-1：Snooping 开了，20 台终端里总有 3–5 台花屏
+
+**现象**：某会议室 20 个终端看同一路 `239.10.0.5`，每次开会总有 3–5 台花屏，随机轮换；重连有时能好。
+
+**定位**
 ```cisco
-! 二层交换机上做 Querier（指定地址与版本）
-ip igmp snooping querier 10.1.1.1
-ip igmp snooping vlan 10
-ip igmp snooping vlan 10 querier 10.1.1.1   ! 或用 loopback 地址
+show ip igmp snooping groups vlan 100      ! 239.10.0.5 只列出 15–17 个端口
+show ip igmp snooping querier vlan 100     ! Querier 存在，正常
+debug ip igmp snooping events              ! 漏建的端口从未出现 report 事件
 ```
+**根因**：**报告抑制**——20 台终端同时收到上层 Query，只有最快的一台发 Report，其余取消；而该交换机 Snooping 是"看到 Report 才建表"的实现，慢启动/后接入的端口在下一轮 Query 前没有表项，数据不到。
 
----
+**处置**：① 接口开 `ip igmp snooping fast-leave` 并让接入层立即响应；② 更根本的是把 Snooping 改为"Unknown 组泛洪 + 立即建表"（多数平台默认 `flood unknown`）；③ 对会议终端启用 **IGMPv3**，v3 报告不做抑制（RFC 3376 明确取消抑制以支持源过滤）。
 
-## 3. IGMP Snooping：二层组播的核心
+**复盘**：**报告抑制是二层组播最隐蔽的坑**。凡是"随机少数终端收不到、且能自愈"的现象，先怀疑它。
 
-![Snooping 效果](../../diagrams/d04-snooping.svg)
+### 案例 2-2：开了 Fast Leave，一个端口下两台电视只剩一台能看
 
-**工作原理**：
+**现象**：客房楼层每个端口下挂一台小交换机（客厅电视 + 卧室电视），开启 `fast-leave` 后，关掉客厅电视，卧室电视同时黑屏，重新换台即恢复。
 
-1. 交换机监听所有经过的 IGMP 报文；
-2. 收到 **Report** → 在"组播组 + 端口"表项中加入该端口（成员口）；
-3. 收到 **Leave**（v2）→ 标记该端口为"待剪除"，并**由 Querier 发 Group-Specific Query**；若在响应窗口内无 Report，则剪除该端口；
-4. 收到 **Query** → 记录"路由器口（mrouter port）"，组播从该口进来时正常转发；
-5. 组播包到达时：**仅在 mrouter 口 + 成员口转发**，其余端口剪除。
-
-**Report Suppression 的二层含义**：一个 Report 来自某端口，交换机把该端口加入成员表；其他主机再发相同 Report 会被抑制（因为交换机做了抑制转发）。因此交换机的成员端口计数可能小于实际主机数——**排查时不要以端口数当主机数**。
-
-**Fast Leave（快速离开）**：
-
-- 收到 Leave 后**立即剪除该端口**，不做 Group-Specific Query 确认；
-- 前提：交换机知道"该端口后面只有这一个主机"（**explicit host tracking**，即交换机通过 `show ip igmp snooping groups` 学习到端口上的主机数量）；
-- **风险**：若一个端口后面接了 IPTV 机顶盒（STB）盒子 + 机顶盒后面还有电视/其他共享设备，直接剪除会造成**其他设备断流**。
-
+**定位**
 ```cisco
-! Fast Leave 配置（全局或按组）
-ip igmp snooping fast-leave
-ip igmp snooping vlan 10 fast-leave
-! 明确跟踪端口主机数（用于确认哪些端口可以 fast leave）
-ip igmp snooping explicit-host-tracking vlan 10
+show ip igmp snooping groups vlan 200      ! 关掉一台后该端口立即消失
+show ip igmp snooping                     ! fast-leave 已启用
 ```
+**根因**：Fast Leave 收到 Leave 就**立即删端口**，不再发 Group-Specific Query；同端口下第二台主机没有机会"喊一声我还在"。
 
-**相关技术对比**：
+**处置**：在"端口下可能多主机"的场景（客房、教室、下挂小交换机/AP），关闭 fast-leave 或改用 `fast-leave` 的**按端口白名单**；或启用 **IGMP Proxy + 逐主机代理**。
 
-| 机制 | 工作层 | 特点 |
-|---|---|---|
-| **IGMP Snooping** | L2 | 标准做法，按 IGMP 报文学习组播成员 |
-| **PIM Snooping** | L2 | 监听 PIM Join/Prune 来学习组播转发关系，比 IGMP Snooping 更精确（知道上游是谁），但需 L3 设备参与 |
-| **CGMP**（Cisco 私有） | L2 | 老方案，交换机与 CGMP 服务器通信，现已基本被 IGMP Snooping 取代 |
-| **IGMP Proxy** | L3 设备 | 见下节 |
+**复盘**：Fast Leave 的前提是**一个端口一个订阅者**。凡是"端口下挂交换机/AP/软 AP"的场景，一律不用 Fast Leave。
 
----
+### 案例 2-3：两个三层口配在同一 VLAN，组表每 4 分钟闪断一次
 
-## 4. IGMP Proxy 与 Query Solicitation
+**现象**：组播每约 4 分钟断 3–5 秒后自愈，`show ip igmp groups` 里组表周期性消失重建；两台三层设备 CPU 均有尖峰。
 
-### 4.1 IGMP Proxy
-
-**场景**：接入交换机不支持 Snooping（或非组播感知设备），需要在 L3 网关（如路由器、无线 AC、防火墙）上"代理"主机完成成员管理。
-
-- 网关**代替主机**发 IGMP Report（对上游），并**代替路由器**向主机发 Query；
-- 网关自己维护"哪些主机要哪个组"的本地表。
-
+**定位**
 ```cisco
-ip igmp proxy
-interface Vlan10
- ip igmp proxy
+! 两台三层设备
+show ip igmp interface vlan 100     ! 两台都是 Querier
+show ip igmp groups                 ! 两台都有表项，且 Expires 周期性归零
 ```
+抓包可见 VLAN 100 内**两份 Query**（间隔 125 s，来自两个不同源 IP）。
 
-**代价**：网关成为单点；组播数据仍需经网关转发（除非网关做组播路由）。
+**根因**：两台三层设备 Subnet 重叠在同一 VLAN（原本想做成网关冗余），IGMPv2 按"IP 最低者当选"本应只有一台发 Query，但其中一台配了 `ip igmp version 1`（走 PIM DR 逻辑），两套选举规则并存 → **双 Querier**，主机应答被切分，某轮无人应答即超时删组。
 
-### 4.2 IGMP Query Solicitation（Aweya 2.8）
+**处置**：统一 IGMP 版本（都 v2/v3），并在非 Querier 设备上 `no ip igmp querier`（部分平台为 `ip igmp version` 一致后自动让位）；网关冗余改用 HSRP/VRRP 的**同一虚拟 IP** 承担 Querier。
 
-**场景**：接入交换机做 Snooping，但 VLAN 内没有路由器（数据来自外部组播源或运营商专线）。
+**复盘**：网关冗余 ≠ 两个 Querier。设计时明确"谁是 Querier"，并把它写成验收项。
 
-**做法**：网关/路由器**自己发** IGMP Query Solicitation，让交换机误以为它是 Querier，从而保持 mrouter 口并维持成员表。
+### 案例 2-4：Snooping 表里没有 mrouter 口，整 VLAN 收不到
 
+**现象**：单播正常，整个 VLAN 所有终端都收不到组播；`show ip igmp snooping groups` 有成员端口，但没有朝网关的口。
+
+**定位**
 ```cisco
-interface Gi0/1
- ip igmp query-solicitation
+show ip igmp snooping mrouter vlan 100      ! 空
+show ip igmp snooping groups vlan 100       ! 只有 access 端口
+! 上游三层
+show ip igmp interface vlan 100             ! IGMP 未 enable 或 Query 被 ACL 拦
 ```
+**根因**：Snooping 靠**听到 Query 或 PIM Hello** 来标记 mrouter 口。该环境三层侧把 IGMP（协议号 2）与 PIM Hello 一起纳入了控制面 ACL 白名单之外，交换机永远学不到 mrouter 口，成员组的流量**没有上行出口**。
 
----
+**处置**：放行 IGMP/PIM；或在交换机上静态指定 `ip igmp snooping mrouter interface Gi1/0/1`。
 
-## 5. 排障命令速查（iPexpert Ch2）
+**复盘**："成员表有、mrouter 空"是 Snooping 类故障的**标准指纹**，一条命令即可确认。
 
+### 案例 2-5：关掉机顶盒后，频道资源 3 分钟才释放
+
+**现象**：IPTV 场景，用户关机顶盒后，频道带宽 3 分钟才释放；高峰期频道数打满，新用户无法加入。
+
+**定位**
 ```cisco
-! 二层侧
-show ip igmp snooping groups            ! 组 → 端口映射（成员口/标志位）
-show ip igmp snooping groups vlan 10
-show ip igmp snooping mrouter            ! 路由器口列表
-show ip igmp snooping querier            ! 当前 Querier 是谁
-show ip igmp snooping vlan 10 detail     ! 每端口主机明细（explicit host tracking）
-
-! 三层侧
-show ip igmp groups                      ! 路由器上的 IGMP 成员表
-show ip igmp groups 239.1.1.1 detail
-show ip igmp interface Gi0/1
-show ip igmp query-interval              ! QI / Max Response Time / QRY
-
-! 调试（慎用，会很吵）
-debug ip igmp
-debug igmp packets
+show ip igmp groups 239.20.1.1        ! Expires 还剩 170+ 秒
+show ip igmp interface vlan 300       ! IGMPv1（老机顶盒）
+show ip igmp interface vlan 300 | include "V1"
 ```
+**根因**：VLAN 内存在 **IGMPv1 主机**（老机顶盒），路由器为该组设置了 **V1 Host Present（400 s）** 定时器，期间**忽略 Leave**，只能等 Group Membership Interval（260 s）超时。
+
+**处置**：短期把该 VLAN 的 `ip igmp query-interval` 与 `max-response-time` 适当下调（如 60 s / 5 s，组超时降至 ~125 s）；长期统一升级机顶盒到 v2/v3，并在接入层开启 Fast Leave（单端口单机顶盒场景安全）。
+
+**复盘**：**v1 主机在场 = Leave 无效**。IPTV 网络的带宽规划必须按"最坏离网延迟"预留，否则晚高峰必然打满。
+
+### 案例 2-6：SSM 迁移后，同一 VLAN 里部分终端能看、部分不能
+
+**现象**：同一 VLAN、同一节目源，A 型号终端正常，B 型号终端无画面；B 型 `show ip igmp groups` 显示 v3 报告已发。
+
+**定位**
+```cisco
+show ip igmp snooping vlan 400           ! v3 未启用（或 snooping 版本为 v2）
+show ip igmp snooping groups vlan 400    ! 无该 (S,G) 表项
+debug ip igmp snooping packet            ! 看到 v3 report 被丢弃
+```
+**根因**：交换机 Snooping 默认只解析 IGMPv2 报文，**IGMPv3 Report 被当未知类型丢弃**，表项不建；而 A 型终端因为"多播 MAC 恰好相同"落入了别的组的表项，意外能收到（假象）。
+
+**处置**：`ip igmp snooping v3`（或平台对应命令）；确认硬件/软件版本支持 v3 snooping；对不支持的老设备，回退到 ASM + 静态 mroute 过渡。
+
+**复盘**：**SSM 的最后一公里常在二层**。排查顺序：终端发的记录类型 → 交换机是否解析 v3 → 路由器是否 `pim ssm` → 源是否正确。
+
+### 案例 2-7：组播每 4 分多钟"掉一次又自己好"
+
+**现象**：视频会议每 4 分钟卡 2–3 秒，周期性；`show ip mroute` 的 `Uptime` 不断归零。
+
+**定位**
+```cisco
+show ip igmp groups 239.1.1.10        ! Expires 周期性变 0 → 重新建表
+show ip traffic | include igmp        ! 收到大量 "bad igmp" 或 input drops
+show policy-map control-plane         ! CoPP 对 IGMP 限速 50 pps
+```
+**根因**：控制面策略（CoPP）对 IGMP 限速过低，加入终端多的 VLAN 中，每轮 Query 后集中应答被**限速丢弃**，某轮整组无应答 → 260 s 超时删组，下一轮 Report 再建。**周期正好是 260 s（约 4 分 20 秒）**。
+
+**处置**：CoPP 为 IGMP 单独放行（建议 500–1000 pps，视终端数）；Snooping 侧让交换机代理应答（Proxy），把上游 IGMP 报文压到每 VLAN 几十 pps。
+
+**复盘**：看到"周期 ≈ 260 s"的抖动，先算一遍 Group Membership Interval，直接锁定 IGMP 侧问题，不用查数据面。
+
+### 案例 2-8：无线漫游后，旧 AP 端口还在收流
+
+**现象**：手机从 AP-1 漫游到 AP-2 后，画面卡顿；AP-1 端口仍在收该组播流，AP-2 端口不带该组。
+
+**定位**
+```cisco
+show ip igmp snooping groups vlan 500     ! 同一 MAC 出现在两个 AP 端口
+show mac address-table vlan 500           ! 漫游后表项未更新
+```
+**根因**：无线控制器对组播做 **IGMP Proxy**，终端漫游后旧 AP 的代理状态未同步；同时 AP-1 端口没收到 Leave，Snooping 表项老化要等 260 s。
+
+**处置**：启用 WLC 的组播**快速漫游同步**（或 `mcast roam` 相关特性）；接入交换机对 AP 端口启用 `fast-leave` 缩短老化；必要时 `clear ip igmp snooping groups` 做临时恢复。
+
+**复盘**：无线场景的组播问题**多数在代理层**，不在 PIM。排查先看 WLC 的组播表是否与交换机一致。
 
 ---
 
-## 6. 生产案例（8 例）
+## 8. 自测清单
 
-### 案例 2-1：主机加入组播但交换机无成员表项
-
-**现象**：PC 加入 `239.1.1.1`，PC 能收到流，但同 VLAN 另一台 PC 收不到；交换机上查不到该组的成员口。
-**定位**：`show ip igmp snooping groups vlan 10` 为空；`show ip igmp snooping mrouter` 为空。
-**根因**：VLAN 内**没有 Querier**，交换机从未收到 Query，因此不认为任何口是 mrouter 口，也不建立老化计时器；或交换机上未启用 `ip igmp snooping vlan 10`。
-**处置**：在汇聚层路由器上确认已有 Query（`debug ip igmp`）；若该 VLAN 无路由接口，则在交换机上配置 `ip igmp snooping querier`。
-**复盘**：每个承载组播的 VLAN 必须有 Querier（路由器或静态 querier）。
-
-### 案例 2-2：主机离开后组播仍在占用带宽
-
-**现象**：用户下线后，其端口仍在接收组播，交换机端口流量不降。
-**定位**：`show ip igmp snooping groups` 中该端口带 `L`（leave）标志但未消失；`show ip igmp snooping querier` 显示 querier 为 `0.0.0.0`。
-**根因**：IGMPv1 主机（无 Leave）或 Querier 缺失 → 只能等待老化（3×QI ≈ 6 分钟）。
-**处置**：终端统一升级到 IGMPv2/v3；确认 Querier 存在。
-**复盘**：终端 IGMP 版本不一致是组播"幽灵流量"的常见根因，必须纳入资产检查项。
-
-### 案例 2-3：Fast Leave 导致同端口其他设备断流
-
-**现象**：某 IPTV 端口用户拔线重启后，机顶盒正常但同 IPTV 共享的其他设备（如机顶盒后接的终端）断流。
-**定位**：交换机日志有 `IGMP_FAST_LEAVE`；该端口下挂着多个 MAC。
-**根因**：开启了 Fast Leave，但该端口并非"单主机"（IPTV 场景常见"STB+PC 共享"或串接设备）。
-**处置**：关闭该 VLAN 的 fast-leave，或用 explicit host tracking 精确配置。
-**复盘**：Fast Leave 只在"端口=单主机"或"已确认设备独占"的场景使用。
-
-### 案例 2-4：交换机 CPU 被 IGMP 报文打满
-
-**现象**：某接入交换机 CPU 占用 80%+，业务时延抖动。
-**定位**：`show processes cpu sorted` 显示 `IP Input` 居首；`debug ip igmp` 显示大量 IGMP 报文。
-**根因**：大量主机频繁发 IGMP Report（如视频客户端异常重连），或存在 **IGMP 报文环路/风暴**（两台设备间互发 Query）。
-**处置**：配置 `ip igmp snooping` 抑制多余 Report；对不可信端口做 IGMP 过滤（ACL 只允许 224.0.0.1/22 与必要组）。
-**复盘**：IGMP 也是可被攻击的放大面，需在边界做限速。
-
-### 案例 2-5：主机报 IGMP 但路由侧无组成员
-
-**现象**：PC 抓包能看到 IGMPv3 Report，但 `show ip igmp groups` 空。
-**定位**：对比 `show ip igmp groups` 与 `show ip igmp interface`；检查该接口是否 `ip pim sparse-mode`；检查 `ip igmp` 是否被 `ip igmp access-group` 过滤。
-**根因**：接口未启用 PIM；或接口上配置了 `ip igmp ssm-mapping` 但主机发送的是 `IS_EXCLUDE`（IGMPv2 语义），SSM 段不匹配。
-**处置**：接口配置 `ip pim sparse-mode`；核对 SSM range 与映射表。
-**复盘**："主机发了 Report"≠"路由器收下"，中间还有接口 ACL、IGMP 版本、SSM 范围三道门。
-
-### 案例 2-6：跨 VLAN 的组播在三层交换机上不通
-
-**现象**：同 VLAN 正常，跨 VLAN 不通。
-**定位**：`show ip igmp groups` 在 SVI 上有成员；`show ip mroute` 无条目或 RPF 失败。
-**根因**：SVI 上未启用 `ip pim sparse-mode`；或 SVI 到源的单播路由缺失导致 RPF 失败。
-**处置**：`interface Vlan10 / ip pim sparse-mode`；补齐到源的路由（必要时静态 mroute）。
-**复盘**：组播 VLAN 间的转发依赖 **SVI 上的 PIM + 到源的路由**，缺一不可。
-
-### 案例 2-7：二层使用 PIM Snooping 后反而不通
-
-**现象**：改造前组播正常，改成 PIM Snooping 后部分业务不通。
-**定位**：`show ip igmp snooping groups` 与 `show ip pim snooping` 对比，发现部分组在 IGMP Snooping 表里有、PIM Snooping 表里没有。
-**根因**：PIM Snooping 需要设备能收到 PIM Join/Prune 并解析出上游口；若 PIM 报文被 ACL 过滤或该 VLAN 内无 PIM 邻居，则无法建立条目。
-**处置**：放行 PIM 协议（224.0.0.13），或回退到 IGMP Snooping。
-**复盘**：PIM Snooping 不是 IGMP Snooping 的"升级版"，二者依赖不同报文，改造需重新验证。
-
-### 案例 2-8：无线终端加入组播后频繁掉线
-
-**现象**：Wi-Fi 终端订阅组播后，AP 上有组播流量但客户端看视频卡顿。
-**定位**：`show ip igmp snooping groups vlan <无线VLAN>` 发现终端 MAC 不在成员表；检查 AP 是否有 "multicast optimization / IGMP snooping" 选项。
-**根因**：部分 AP/控制器默认对组播做 **IGMP snooping 剪枝**，或 AP 自身不做组播转发（需在 WLAN 配置中启用 multicast）。
-**处置**：在控制器上启用组播直传/组播优化，或对无线 VLAN 关闭 AP 侧剪枝。
-**复盘**：无线是组播的"隐形黑洞"，PoC 必须覆盖无线接入。
+1. IGMPv1 查询报文的 Max Resp Time 字段是全 0，v2 主机如何据此判断版本？为什么是 10 秒？
+2. IGMPv2 Leave 为什么发往 `224.0.0.2` 而不是 `224.0.0.1`？
+3. 写出 Group Membership Interval 与 Other Querier Present 的计算式，并解释差的那 5 秒是干什么的。
+4. 报告抑制有没有被 IGMPv3 取消？为什么？
+5. 一台 v2 路由器下同时有 v1 和 v2 主机，某组只有 v1 主机在线，收到 Leave 后路由器会怎么做？
+6. Snooping 的 mrouter 口靠什么学习？学习不到会怎样？
+7. Fast Leave 的安全边界是什么？举两个不能用的场景。
+8. 组播每 260 s 周期性抖动，你的排查路径是什么？
+9. IGMP Proxy 与 IGMP Snooping 的本质差别？
+10. 同一 VLAN 出现两台 Querier，会导致主机侧什么行为异常？
 
 ---
 
-## 7. 自测清单
+## 9. 原文精读索引
 
-1. IGMPv1 主机离开组后，为什么组播流量还会持续约 3 分钟？
-2. IGMPv3 的 Querier 选举规则与 v1/v2 有何不同？为什么会出现兼容问题？
-3. Report Suppression 对交换机成员表项计数有什么影响？为什么 `show ip igmp snooping groups` 的端口数不等于主机数？
-4. 什么条件下 Fast Leave 是安全的？
-5. IGMP Proxy 与 IGMP Snooping 分别在哪一层、解决什么问题？
-6. `ip igmp query-solicitation` 什么时候必须配？
+> 纸面页码：Williamson = PDF 页 − 22。本章实际精读：**W Ch3 全文（p.56–77，报文格式/定时器/Querier 选举/v1-v2 互操作）** + W Ch14 Snooping 部分（p.408–443 抽取）。
 
-## 8. 延伸阅读
+| 知识点 | 书/节 | 纸面页 | 原文可核对要点 |
+|---|---|---|---|
+| IGMP 作用与定位 | W Ch3 | p.56–60 | 成员关系由"接收者主动报告"驱动，非路由器探测 |
+| v1 Query/Report 格式 | W Ch3 | p.60–61 | 类型 0x11/0x12、TTL=1、目的 224.0.0.1 |
+| 报告抑制 | W Ch3 | p.61–62 | 减少 IGMP 流量；NOTE：路由器无法跟踪单个主机 |
+| Group Membership Interval | W Ch3 | p.62–64 | 2×Query Interval + Max Resp |
+| Query Interval 125 s / Max Resp 10 s | W Ch3 | p.66–68 | "increase the variance of the response time" 的权衡 |
+| v1 离网延迟 3 分钟 | W Ch3 | p.69 | 无 Leave 的最坏情况 |
+| v1→v2 的五个变化 | W Ch3 | p.70–73 | Leave、Group-Specific Query、Querier 选举、Max Resp 编码、v1 报告兼容 |
+| 版本识别 | W Ch3 | p.74 | Max Resp = 0 → 按 100（10 s）处理 |
+| v1 主机在场规则 | W Ch3 | p.75 | 忽略 Leave；V1 Host Present；v2 报告不抑制 v1 主机 |
+| v3 动机（jam/mute） | W Ch3 | p.76 | 本地 mute 无法省带宽 |
+| v3 记录类型 | Aweya Ch2 | p.44–60 | INCLUDE/EXCLUDE、六种状态变更 |
+| Snooping 原理 | W Ch14 | p.408–420 | 监听 Query/Report、路由器端口、未知组泛洪 |
+| CGMP | W Ch14 | p.420–430 | 路由器参与、交换机零解析 |
+| Snooping/Proxy 细节 | Aweya Ch2 | p.60–80 | Proxy 的代理行为与限制 |
+| 二层排障命令 | iPexpert Ch2 | — | show ip igmp snooping / mac address-table multicast |
 
-- Aweya Ch2.3–2.10（P.87–P.167）：IGMPv1/v2/v3 报文与状态机、IGMP Snooping、IGMP Proxy、Query Solicitation、Fast Leave
-- Williamson Ch14（P.408–P.442）：IGMP Snooping 完整过程、CGMP、交换机泛洪抑制
-- Williamson Ch15（P.444–P.470）：NBMA 上的组播（伪广播、PIM NBMA 模式）
-- iPexpert Ch2（P.2-1–2-26）：IGMP 排障场景与命令工具
-- 延伸：`RFC 1112`（IGMPv1）、`RFC 2236`（IGMPv2）、`RFC 3376`（IGMPv3）
+---
+
+## 10. 延伸
+
+- 下一章：RPF、分发树与 PIM 通用机制（从"成员在哪"到"路径怎么建"）
+- 相关原文：W Ch3/Ch14、Aweya Ch2、iPexpert Ch2
+- 标准：RFC 1112、RFC 2236、RFC 3376、RFC 4541（Snooping 考量）、RFC 4604（MLDv2/IGMPv3 SSM）

@@ -1,0 +1,450 @@
+===== PAGE 24 =====
+ 
+P 
+ 
+A
+ 
+ 
+ 
+R
+ 
+ 
+ 
+T
+ 
+I
+Fundamentals of IP Multicast
+This part covers the fundamental concepts of IP multicasting that are crucial to understanding more 
+advanced topics, such as individual multicast routing protocols. 
+Chapter 1 presents a brief history of IP multicast along with the rationale behind its use. 
+Chapter 2 introduces several key concepts that will be the foundation on which a ﬁrm understanding of 
+IP multicast is built. One of the ﬁrst topics introduced is IP multicast addressing. This section covers not 
+only Layer 3 multicast group addresses, but also how these addresses map to addresses at Layer 2 for 
+popular network media, such as Ethernet, FDDI, and Token Ring. In addition, Chapter 2 presents the 
+important idea of multicast distribution trees, along with the associated multicast packet forward 
+algorithms necessary for proper multicast trafﬁc ﬂow. 
+Chapter 3 is completely devoted to the details of the Internet Group Management Protocol (IGMP), 
+which is the host to the router signaling mechanism used in IP multicast. 
+Chapter 4 focuses on some of the more popular MBone multimedia audio and video conferencing 
+applications that use IP multicast. In addition, Chapter 4 discusses some of the other protocols that these 
+applications use to transmit and receive real-time multimedia data, as well as announce the existence of 
+the multimedia session to others in the network. 
+0779.book  Page 3  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 25 =====
+0779.book  Page 4  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 26 =====
+C H A P T E R 1
+Introduction to IP Multicast
+At one end of the IP communication spectrum is IP unicast communication, where a source 
+IP host sends packets to a speciﬁc destination IP host. In this case, the destination address 
+in the IP packet is the address of a single, unique host in the IP network. These IP packets 
+are forwarded across the network from the source host to the destination host by routers. 
+The routers at each point along the path between the source and destination use their unicast 
+Routing Information Base (RIB) to make unicast forwarding decisions based on the IP 
+destination address in the packet.
+At the other end of the IP communication spectrum is an IP broadcast, where a source host 
+sends packets to all IP hosts on a network segment. The destination address of an IP 
+broadcast packet has the host portion of the destination IP address set to all ones and the 
+network portion set to the address of the subnet (see Figure 1-1). (In some cases the host 
+portion is set to all zeros, but this form of IP broadcast address is generally no longer used.)
+Figure 1-1 IP Broadcast Addresses
+IP hosts (including routers) understand that packets, which contain an IP broadcast address 
+as the destination address, are addressed to all IP hosts on the subnet. Unless speciﬁcally 
+conﬁgured otherwise, routers do not forward IP broadcast packets and, therefore, IP 
+broadcast communication is normally limited to the local subnet. Figure 1-2 clearly 
+illustrates this point.
+IP Address
+Subnet
+Host
+11001000 00001010 00000010 11111111
+Subnet Mask 11111111 11111111
+255.255.255.0
+196.10.2.255
+11111111 00000000
+0779.book  Page 5  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 27 =====
+6     Chapter 1:  Introduction to IP Multicast
+Figure 1-2 IP Broadcast Being Blocked by a Router
+In this example, Host A sends out a broadcast to the local subnet 198.1.1.0/24. Because 
+Hosts B and C are on the same subnet as Host A, they receive the broadcast. Host D, 
+however, is on a different subnet (198.1.2.0/24) and does not receive the broadcast because 
+the router does not forward broadcasts. If routers forwarded these broadcasts, route loops 
+are likely to cause a catastrophic broadcast storm.
+If your goal is to permit a host to send IP packets to other hosts not on the local subnet, then 
+IP broadcasting is not sufﬁcient to accomplish this goal.
+IP multicasting falls between IP unicast and IP broadcast communication and enables a host 
+to send IP packets to a group of hosts anywhere within the IP network. To do so, the 
+destination address in an IP multicast packet is a special form of IP address called an IP 
+multicast group address. (The format of IP multicast group addresses and exactly how hosts 
+become members of a multicast group are explained in Chapter 2, “Multicast Basics.”) IP 
+multicast routers must forward incoming IP multicast packets out all interfaces that lead to 
+members of the IP multicast group. The IP multicast group address is speciﬁed in the IP 
+destination address ﬁeld of the packet.
+Exactly how the routers learn which interface to forward the packet to is part of the magic 
+of IP multicast routing. The explanation of how this magic works is one of the goals of this 
+book. By the time you ﬁnish reading this book, you should have a good understanding not 
+only of how IP multicasting works in general but also of how to design efﬁcient IP multicast 
+networks using Cisco routers.
+This chapter offers a brief history of IP multicasting, a discussion on the pros and cons of 
+multicast, a description of various multicast applications, and an introduction to the 
+multicast backbone.
+198.1.2.1
+198.1.2.0/24
+198.1.1.3
+Host
+D
+Host
+C
+198.1.1.2
+Host
+B
+198.1.1.1
+Host
+A
+198.1.1.0/24 Broadcast (192.1.1.255)
+Router Does Not
+Forward Broadcast
+E0
+E1
+0779.book  Page 6  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 28 =====
+A Brief History of IP Multicast     7
+A Brief History of IP Multicast
+At Stanford University in the early 1980s, a doctoral graduate student, Steve Deering, was 
+working on a distributed operating system project for his advisor, David Cheriton. This 
+distributed operating system was called Vsystem and was composed of several computers 
+tied together into a loosely coupled multiprocessing system via a single Ethernet segment. 
+The computers on this Ethernet segment worked together and communicated at the 
+operating system level via special messages sent on the common Ethernet segment. One of 
+the operating system primitives permitted one computer to send a message to a group of the 
+other computers on the local Ethernet segment using a MAC layer multicast.
+As the project progressed, the need arose to add more computers to the multiprocessing 
+system. Unfortunately, the only available computers were on the other side of the campus 
+with production routers between the two networks. Consequently, the graduate students had 
+to extend the operating system’s inter-processor communications to work at Layer 3 of the 
+OSI reference model so that the computers on the other side of the campus could function 
+as part of the loosely coupled multiprocessor system. In addition, the MAC layer multicast 
+messaging would also have to be extended to work at Layer 3. The task of ﬁnding a way to 
+extend the MAC layer multicast capability across the Layer 3 routed network primarily fell 
+to Steve Deering.
+After studying the Open Shortest Path First (OSPF) Protocol and the Routing Information 
+Protocol (RIP) IP routing protocols, Steve concluded that the link-state mechanisms of 
+OSPF could certainly be extended to support multicasting. He also concluded that the basic 
+mechanisms of RIP could be used as the basis for a new distance vector-based multicast 
+routing protocol. This idea led to more research into the area of IP multicasting and 
+ultimately resulted in Steve Deering’s doctoral thesis, “Multicast Routing in a Datagram 
+Network, ” published in December 1991.
+Dr. Deering’s thesis also described a Host Membership Protocol, which became the basis 
+for today’s Internet Group Membership Protocol (IGMP) that IP multicast hosts use to 
+signal to the router on the network that they desire to join a multicast group. In addition, Dr. 
+Deering’s thesis described a distance vector-based IP multicast routing protocol that was 
+the basis for the Distance Vector Multicast Routing Protocol (DVMRP), also developed by 
+Dr. Deering a few years later. These two protocols provided the ﬁrst successful extensions 
+to the IP packet network model to allow multicasting to be extended to Layer 3 of the OSI 
+model. Since that time, advances in IP multicasting technology have continued and 
+additional protocols such as Protocol Independent Multicasting (PIM) and multiprotocol 
+extensions to the Border Gateway Protocol (BGP) have been developed. These protocols 
+permit IP multicasting to scale beyond the initial limited implementations to large, 
+enterprise-wide multicast networks and eventually on to a native, completely multicast-
+enabled Internet.
+0779.book  Page 7  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 29 =====
+8     Chapter 1:  Introduction to IP Multicast
+The Pros of IP Multicast
+As the Internet and, in many cases, company intranets have grown in terms of the number 
+of connected users, a large number of users frequently want to access the same information 
+at roughly the same time. Using IP multicast techniques to distribute this information can 
+often substantially reduce the overall bandwidth demands on the network. A good example 
+of this approach is the rapidly growing area of audio and video Web content.
+Here’s an example: The ACME Company is using a bank of audio servers to transmit 
+popular radio talk-show content, such as the Rush Limbaugh and Howard Stern shows, in 
+real time to connected subscribers over the Internet. This is just one of many areas in which 
+IP multicasting can provide signiﬁcant advantages to the network providers as well as the 
+content providers both on the Internet or within company intranets. However, it’s doubtful 
+that employees who tune in to Howard Stern through their company’s Internet connection 
+are actually performing a mission-critical task. Of course, if they happen to be in the 
+entertainment business or do work for the FCC, this might be considered an important job-
+related task.
+In the next few sections, the ACME Company example is used to illustrate some of the pros 
+of IP multicasting. These include (but are not limited to) the following advantages: 
+bandwidth, server load, and network loading.
+Bandwidth
+Consider, as an example, the way that the ACME Company is transmitting real-time feeds 
+of the Rush Limbaugh talk show via an audio compression technique that requires an 
+8-kbps data stream to deliver. The dashed line on the graph in Figure 1-3 shows that as the 
+number of connected unicast subscribers increases, the amount of network bandwidth also 
+increases linearly. On the other hand, if you are multicasting the same program (represented 
+by the solid line), a single 8-kbps multicast data stream can deliver the program to the 
+subscribers.
+Figure 1-3 Unicast Versus Multicast Bandwidth for Audio
+0.8
+0.7
+0.6
+0.5
+0.4
+0.3
+0.2
+0.1
+0
+1 20 40 60
+Clients
+Bandwidth
+Mbps
+Unicast
+Multicast
+80 100
+0779.book  Page 8  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 30 =====
+The Pros of IP Multicast     9
+Given that ACME’s revenues are based on the number of subscribers (which would some-
+how relate to the active number of clients at any time), it is reasonable to expect that 
+ACME’s marketing department goals are to see the number of clients in the tens of 
+thousands. Meeting this goal is going to require engineering the network to provide 
+bandwidths in the 100 Mbps range in order to support this single scenario.
+Now, suppose that ACME has been very successful with this product and wants to extend 
+its service offering to include highly compressed, low-rate, 120-kbps video streams to go 
+along with the 8-kbps audio programs. Figure 1-4 shows that if the unicast model continues 
+to be used as the delivery method, the bandwidth requirements are driven even higher.
+Figure 1-4 Unicast Versus Multicast Bandwidth for Video
+Assuming that, in the future, more and more Internet-connected subscribers have the ISDN, 
+ADSL, or other medium-rate Internet connections necessary to watch ACME’s program 
+content and are tuned in, bandwidth demands can approach the multimegabit range.
+If you further consider that some form of competition in this marketplace exists, ACME 
+will not be the only supplier of this sort of program content. Other companies will begin 
+offering similar services via the Internet, which will place additional demands on the 
+Internet’s infrastructure.
+At this writing, several movie services were beginning to investigate the possibilities of 
+distributing movies via data networks. Considering that a typical MPEG-2 video stream 
+requires roughly 1.5 Mbps of bandwidth for a reasonably artifact-free video, IP 
+multicasting is clearly an excellent choice for delivering this type of program content. 
+Although you may have to wait some time before you can watch Arnold Schwarzenegger 
+in the latest Terminator III at home via your Internet connection, you are quite likely to 
+receive MPEG-2 multicasts of important company events over your company’s IP network.
+14
+12
+10
+8
+6
+4
+2
+0
+1 20 40 60
+Clients
+Bandwidth
+Mbps
+Unicast
+Multicast
+80 100
+0779.book  Page 9  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 31 =====
+10     Chapter 1:  Introduction to IP Multicast
+Server Load
+Return to the example of the ACME Company’s delivery of real-time audio to connected 
+subscribers via the Internet. If ACME continues to use a unicast delivery mechanism, it will 
+need to continue to increase the power and number of its real-time audio servers to meet the 
+increasing number of connected subscribers.
+Figure 1-5 shows an example of the number of ﬂows that a real-time audio server must 
+source to deliver Rush Limbaugh’s talk show to three clients. Notice that in the unicast case 
+(shown at the top of Figure 1-5), the server must source a separate ﬂow for each client 
+listening to the program.
+Figure 1-5 Server Load
+As the number of connected clients increases, the load on the server is going to increase 
+until, at some point, the server will be unable to source the ﬂows at the 8-kbps data rate 
+necessary to deliver unbroken audio. At this point, ACME’s customers will begin to 
+complain about poor audio and potentially cancel subscriptions. This is a classic success/
+failure situation in which the service offering is so successful that it exceeds the capability 
+of the technology or network infrastructure to handle the demand. In this case, ACME is 
+going to have to continue to increase the server’s CPU size and its network interface 
+Server
+Router
+Unicast
+Server
+Router
+Multicast
+0779.book  Page 10  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 32 =====
+The Cons of IP Multicast     11
+bandwidth to accommodate more and more clients. Ultimately, ACME will have to provide 
+multiple real-time audio servers to meet the demand.
+On the other hand, if ACME uses IP multicast to deliver its program content (as shown at 
+the bottom of Figure 1-5), only a single real-time data stream needs to be sourced to deliver 
+the program to all of the connected clients. In this way, ACME will not need to purchase 
+more and more real-time audio servers of increasing horsepower as the number of clients 
+grows. It is obvious that IP multicasting offers a signiﬁcant advantage in the area of reduced 
+server horsepower.
+Network Loading
+Given that IP multicasting can signiﬁcantly reduce bandwidth requirements when 
+delivering the same content to multiple clients, the reduction in bandwidth consumption 
+should equate to a reduction in the load placed on the routers in the network. In general, this 
+assumption is true, but it’s important to note that, in some cases, the router workload can 
+increase at certain points in the network.
+Referring once again to the multicast portion of Figure 1-5, we see that the ﬁrst-hop router 
+(the one directly connected to the server) is receiving a single data stream from the server. 
+Note, however, that the ﬁrst-hop router is replicating the single data stream into two 
+outgoing data streams so as to deliver the data to the clients downstream. This replication 
+process places an additional workload on the router, which needs to be considered in the 
+overall network design. If a router does not have an efﬁcient replication mechanism, the 
+router load can increase signiﬁcantly when the number of outgoing interfaces is high.
+For example, some older implementations of multicast forwarding code require the router 
+to duplicate the multicast packet for each additional outgoing interface. This duplication 
+process requires a new packet buffer to be allocated from memory and the data in the 
+original packet to be copied to the new buffer for transmission out an outgoing interface. If 
+the number of outgoing interfaces is high, the duplication process can put a heavy burden 
+on the router in terms of CPU and memory resources. Newer versions of forwarding code 
+avoid this duplication process by queuing a pointer to the data in the original packet to each 
+outgoing interface, thereby allowing each interface to share the same data buffer. This 
+virtually eliminates the need to replicate the data for each outgoing interface and 
+signiﬁcantly reduces the CPU and memory resources necessary to forward the multicast 
+packet.
+The Cons of IP Multicast
+Although there are a number of good reasons for wanting to use IP multicasting in 
+networks, you need to keep in mind that there are limitations and downsides to this 
+technology. These limitations need to be clearly understood, particularly if you are 
+developing new applications that plan to use IP multicasting.
+0779.book  Page 11  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 33 =====
+12     Chapter 1:  Introduction to IP Multicast
+Some of the main drawbacks associated with the implementation of an IP multicast system 
+include unreliable packet delivery, packet duplication, and network congestion.
+Unreliable Packet Delivery
+IP multicast, like IP unicast, is inherently unreliable. It is only through the use of TCP at 
+Layer 4 (or some other higher layer protocol) that IP unicast data streams can be made 
+reliable. However, because IP multicasting assumes a one-to-many communication mode, 
+it was not designed to use the end-to-end mechanisms inherent in TCP. IP multicast packets 
+typically use the User Datagram Protocol (UDP), which is best-effort in nature. Therefore, 
+an application that uses IP multicasting must expect occasional packet loss and be prepared 
+to either accept the loss or to somehow handle this at the application layer or via a reliable 
+multicast protocol layered on top of UDP.
+Dr. Deering states in his doctoral thesis that “during periods when paths are being changed 
+immediately following a topology change, multicast packets that happen to be in ﬂight have 
+a lower probability of reaching their destinations than do unicast packets.” Deering goes on 
+to explain that even if erroneous unicast forwarding information exists at some routers in 
+the network during a topology change, the network may eventually succeed in forwarding 
+the packet to the destination. The reason this happens is that the unicast forwarding 
+mechanism continues to attempt to forward the packet toward the destination IP address 
+while the network topology is in transition, though the actual path may be somewhat 
+circuitous. The forwarding mechanisms of IP multicast, on the other hand, are based on the 
+source IP address, and to prevent loops, the packet is discarded if it does not arrive on the 
+interface that would lead back to the source. The signiﬁcance of Dr. Deering’s point is a 
+subject of some debate, particularly because the impact has not been studied. However, 
+taken at face value, the theory is worth noting.
+If the preceding material seems a bit unclear to you at this point, don’t worry; Chapter 2 
+covers these forwarding mechanisms in greater detail. For now, it is sufﬁcient to understand 
+that IP multicast forwarding makes use of the source IP address, while IP unicast 
+forwarding makes use of the destination IP address.
+Packet Duplication
+Duplicate packets are, just as in the UDP unicast world, a fact of life. However, a key 
+difference between unicast and multicast routing is that routers intentionally send copies of 
+a multicast packet out multiple interfaces. This increases the probability that multiple 
+copies of the multicast packet may arrive at a receiver. For example, in certain redundant 
+network topologies in which multiple paths exist to the receiver, duplicate packets can 
+occur until the multicast routing protocol converges and eliminates the redundant path. 
+Typically, this means that only an occasional packet is duplicated within the network, 
+although under some transient network-error conditions, a number of duplicates may arrive 
+0779.book  Page 12  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 34 =====
+The Cons of IP Multicast     13
+at the receiver. (You’ll gain a better understanding of where and when duplicate packets can 
+occur while studying the details of different multicast routing protocols in Chapter 4, 
+“Multimedia Multicast Applications.”) Again, well-designed IP multicast applications 
+should be prepared to detect and handle the arrival of the occasional duplicate packet.
+NOTE On one particular occasion, I recall a U.S. government agency that had designed an IP 
+multicast application to control a critical piece of government equipment whose 
+malfunction might result in the loss of life. Unfortunately, the application designers had 
+failed to account for the possibility of duplicate packets caused by normal IP multicast 
+network operation. This oversight resulted in the critical control command in the IP 
+multicast packet being executed multiple times.
+Imagine the result if such an application were used to command and control a number of 
+tanks on the battleﬁeld: “All tanks turn right 90 degrees,” “All tanks turn right 90 degrees,” 
+“All tanks turn right 90 degrees . . .”
+Network Congestion
+In the TCP unicast case, the standard TCP backoff and slow-start window mechanisms 
+automatically adjust the speed of the data transfer and therefore provide a degree of 
+congestion avoidance within the network. Because IP multicasting cannot use TCP (due to 
+its connectionless, one-to-many nature), there is no built-in congestion avoidance 
+mechanism to prevent a multicast stream from exhausting link bandwidth or other critical 
+router resources. Having said that, it is important for you to note that UDP unicast data 
+streams suffer the same congestion avoidance problems! Furthermore, the recent growth in 
+popularity of multimedia audio and video applications both on the Internet and within 
+private intranets is increasing the amount of UDP unicast trafﬁc.
+As you learn more about the workings of IP multicasting, you will ﬁnd that there is no 
+provision to prevent you from joining a multicast group that is sourcing data at a rate that 
+exceeds the total available bandwidth in your portion of the network.
+Figure 1-6 shows two IP multicast servers sourcing the same video content. One server 
+sources the program at 500 kbps, intended for use only in the local corporate headquarters 
+network environment, while the other server sources the program at 128 kbps, intended for 
+use by the remote sales ofﬁces.
+0779.book  Page 13  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 35 =====
+14     Chapter 1:  Introduction to IP Multicast
+Figure 1-6 Exceeding Network Bandwidth with Multicast Trafﬁc
+If a user at a remote sales ofﬁce joins the 500-kbps multicast group by mistake, the result 
+will be that the 256-kbps circuit to the remote sales ofﬁce will be completely consumed by 
+the 500-kbps video multicast trafﬁc.
+In Chapter 16,  you will learn ways to conﬁgure the 256-kbps circuit to limit the amount of 
+bandwidth that the multicast trafﬁc can consume. Another alternative is to use 
+administratively scoped boundaries to prevent users in the remote ofﬁce from joining the 
+500 kbps group. (Administratively scoped addresses and boundaries are addressed in 
+Chapter 2, “Multicast Basics.”)
+With all this in mind, it should be noted that, in all fairness, IP multicast is no worse than 
+many of the common audio/video streaming applications in use today. These applications 
+default to using unicast UDP and not TCP as their delivery mechanism—which means that 
+like applications using IP multicast as a delivery mechanism, they do not use any form of 
+congestion control!
+NOTE I’m frequently told by network designers that they do not plan to implement IP multicasting 
+on their networks because of the lack of congestion control inherent in IP multicast’s UDP-
+based delivery mechanisms. The real truth of the matter is that their users are probably 
+putting up streaming-video Web servers that supply video clips of departmental training or 
+other similar material using UDP-based, unicast applications that have no more congestion 
+control than IP multicast. On the other hand, IP multicasting could possibly reduce the 
+overall load in the network by sourcing a single multicast video stream instead of multiple 
+unicast streams. (I sometimes refer to this behavior as being slightly podiabombastic; 
+which is the tendency to blow off one’s foot.)
+500 kbps 256 kbps
+Congested
+Circuit
+256 kbps
+500 kbps
+Video Server
+Corporate HQ Remote Sales Offices
+128 kbps
+Video Server
+0779.book  Page 14  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 36 =====
+Multicast Applications     15
+The reason that some of these applications don’t default to the use of TCP is that the normal 
+retransmission mechanism in TCP provides little value because of the real-time nature of 
+audio. By the time the retransmitted packet arrives, it’s too late to be useful in the audio 
+stream. Instead, the application designers would rather pull down the data as fast as the 
+network permits (at the expense of possible network congestion) and not be artiﬁcially 
+restricted by the congestion avoidance mechanism built into TCP. In most of these cases, 
+the use of IP multicasting will reduce overall network congestion because a single 
+transmitted data stream can reach all receivers.
+NOTE In the early days of the MBone, when the primary application was the audio conferencing 
+tool VAT (which, of course, is based on UDP), the common practice in an audio conference 
+was to clear one’s throat over the microphone several times before beginning any dialog. 
+This caused the congestion mechanisms of any active TCP streams ﬂowing across potential 
+congestion points in the network to kick in and back off, thereby giving the UDP-based 
+audio conference trafﬁc more bandwidth. I guess you might say that this was the ﬁrst 
+attempt at a crude form of resource reservation, which was set up via these initial Ahem 
+packets. (The MBone is discussed in more detail later in this chapter.)
+Multicast Applications
+It’s not uncommon for people to think of IP multicasting and video conferencing as almost 
+the same thing. Although the ﬁrst application to be used on an IP multicast–enabled 
+network is often video conferencing, video is only one of many IP multicast applications 
+that can add value to a company’s business model. In fact, after some initial experiments 
+with video conferencing over the IP multicast network, many companies ﬁnd that for the 
+bandwidth consumed, the talking head in a typical audio/video conference provides little 
+added value to the communication process.
+This section looks at some other IP multicast applications that have the potential for 
+improving productivity, including multimedia conferencing, data replication, real-time data 
+multicasts, and gaming and simulation applications.
+Multimedia Conferencing
+Some excellent IP multicast, multimedia conferencing tools were developed for the UNIX 
+environment for use over the MBone (the next few sections discuss more about the 
+MBone). These tools (many of which have recently been ported to the Windows 95 and NT 
+platforms) permit a many-to-many audio-only or audio/video conference to take place via 
+IP multicast. In addition to the audio and video tools, a UNIX-based Whiteboard tool was 
+developed that permits users to share a common, electronic whiteboard. Besides these 
+MBone freeware tools for multimedia conferencing over IP multicast networks, other 
+0779.book  Page 15  Wednesday, September 22, 1999  5:46 PM

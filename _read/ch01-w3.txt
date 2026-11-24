@@ -1,0 +1,386 @@
+===== PAGE 61 =====
+40     Chapter 2:  Multicast Basics
+Figure 2-13 CBT Bidirectional Shared Tree Using Unicast to Get Trafﬁc to the Root
+In this example, Host A is the source, and Host B is now a receiver. Router B is 
+encapsulating the multicast trafﬁc received from Host A and unicasting it directly to the root 
+via an IP-IP tunnel. The root de-encapsulates the packet and sends it down the shared tree.
+Multicast Forwarding
+In the unicast model, routers forward trafﬁc through the network along a single path from 
+the source to the destination host whose IP address appears in the destination address ﬁeld 
+of the IP packet. Each router along the way makes a unicast forwarding decision, using the 
+destination IP address in the packet, by looking up the destination address in the unicast 
+route table and then forwarding the packet to the next hop via the indicated interface toward 
+the destination.
+In the multicast model, the source is sending trafﬁc to an arbitrary group of hosts 
+represented by a multicast group address in the destination address ﬁeld of the IP packet. 
+In contrast to the unicast model, the multicast router cannot base its forwarding decision on 
+the destination address in the packet; these routers typically have to forward the multicast 
+packet out multiple interfaces for it to reach all receivers. This requirement makes the 
+multicast forwarding process more complex than the one used for unicast forwarding.
+192.1.1.1
+192.4.4.4
+Receiver
+ReceiverSource
+Receiver
+Unidirectional
+Shared Tree
+Host
+A
+Host
+E
+192.2.2.2
+Host
+C
+192.5.5.5
+Host
+B
+A
+C
+B
+ D
+(Shared Root)
+Unicast
+F
+Receiver
+192.3.3.3
+Host
+D
+E
+0779.book  Page 40  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 62 =====
+Multicast Forwarding     41
+This section examines the concept of Reverse Path Forwarding (RPF), which is the basis of 
+the multicast forwarding process in most multicast routing protocols. This section also 
+presents information on multicast forwarding caches, TTL thresholds, and administratively 
+scoped boundaries.
+Reverse Path Forwarding
+Virtually all IP multicast routing protocols make use of some form of RPF or incoming 
+interface check as the primary mechanism to determine whether to forward or drop an 
+incoming multicast packet. When a multicast packet arrives at a router, the router performs 
+an RPF check on the packet. If the RPF check is successful, the packet is forwarded; 
+otherwise, it is dropped.
+For trafﬁc ﬂowing down a source tree, the RPF check mechanism works as follows:
+1 The router examines the source address of the arriving multicast packet to determine 
+whether the packet arrived via an interface that is on the reverse path back to the 
+source.
+2 If the packet arrives on the interface leading back to the source, the RPF check is 
+successful and the packet is forwarded.
+3 If the RPF check fails, the packet is discarded.
+How a multicast router determines which interface is on the reverse path back to the source 
+depends on the routing protocol in use. In some cases, the multicast routing protocol 
+maintains a separate multicast routing table and uses it for this RPF check. A good example 
+of this is the Distance Vector Multicast Routing Protocol (DVMRP), which is discussed in 
+Chapter 5, “Distance Vector Multicast Routing Protocol.” In other cases, the multicast 
+protocol uses the existing unicast routing table to determine the interface that is on the 
+reverse path back to the source. PIM and CBT are examples of multicast protocols that 
+typically use the unicast routing table to perform the RPF check. PIM and CBT are not 
+limited to using just the unicast routing table for the RPF check, however. They also can use 
+reachability information from a DVMRP router table or a Multicast Border Gateway 
+Protocol (MBGP) route table, or they can statically conﬁgure RPF information. The PIM 
+and CBT protocols also are explored in detail in later chapters.
+Figure 2-14 illustrates the RPF check process. This example uses a separate multicast 
+routing table, although the concept is the same if the unicast routing table or some other 
+reachability table is used.
+0779.book  Page 41  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 63 =====
+42     Chapter 2:  Multicast Basics
+Figure 2-14 RPF Check Fails
+A multicast packet from source 151.10.3.21 is received on interface S0. A check of the 
+multicast routing table shows that the interface on the reverse path back to the source is S1, 
+not S0. Therefore, the RPF check fails, and the packet is discarded.
+Figure 2-15 is another example of a multicast packet from source 151.10.3.21 arriving at 
+the router, this time via interface S1.
+Figure 2-15 RPF Check Succeeds
+In this case, the RPF check succeeds as interface S1 is on the reverse path back to the 
+source, and therefore the packet is forwarded to all interfaces on the outgoing interface list. 
+(Notice that the outgoing interfaces don’t have to necessarily include all interfaces on the 
+router.)
+Multicast Forwarding Cache
+The section “Multicast Distribution Trees,” earlier in this chapter, discussed the concept of 
+building multicast distribution trees that are used to forward multicast trafﬁc through the 
+network to all receivers. From the router’s point of view, each SPT or shared tree can be 
+represented in a multicast forwarding cache entry (sometimes referred to as a multicast 
+route table entry) as an incoming interface associated with zero or more outgoing 
+S0
+Multicast Packet from
+Source 151.10.3.21
+RPF Check Fails!
+Packet Arrived on
+Wrong Interface!
+Discard Packet. E0
+S1 S2
+X
+Multicast Route Table
+Network
+151.10.0.0/16
+198.14.32.0/24
+204.1.16.0/24
+Interface
+S1
+S0
+E0
+S0
+RPF Check Succeeds!
+Packet Arrived on
+Correct Interface!
+Multicast Packet from
+Source 151.10.3.21
+E0
+S1 S2
+Multicast Route Table
+Network
+151.10.0.0/16
+198.14.32.0/24
+204.1.16.0/24
+Interface
+S1
+S0
+E0
+0779.book  Page 42  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 64 =====
+Multicast Forwarding     43
+interfaces. Note that bidirectional shared trees modify this process slightly, as they don’t 
+make a distinction between incoming and outgoing interfaces because trafﬁc can ﬂow up 
+and down the tree.
+Performing the RPF check on every incoming multicast packet results in a substantial 
+performance penalty on the router. Therefore, it is common for a multicast router to 
+determine the RPF interface when the multicast forwarding cache is created. The RPF 
+interface then becomes the incoming interface of the multicast forwarding cache entry. If a 
+change occurs in the routing table used by the RPF check process, the RPF interface must 
+be recomputed and the multicast forwarding cache entry updated to reﬂect this information. 
+Note that outgoing interfaces are determined in various ways depending on the multicast 
+routing protocol in use.
+Example 2-1 shows a Cisco multicast routing table entry.
+This (S, G) entry describes the (151.10.3.21/32, 224.2.127.254) SPT as seen by the router 
+in Figure 2-14 and Figure 2-15.
+From this information you can see that the entry has an incoming interface, Serial1, and 
+two outgoing interfaces, Serial2 and Ethernet0. Don’t let all the other nomenclature in this 
+example bother you. It will be detailed in Chapter 10, “Using PIM Dense Mode,” and 
+Chapter 11, “Using PIM Sparse Mode.” For now, concern yourself only with the concept 
+of incoming and outgoing interfaces.
+TTL Thresholds
+As you recall, each time an IP multicast packet is forwarded by a router, the TTL value in 
+the IP header is decremented by one. If the TTL of a packet is decremented to zero, the 
+router drops the packet.
+TTL thresholds may be applied to individual interfaces of a multicast router to prevent 
+multicast packets with a TTL less than the TTL threshold from being forwarded out the 
+interface. For example, Figure 2-16 shows a multicast router with various TTL thresholds 
+applied to its interfaces.
+Example 2-1    Cisco Multicast Routing Table Entry
+ (151.10.3.21/32, 224.2.127.254), 00:04:15/00:01:10, flags: T
+  Incoming interface: Serial1, RPF nbr 171.68.0.91
+  Outgoing interface list:
+    Serial2, Forward/Sparse, 00:04:15/00:02:17
+    Ethernet0, Forward/Sparse, 00:04:15/00:02:13
+0779.book  Page 43  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 65 =====
+44     Chapter 2:  Multicast Basics
+Figure 2-16 TTL Thresholds
+In this example, a multicast packet arrives via Serial0 with its current TTL value at 24. 
+Assuming that the RPF check succeeds and that interfaces Serial1, Serial2, and Ethernet0 
+are all in the outgoing interface list, the packet therefore normally would be forwarded out 
+these interfaces. Because some TTL thresholds have been applied to these interfaces, 
+however, the router must make sure that the packet’s TTL value, which is now down to 23, 
+is greater than or equal to the interface’s TTL threshold before forwarding the packet out 
+the interface.
+As you can see in this example, the packet is forwarded out interfaces Serial1 and 
+Ethernet0. Note that a TTL threshold of zero means that there is no TTL threshold on this 
+interface. The packet’s TTL value of 23 was below the TTL threshold value on interface 
+Serial2, however, and therefore the packet was not forwarded out this interface.
+TTL thresholds provide a simple method to prevent the forwarding of multicast trafﬁc 
+beyond the boundary of a site or region based on the TTL ﬁeld in a multicast packet. This 
+technique is referred to as TTL scoping. Multicast applications that must keep their trafﬁc 
+inside of a site or region transmit their multicast trafﬁc with an initial TTL value so as not 
+to cross the TTL threshold boundaries.
+Figure 2-17 shows an example of TTL threshold boundaries being used to limit the 
+forwarding of multicast trafﬁc. Company ABC has set a TTL threshold of 128 on all router 
+interfaces at the perimeter of its network.
+Serial0
+Serial1 Serial2
+Multicast Datgram
+w/TTL = 24
+Packet Not
+Forwarded!
+oilist:
+   S1: (TTL-Threshold = 16)
+   E0: (TTL-Threshold =   0)
+   S2: (TTL-Threshold = 64)
+TTL-Threshold = 16 TTL-Threshold = 64
+TTL-Threshold = 0 Ethernet0
+X
+0779.book  Page 44  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 66 =====
+Multicast Forwarding     45
+Figure 2-17 TTL Threshold Boundaries
+Multicast applications that want to constrain their trafﬁc to within Company ABC’s 
+network need to transmit multicast packets with an initial TTL value set to 127. 
+Furthermore, the engineering and marketing departments have set a TTL threshold of 16 at 
+the perimeter of their networks. Therefore, multicast applications running inside of these 
+networks can prevent their multicast transmissions from leaving their respective networks.
+Table 2-3 shows the typical initial TTL values and router interface TTL thresholds for 
+various TTL boundaries.
+Administratively Scoped Boundaries
+Like TTL thresholds, administratively scoped boundaries may also be used to limit the 
+forwarding of multicast trafﬁc outside of a domain or subdomain. This approach uses a 
+special range of multicast addresses, called administratively scoped addresses, as the 
+boundary mechanism. If we conﬁgure an administratively scoped boundary on a router’s 
+interface, multicast trafﬁc whose multicast group addresses fall in this range will not be 
+allowed to enter or exit this interface, thereby providing a ﬁrewall for multicast trafﬁc in 
+this address range.
+Figure 2-18 depicts the administratively scoped boundary mechanism at work. Here an 
+administratively scoped boundary is set for the multicast address range 239.0.0.0 through 
+239.255.255.255 on interface Serial0. This mechanism effectively sets up a ﬁrewall that 
+multicast packets in this range cannot cross.
+Table 2-3      Typical TTL Boundary Values
+TTL Scope Initial TTL Value TTL Threshold
+Local net 1 N/A
+Site 15 16
+Region 63 64
+World 127 128
+Company ABC
+TTL-Threshold = 16
+TTL-Threshold = 128
+Eng Mkt
+0779.book  Page 45  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 67 =====
+46     Chapter 2:  Multicast Basics
+Figure 2-18 Administrative Boundary Mechanism 
+Recall from the “Administratively Scoped Multicast Addresses” section in this chapter that 
+administratively scoped multicast addresses fall into the range of 239.0.0.0 through 
+239.255.255.255 and are considered to be locally assigned. That is, they are not used on the 
+Internet. The administratively scoped boundary mechanism allows for the enforcement of 
+this convention and prevents multicast trafﬁc that falls in this range from entering or leaving 
+the network.
+Figure 2-19 is an example of the use of administratively scoped boundaries. Here, 
+Company ABC has used different ranges of administrative addresses to prevent the 
+forwarding of multicast trafﬁc outside of speciﬁc boundaries.
+Figure 2-19 Administratively Scoped Boundaries
+In this example, Company ABC has conﬁgured an administratively scoped boundary of 
+239.0.0.0/8 on all router interfaces at the perimeter of its network. This boundary prevents 
+any multicast trafﬁc in the range of 239.0.0.0 through 239.255.255.255 from entering or 
+leaving the network. Similarly, the engineering and marketing departments have conﬁgured 
+an administratively scoped boundary of 239.128.0.0/16 around the perimeter of their 
+networks. This boundary prevents multicast trafﬁc in the range of 239.128.0.0 through 
+239.128.255.255 from entering or leaving their respective networks. It also means that the 
+multicast address range 239.128.0.0 through 239.128.255.255 is being used independently 
+239.x.x.x Multicasts
+Serial1Serial0
+239.x.x.x Multicasts
+Administrative Boundary = 239.0.0.0/8
+Company ABC
+239.128.0.0/16
+239.0.0.0/8
+Eng Mkt
+0779.book  Page 46  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 68 =====
+Multicast Routing Protocol Categories     47
+by both the engineering and marketing departments. This reuse of multicast address space 
+permits multicast addresses to be used more efﬁciently inside of Company ABC.
+Multicast Routing Protocol Categories
+The current multicast protocols can be subdivided into three basic categories:
+• Dense mode protocols (DVMRP and PIM-DM)
+• Sparse mode protocols (PIM-SM and CBT)
+• Link-state protocols (MOSPF)
+Some protocols, such as PIM, are capable of operating in either dense or sparse mode 
+depending on how the router is conﬁgured. It is also possible to conﬁgure Cisco PIM 
+routers to make the sparse/dense decision dynamically on a multicast group basis.
+Dense Mode Protocols
+Dense mode protocols such as DVMRP and PIM DM employ only SPTs to deliver (S, G) 
+multicast trafﬁc using a push principle. The push principle assumes that every subnet in the 
+network has at least one receiver of the (S, G) multicast trafﬁc, and therefore the trafﬁc is 
+pushed or ﬂooded to all points in the network. This process is analogous to a radio or TV 
+broadcast that is transmitted over the air to all homes within the coverage area. Receivers 
+simply need to tune in to the broadcast to receive the program.
+Flood and Prune Behavior
+Unlike broadcasting radio waves over the air, however, ﬂooding multicast trafﬁc to every 
+point in the network comes with an associated cost (bandwidth, router CPU, and so on). 
+Therefore, to avoid the unnecessary consumption of valuable network resources, routers 
+send Prune messages back up the source distribution tree to shut off unwanted multicast 
+trafﬁc. The result is that branches without receivers are pruned off the distribution tree, 
+leaving only branches that contain receivers.
+In Figure 2-20, Router B is responding to unwanted multicast trafﬁc with a Prune message.
+0779.book  Page 47  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 69 =====
+48     Chapter 2:  Multicast Basics
+Figure 2-20 Pruning a Dense Mode Flow
+When Router A receives the Prune message for the (S, G) multicast trafﬁc stream on an 
+outgoing interface (in this example, Ethernet0), the router places that interface into Pruned 
+state and stops forwarding the (S, G) trafﬁc out the interface. The interface in this example 
+is connected to a multi-access network, and we are assuming that no other downstream 
+routers on this interface still want to receive the trafﬁc. The method used to determine 
+whether other routers on a multi-access interface need to continue to receive multicast 
+trafﬁc depends on the protocol in use. The details of how each protocol handles this 
+situation are covered in the individual protocol chapters later in the book.
+Prunes have a timeout value associated with them such that, when they time out, they cause 
+the router to put the interface back into forward state and to start ﬂooding multicast trafﬁc 
+out this interface again.
+Example 2-2 shows the Cisco multicast route table entry for Router A in Figure 2-20.
+Notice that interface Ethernet0 is in prune state (denoted by the Prune/Dense indicator) 
+and that no group 224.2.127.254 trafﬁc (from source 151.10.3.21) is being forwarded out 
+this interface. The example also shows that the Prune will timeout in 2 minutes and 35 
+seconds (as indicated by the last timer value on the line). When the prune times out, the state 
+of this interface will return to Forward/Dense and trafﬁc will once again begin ﬂowing out 
+this interface. Assuming that the downstream router (Router B in this case) still has no need 
+to receive the multicast trafﬁc, it again sends a Prune to shut off the unwanted trafﬁc.
+Example 2-2    Cisco Multicast Route Table Entry for Router A
+ (151.10.3.21/32, 224.2.127.254), 00:04:15/00:01:10, flags: T
+  Incoming interface: Serial0, RPF nbr 171.68.0.91
+  Outgoing interface list:
+    Serial1, Forward/Dense, 00:04:15/00:00:00
+    Ethernet0, Prune/Dense, 00:00:25/00:02:35
+E0
+Prune
+E0
+Multicast Packets from
+Source 151.10.3.21
+S1S0
+E1
+B
+A
+0779.book  Page 48  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 70 =====
+Multicast Routing Protocol Categories     49
+The timeout values used for Prunes depend on the multicast routing protocol in use but 
+typically range from 2 to 3 minutes. This periodic ﬂood and Prune behavior is characteristic 
+of dense mode protocols, such as DVMRP and PIM-DM.
+Grafting
+Most dense mode protocols rapidly can graft a previously pruned branch back onto the 
+distribution tree. This capability is demonstrated, for example, when a new receiver on a 
+previously pruned branch of the tree joins the multicast group. In this case, the router 
+detects the new receiver and immediately sends a Graft message up the distribution tree 
+toward the source. When the upstream router receives the Graft message, the router 
+immediately puts the interface on which the Graft was received into forward state so that 
+the multicast trafﬁc begins ﬂowing down to the receiver.
+Figure 2-21 shows the Graft process. In this example, the source, Host E, is transmitting 
+multicast trafﬁc down the SPT (denoted by the solid arrows) to receivers Host A, B, and C.
+Figure 2-21 Dense Mode Grafting
+Router E previously has pruned its link to Router C, as it initially had no directly connected 
+receivers. At this point in the example, Host D joins the multicast group as a new receiver. 
+This action prompts Router E to send a Graft message up the SPT to Router C to 
+immediately restart the ﬂow of multicast trafﬁc. By using this Graft process, Router E can 
+Receiver
+Receiver Receiver
+Source
+Shortest Path Tree
+Host
+A
+Host
+E
+Pruned Branch
+Host
+C
+Host
+B
+A
+C
+X
+X
+B
+ D
+ F
+New
+ReceiverHost
+D
+E
+Graft
+0779.book  Page 49  Wednesday, September 22, 1999  5:46 PM

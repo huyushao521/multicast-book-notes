@@ -1,0 +1,525 @@
+===== PAGE 44 =====
+23IP Multicast Routing Fundamentals
+hosts on an interface are members of a multicast group; it only needs to know that 
+members exist. However, each host keeps track of which multicast groups it is a 
+member of.
+1.4  IPv4 MULTICAST ADDRESSES AND 
+MULTICAST SUPPORT AT LAYER 2
+This section describes the formats of IPv4 multicast and Ethernet multicast MAC 
+addresses. We also discuss how IPv4 multicast addresses are mapped to correspond‑
+ing Ethernet MAC addresses when transmitting multicast traffic to hosts on an IP 
+subnet or VLAN. The address ambiguities that may result during IPv4‑to‑MAC 
+address mapping are also discussed here.
+1.4.1 i Pv4 mUlticast addresses
+An IP multicast address is a logical identifier for a specific stream of packets that are 
+sent from a multicast traffic source to an arbitrary group of hosts that have expressed 
+interest in the traffic (i.e., by sending IGMP Membership Report messages). The 
+group of recipients of the traffic sent by the multicast source is often referred to 
+as a multicast group . It is important to note that the IP multicast address logically 
+identifies both the multicast traffic itself and the group of receivers (i.e., the multi ‑
+cast group). An IP unicast address uniquely identifies only a single endpoint in the 
+network, usually a host interface; each interface on a host has a unique IP unicast 
+address. A multicast source may send traffic before hosts join the multicast group, or 
+may send traffic when one or more hosts subscribe for the traffic. A host may leave a 
+multicast group by sending an IGMP Leave Group message or silently leave without 
+sending such a message.
+The now obsolete IP classful addressing scheme reserved the Class D address 
+range for IPv4 multicast addressing. The Class D address space has the binary prefix 
+of 1110 in the first 4 bits of the first byte of the IP address, as illustrated in Figure 1.7. 
+With the elimination of IP classful addressing (Classes A, B, and C) and the adoption 
+of VLSM and CIDR, it is no longer appropriate to refer to IPv4 multicast addresses 
+as Class D addresses, but as IPv4 addresses with the binary prefix 1110 (i.e., simply 
+as IPv4 multicast addresses).
+1 1 1 0
+708 2316 312415
+IPv4 Multicast Address
+in Binary Representation
+Multicast Group ID (28 Bits)
+IPv4 Multicast Address
+Prefix (4 Bits)
+FIGURE 1.7  I Pv4 multicast address format.
+===== PAGE 45 =====
+24 IP Multicast Routing Protocols
+IPv4 multicast addresses, defined with the binary prefix 1110, span the address 
+range from 224.0.0.0 to 239.255.255.255 in the dotted decimal IP address notation, 
+but still adhere to the old Class D address boundaries. IPv4 multicast addresses have 
+a prefix length of /32 (in CIDR notation), and the IPv4 multicast address range from 
+232.0.0.0 to 232.255.255.255 can be expressed as 232.0.0.0/8 or 232/8. The reserved 
+address 224.0.0.0 is called the base address and cannot be assigned to any multicast 
+group. The multicast address block of 224.0.0.1 to 224.0.0.255 is reserved for local 
+IP subnet use. Addresses in this range are assigned for various uses on a subnet, such 
+as for routing protocols and local discovery mechanisms.
+The multicast address range from 239.0.0.0 to 239.255.255.255 is reserved as 
+IPv4  administratively scoped addresses  (also called limited scope addresses ). 
+Multicast packets addressed to administratively scoped multicast addresses do not 
+cross multicast administrative boundaries that have been explicitly configured. Such 
+administratively scoped multicast addresses are locally assigned to be used within the 
+configured boundary and do not need to be unique across administrative boundaries.
+1.4.2 e thernet mac addresses
+Each Ethernet interface on a network has a 48‑bit MAC address with the format 
+shown in Figures 1.8 and 1.9 (see Appendix A of [AWEYA1BK18]). This address 
+is programmed in the MAC of the network interface; the reason it is called a MAC 
+address. Every network interface card (NIC) or module manufactured is assigned a 
+unique MAC address, as explained below. This prevents any two NICs manufactured 
+from having the same MAC address. Figure 1.9 depicts the structure of the lead‑
+ing byte in the 48‑bit Ethernet MAC address format, while Figure 1.10 shows the 
+Ethernet frame format and transmission order (i.e., using Little Endian Bit‑Ordering).
+Organizational Unique
+Identifier (OUI)
+Network Interface 
+Controller (NIC) 
+Specific
+Bit 7 Bit 6 Bit 5 Bit 4 Bit 3 Bit 2 Bit 1 Bit 0MSB LSB
+Individual/Group (or Unicast/Multicast) Bit
+0: Unicast
+1: Multicast
+Universal/Local (or Globally/Locally 
+Administered Address) Bit
+0: Globally unique (OUI enforced)
+1: Locally administered
+Byte
+0
+Byte
+1
+Byte
+2
+Byte
+3
+Byte
+4
+Byte
+5
+Least
+Significant
+Byte
+Most
+Significant
+Byte
+LSB = Least Significant Bit
+MSB = Most Significant Bit
+FIGURE 1.8 Et hernet MAC address format.
+===== PAGE 46 =====
+25IP Multicast Routing Fundamentals
+07
+Byte 0B yte 1B yte 2B yte 3B yte 4B yte 5
+Individual/Group (or Unicast/Multicast) Bit
+0: Unicast
+1: Multicast
+Universal/Local (or Globally/Locally Administered Address) Bit
+0: Globally unique (OUI enforced)
+1: Locally administered
+u g
+070 70 70 70 7
+Least
+Significant
+Byte
+Most
+Significant
+Byte
+MSB LSB
+Transmission Byte Order (Left to Right) –B ig Endian Byte Order
+Transmission
+Bit Order
+(Little Endian
+Within a Byte)
+FIGURE 1.9  L eading byte in the 48‑bit Ethernet MAC address format.
+Preamble SFD Destination
+Address
+Source
+Address
+Type/
+Length Data/Pad FCS*
+1
+Byte 4 Bytes46 –1 500 Bytes2 Bytes6 Bytes6 Bytes7 Bytes
+64 Byte Minimum
+Byte 0 Byte 1
+Least-Significant
+Byte
+Most-Significant
+Byte
+Bit 0 Bit 7LSBM SB
+Bits within a byte are transmitted from the LSB (Bit 0) to 
+the MSB (Bit 7), known as Little Endian Bit - Ordering.
+*Note: The byte and bit order shown is typical for all 
+fields except the FCS, which is formatted with the high 
+order bits to the right.
+Transmission Order, Left to Right, Bit-Serial 
+(Byte Order is Big Endian, Leftmost Byte is Sent First)
+Bit 7 Bit 0MSB LSB
+Transmission Order
+FIGURE 1.10 E thernet frame format and transmission order – Little Endian Bit‑Ordering.
+===== PAGE 47 =====
+26 IP Multicast Routing Protocols
+1.4.2.1 O rganizational Unique Identifier (OUI) and NIC‑Specific Identifier
+The OUI is the basic mechanism the IEEE uses to administer MAC addresses glob ‑
+ally. It occupies bytes 0–2 of the 6‑byte Ethernet MAC address. In the OUI field, 
+bits 0 and 1 of byte 0 are used as the Individual/Group (I/G) bit and the Universally/
+Locally (U/L) bit, respectively. The IEEE assigns one or more OUIs to each 
+ m
+anufacturer of Ethernet network interfaces. Using OUIs, the IEEE has to keep 
+track of fewer (often only one) OUIs per manufacturer instead of individual MAC 
+addresses.
+Each manufacturer is responsible for assigning a unique organization‑specific 
+identifier for each network interface module manufactured, using the IEEE‑assigned 
+OUI. This identifier is known as the NIC‑Specific Identifier, and it is a part of the 
+48‑bit MAC address that is assigned to the network interface module by the manufac‑
+turer. It occupies bytes 3–5 of the MAC address. The organization (manufacturer) is 
+responsible only for keeping track of the NIC‑Specific Identifiers it assigns to manu‑
+factured network interface modules. The 24‑bit NIC‑Specific Identifier field allows 
+a manufacturer to build 16  million network interface modules with unique MAC 
+addresses before it needs another OUI.
+1.4.2.2
+ I
+ndividual/Group (I/G) Address Bit
+Bit 0 of Byte 0 of the MAC address (I/G bit) indicates whether the destination 
+address is a unicast  (Bit 0 is equal to 0) or multicast/broadcast  address (Bit 0 is 
+equal to 1). Setting the I/G bit to 1 means the MAC frame is destined for a group of 
+hosts (i.e., a multicast group) or all hosts on the IP subnet or VLAN. In the latter, 
+the MAC frame contains the Ethernet broadcast MAC address 0xFF.FF.FF.FF.FF.
+FF. Mapping IP multicast packets to Ethernet multicast frames uses the capability 
+of setting I/G bit equal to 1 as a mechanism for transmitting IP multicast traffic at 
+Layer 2 to hosts in an IP subnet or VLAN, as discussed below. When the I/G bit 
+is set to 1, the MAC address is a group address , normally called a multicast MAC 
+address.
+A host sets the I/G bit to 0 for unicast and to 1 to indicate that a MAC address is 
+a multicast address. Ethernet uses the MAC address range 0x01‑00‑5E‑00‑00‑00 to 
+0x01‑00‑5E‑FF‑FF‑FF for MAC multicast addresses; the prefix of Ethernet MAC 
+multicast addresses is always 0x01‑00‑5E (i.e., 24‑bit MAC address prefix). A mul ‑
+ticast host on a Layer 2 network (Ethernet network) listens for Ethernet frames with 
+one of these MAC addresses when it has a local application that joins an IP multicast 
+group. The host stops listening for frames with that MAC address when the applica‑
+tion terminates or the host leaves the IP multicast group.
+The 24‑bit MAC address prefix 0x01‑00‑5E means that only 24 bits of the MAC 
+address are available for mapping IPv4  multicast addresses to MAC multicast 
+addresses. However, given that all IPv4 addresses, including multicast addresses, 
+are 32 bits long, 8 bits of the IP address have to be discarded during address map ‑
+ping. This also implies that the method used for mapping IPv4 multicast addresses 
+to MAC multicast addresses is likely to create MAC address “collisions” (i.e., 
+two different IP multicast group addresses mapping to the same MAC multicast 
+address).
+===== PAGE 48 =====
+27IP Multicast Routing Fundamentals
+1.4.2.3 U niversally/Locally (U/L) Administered Address Bit
+The second bit of Byte 0 (i.e., bit 1) in the 48‑bit Ethernet MAC address is used to 
+indicate if the MAC address is globally  or locally administered. An Ethernet MAC 
+address is globally or universally administered if the U/L bit is set to 0. If both the 
+I/G and the U/L bits are 0, then the MAC address is unique to a single network inter‑
+face. The MAC address is universally unique because the address is assigned to the 
+network interface by the manufacturer using a combination of the IEEE‑assigned 
+OUI and the organization’s NIC‑Specific Identifier.
+An Ethernet MAC address with the U/L bit set to 1 is a locally administered 
+MAC address. Setting this bit to 1 means that someone other than the NIC manufac‑
+turer has configured the MAC address. For example, the network administrator of 
+an organization may set the MAC address on a network interface to a value having 
+only local significance, by setting the U/L bit to 1, and then bits 2 through 47 will 
+be set to the locally chosen value. In this case, the organization would have to keep 
+track of the locally administered addresses to make sure that there are no duplicate 
+MAC addresses. However, since all NICs are delivered with universally adminis‑
+tered addresses, locally administered addresses are rarely used.
+1.4.3  m aPPing iPv4 mUlticast addresses to ethernet 
+mUlticast mac addresses
+On Layer 2 networks such as those based on Ethernet, IP packets with multicast 
+addresses are conveyed in Ethernet frames with corresponding MAC multicast 
+addresses. The MAC multicast addresses allow the switches in the Ethernet LAN 
+to forward the encapsulated IP multicast packets to all possible receivers of the 
+multicast group. When an Ethernet LAN has receivers for a multicast group, the 
+Last‑H
+op Router (LHR) attached to that LAN is responsible for encapsulating 
+the IP multicast packet in Ethernet frames and mapping the IP multicast address 
+to a corresponding Ethernet MAC multicast address. The LAN switches use the 
+mapped MAC multicast address to direct the encapsulated IP packets to all host 
+receivers on the LAN.
+Each host receiver that is a member of the multicast group will listen at Layer 2 for 
+Ethernet multicast frames carrying the mapped MAC multicast address. This implies 
+that for IP packets to reach the host receivers on the LAN, the IP multicast addresses 
+have to be mapped to the corresponding MAC multicast address, as described in this 
+section. Note that network devices operating at Layer 2 use the Layer 2 (Ethernet) 
+destination addresses for forwarding packets while those operating at Layer 3 use the 
+Layer 3 (IP) destination addresses for forwarding packets.
+Note that (for obvious reasons), using Layer 2 broadcast to forward encapsulated 
+IP multicast packets is a highly inefficient and undesirable way of sending multi ‑
+cast packets to receivers on the Layer 2 network. The IP multicast address to MAC 
+address mapping method described here provides a simple yet efficient way for send‑
+ing multicast packets over an Ethernet LAN.
+This section describes how IPv4 multicast addresses are mapped to correspond‑
+ing Ethernet MAC addresses. The Ethernet address OUI 01:00:5E (consisting of 
+===== PAGE 49 =====
+28 IP Multicast Routing Protocols
+24 bits), which is owned by the Internet Assigned Numbers Authority (IANA), is 
+used for mapping IPv4 multicast addresses to Ethernet frames. IPv4 multicast pack ‑
+ets are mapped to the Ethernet MAC address range 01:00:5E:00:00:00 through 
+01:00:5E:7F:FF:FF. As illustrated in Figures 1.11 and 1.12, the use of this OUI leaves 
+23 bits of the MAC address available for mapping the IPv4 multicast group identifier 
+(ID). The first byte (0x01) of the MAC address includes the I/G bit.
+48-Bit
+Ethernet
+Address
+(Binary)
+Low-order 23 bits of Multicast
+Group ID copied to Ethernet address
+Leading Bits of IPv4
+Multicast Address
+These 5 bits in the Multicast Group ID are
+not used to form the Ethernet Address.
+25-Bit Prefix
+ForI Pv4, the high-order 4b itso ft he Layer 3I Pa ddress is fixedt o“ 1110”, to indicate the
+“Class D” multicasta ddress spaceb etween “224.0.0.0”and“239.255.255.255”.Thes pecial
+OUIm ulticast MACa ddresses startw ith“ 01:00:5E”, allowing fora range from
+“01:00:5E:00:00:00”to“01:00:5E:7F:FF:FF”.
+From the 48 bits MAC address, 24 bits are 
+reserved for the Organizational Unit Identifier 
+(OUI) or Vendor ID, leaving 24 bits for a unique ID.
+1 1 1 0
+708 2316 312415
+0 1 0 1 1 1 1 0 0
+5 E 0
+0 0 0 0 0 0 0 00 0 0 0 0 0 0 1
+0 00 1
+48-Bit
+Ethernet
+Address
+(Hexadecimal)
+FIGURE 1.11 M apping of IPv4 multicast address to 48‑bit Ethernet MAC address.
+48-Bit
+Ethernet
+Address
+(Binary)
+Low-order 23 bits of Multicast
+Group ID copied to Ethernet address
+25-Bit Prefix
+1 1 1 0 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1
+708 2316 312415
+0 1 0 1 1 1 1 0
+5 E 7F 00 01
+0 0 0 0 0 0 0 00 0 0 0 0 0 0 1
+0 00 1
+255239 0 1
+0 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1
+IPv4 Multicast Address
+in Dotted Decimal Notation
+IPv4 Multicast Address
+in Binary Representation
+48-Bit
+Ethernet
+Address
+(Hexadecimal)
+These 5 bits in the Multicast Group ID are
+not used to form the Ethernet Address.
+Multicast Group ID (28 Bits)
+FIGURE 1.12 E xample mapping of IPv4 multicast address to 48‑bit Ethernet MAC address.
+===== PAGE 50 =====
+29IP Multicast Routing Fundamentals
+All IP multicast addresses have the first 4 bits set to the multicast prefix 1110, leav‑
+ing the low‑order 28 bits as meaningful address information. When mapping all IP 
+multicast addresses to Ethernet multicast MAC addresses, each MAC address begins 
+with the 24‑bit prefix 01:00:5E. This means only half of the 48‑bit Ethernet MAC 
+address is available for mapping the IP multicast address.
+The steps for converting an IPv4 address to a 48‑bit Ethernet MAC address can 
+be summarized as follows:
+ 1
+.
+ I
+gnore the first (higher‑order) 9 bits of the IPv4  address and copy the 
+remaining 23 bits.
+•
+ No
+te: All IPv4 multicast addresses have the same 4‑bit prefix (1110), 
+meaning there are, in reality, only 4 bits in the first or higher‑order byte, 
+not 8. The last bits of the IPv4 address must not be dropped because 
+these are almost guaranteed to be host bits, depending on the IP subnet 
+mask used. But the high‑order bits of the IPv4 address (i.e., the leftmost 
+bits) are almost always network address bits.
+ 2
+.
+ A
+dd a 0 as the first bit of the copied 23 bits of the IPv4 address (making 24 
+bits).
+•
+ No
+te: The first bit of the remaining 24 MAC address bits (after the 
+prefix 01:00:5E) is reserved. Setting this bit to 0 indicates an Internet 
+multicast address, so the 5 bits following the IPv4 address prefix 1110 
+are dropped.
+ 3
+.
+ D
+iscard the last (lower‑order) 24 bits of the Ethernet MAC address.
+ 4
+.
+ C
+opy the 24 bits generated from the IPv4 address above, and use these as 
+the last 24 bits of the Ethernet MAC address.
+•
+ No
+te: The 23 remaining bits of the IPv4 multicast address are mapped, 
+one for one, into the last 23 bits of the MAC multicast address.
+ 5
+.
+ T
+he Ethernet MAC address now has the 24‑bit prefix 01:00:5E, followed by 
+a 0, and then the copied lower‑order 23 bits of the IPv4 address.
+Given that the next 5 bits following the IP multicast address prefix 1110 are not used 
+in forming the MAC address, as shown in Figures 1.11 and 1.12, this means only 
+the low‑order 23 bits of the IP multicast address are placed in the MAC address. 
+Only 23 bits of the MAC address are available for mapping the IP multicast address. 
+Effectively, 28 bits of the IP multicast address map into only 23 bits of the MAC 
+address, which can create address ambiguities in some cases as described below. 
+Note that the address mapping process creates a situation where 32 (2 5) IPv4 multi‑
+cast addresses could map to the same MAC multicast address.
+Once a host determines the MAC multicast address for an IP multicast group, its 
+operating system essentially instructs the network interface card to join or leave the 
+multicast group. Once a multicast group is joined, the host accepts Ethernet multicast 
+frames carrying the mapped MAC multicast address as well as Ethernet frames sent 
+to the host’s unicast addresses. The host does so while ignoring (filtering) frames sent 
+to other multicast group addresses. Note that the host can join and receive multicast 
+frames from more than one multicast group at the same time.
+===== PAGE 51 =====
+30 IP Multicast Routing Protocols
+1.4.4 e thernet mUlticast mac address amBigUities
+Given that the lower 23 bits of the available 28‑bit IPv4 multicast group address are 
+mapped into the 23 bits of the available MAC address space, there is bound to be 
+some ambiguity when mapping multicast addresses and delivering multicast packets, 
+as illustrated in Figure 1.13. Mapping the 28‑bit IPv4 multicast group address space 
+to the available 23‑bit Ethernet MAC address space means 5 bits of the IPv4 address 
+are lost in the mapping process. These 5 bits result in 2 5 (or 32) address ambigui ‑
+ties, as shown in Figures 1.13 and 1.14. All of these IPv4 multicast addresses map 
+to the same Ethernet multicast MAC address. This also means that each Ethernet 
+224.1.1.1
+224.129.1.1
+225.1.1.1
+225.129.1.1
+238.1.1.1
+238.129.1.1
+239.1.1.1
+239.129.1.1
+32 IPv4 Multicast Addresses Map to this
+Multicast Ethernet Address
+32 IPv4 Multicast
+Addresses
+48-Bit
+Ethernet
+Address
+(Binary)
+Low-order 23 bits of Multicast
+Group ID copied to Ethernet address
+25-Bit Prefix
+1 1 1 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 1
+708 2316 312415
+0 1 0 1 1 1 1 0
+5 E 01 01 01
+0 0 0 0 0 0 0 00 0 0 0 0 0 0 1
+0 00 1
+129224 1 1
+0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1
+IPv4 Multicast Address
+in Dotted Decimal Notation
+IPv4 Multicast Address
+in Binary Representation
+48-Bit
+Ethernet
+Address
+(Hexadecimal)
+These 5 bits in the Multicast Group ID are
+not used to form the Ethernet Address.
+Multicast Group ID (28 Bits)
+FIGURE 1.13 M AC address ambiguities resulting from IPv4 to MAC address mapping.
+224 to 239 64 or 192 7 7
+1110 xxxx x100   0000 0000   0111 0000   0111
+IPv4 Address
+(Decimal)
+IPv4 Address
+(Binary)
+FIGURE 1.14 E xamples of IPv4 multicast addresses that can have multicast MAC address 
+overlaps.
+===== PAGE 52 =====
+31IP Multicast Routing Fundamentals
+multicast MAC address can represent 32 IPv4 multicast addresses, resulting in a 32:1 
+IPv4 multicast address‑to‑Ethernet multicast MAC address ambiguity.
+This MAC multicast address ambiguity can cause some problems when trans‑
+mitting IPv4 multicast traffic. For example, if any two hosts on the same IP subnet 
+or VLAN join different multicast groups with IPv4 multicast addresses that differ 
+only in the first 5 bits, Ethernet multicast frames for both multicast groups will be 
+delivered to both hosts, thereby requiring the host network to filter and discard the 
+unwanted packets. Note that if an Ethernet switch is not able to interpret multicast 
+addresses in received packets, then it will flood such packets to all the members of 
+the LAN. In this case, the host software will have to filter all packets sent to multicast 
+groups for which they have not joined.
+If host A joins the IP multicast group  225.129.1.1, it will program its Ethernet 
+interface with the multicast MAC address 01:00:5E:01:01:01 to receive traffic sent 
+to this group. However, this Ethernet multicast MAC address may be used by 31 
+other IP multicast groups. This means that if any of these 31 IP multicast groups is 
+active on the local IP subnet or VLAN of host A, the Ethernet interface of host A 
+will receive each multicast packet sent to any of these 31 IP multicast addresses. The 
+Ethernet interface of host A will have to examine the IP multicast address of each 
+multicast packet to see if the packet is destined for IP multicast group 225.129.1.1, 
+actions which can significantly degrade the processing resources and performance 
+of host A. Continuous filtering of unwanted multicast traffic can degrade the per ‑
+formance of host A. Furthermore, this multicast MAC address ambiguity makes it 
+difficult to constrain the flooding of multicast traffic in an IP subnet or VLAN based 
+solely on Ethernet multicast MAC addresses since each one can map to 32 different 
+IPv4 multicast addresses.
+1.4.4.1 
+ IP
+v4 Multicast Addresses to Avoid Using 
+on the Same Network Segment
+It is important to avoid using IPv4 multicast addresses within the following ranges on 
+the same network segment: x.0.0.y, x.128.0.y, x.0.1.y, or x.128.1.y, where x is from 224 
+to 239 and y is from 1 to 254 [ALLTELQUSOL]. This is because using these ranges 
+can create MAC address ambiguities.
+• Whe
+n using multicast addresses in the ranges x.0.0.y and x.128.0.y, they will 
+map to the same multicast MAC address as addresses in the range 224.0.0.y.
+• Mu
+lticast addresses in the address ranges x .0.1.y and x .128.1.y, will map 
+to the same multicast MAC address as multicast addresses in the range 
+224.0.1.y will.
+It is important to note that most multicast addresses in the ranges 224.0.0. y and 
+224.0.1.y are reserved for multicasting messages to all routers on a network seg ‑
+ment or for routing protocol messages. Consequently, messages with such destination 
+addresses are always flooded on all interfaces in the relevant IP subnet or VLAN.
+This implies that all multicast addresses falling within the ranges of x.0.0.y, 
+x.128.0.y, x.0.1.y, or x.128.1.y will map to multicast MAC addresses that are flooded 
+on every interface in the relevant IP subnet or VLAN. Consequently, using IP 
+===== PAGE 53 =====
+32 IP Multicast Routing Protocols
+multicast addresses in these ranges can result in the generation of Ethernet multicast 
+frames leading to a significant increase in the overall multicast traffic on an Ethernet 
+network. Generally, network administrators try to avoid using IP multicast addresses 
+in these ranges because of the reasons mentioned.
+1.4.5 m aPPing iPv6 mUlticast addresses to ethernet mac addresses
+The IPv4 multicast addresses 224.8.7.6 and 229.136.7.6 map to the same Ethernet 
+multicast MAC address, 0x01‑00‑5E‑08‑07‑06. This mapping process creates a real 
+problem, because a host could be interested in multicast frames sent to only one of 
+those multicast groups, and the host interface software must filter/reject one of them. 
+IPv6 does not have this “collision” problem because of the way IPv6 handles the 
+mapping of multicast group addresses to Ethernet multicast MAC addresses.
+The procedure for encapsulating IPv6  multicast packets in Ethernet multicast 
+frames is identical to IPv4, except 0x3333 is used as the destination MAC address 
+prefix (thereby avoiding “collisions”) [RFC2464]. To map IPv6 multicast addresses, 
+the lower‑order 32 bits of an Ethernet address are the lower‑order 32 bits of the mul‑
+ticast IPv6 address. For example, the IPv6 multicast address, ff02::d, maps to the 
+MAC multicast address, 33‑33‑00‑00‑00‑0D, and the address, ff05::1:3, maps to the 
+MAC multicast address, 33‑33‑00‑01‑00‑03. Figure 1.15 describes the address map‑
+ping process using the IPv6 All‑Nodes Multicast Address as an example.
+1.5 MULTICAST DISTRIBUTION TREES
+Forwarding of multicast traffic in a network is accomplished by multicast‑capable 
+routers. Multicast routers in a network create multicast distribution trees along which 
+multicast traffic flows from the source to the receivers. The receivers are an arbitrary 
+group of hosts represented by a multicast group address. A multicast distribution tree 
+allows a single transmission from the data source to a multicast group to branch out at 
+IPv6 All-Node
+Multicast Address FF02 0000 0000 0000 0000 0001
+32 Bits
+128 Bits
+0000 0000
+00:00:00:0133:33Ethernet MAC
+Address (48 Bits)
+Multicast Ethernet
+Prefix
+Copy
+• IPv6 All-Node Multicast Address: FF02:0:0:0:0:0:0:1 (All nodes on the local network 
+segment)
+• Ethernet MAC Address (48 Bits): 33:33:00:00:00:01
+FIGURE 1.15 Ma pping IPv6 multicast address to 48‑bit Ethernet MAC address: IPv6 All ‑
+Nod
+es Multicast Address example.

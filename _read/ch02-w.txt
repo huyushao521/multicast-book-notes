@@ -1,0 +1,754 @@
+===== PAGE 78 =====
+C H A P T E R 3
+Internet Group 
+Management Protocol
+The Internet Group Management Protocol (IGMP) grew out of the Host Membership 
+Protocol from Dr. Steve Deering’s doctoral thesis, and the ﬁrst version, IGMPv1, was 
+deﬁned in RFC 1112 (the “IP Multicast Dead Sea Scrolls” referred to in Chapter 2, 
+“Multicast Basics”). The most recent version, IGMPv2, was ratiﬁed in November 1997 as 
+a standard by the Internet Engineering Task Force (IETF) and is covered in RFC 2236.
+IGMP messages are used primarily by multicast hosts to signal their local multicast router 
+when they wish to join a speciﬁc multicast group and begin receiving group trafﬁc. Hosts 
+may also (with some extensions deﬁned in IGMPv2) signal to the local multicast router that 
+they wish to leave an IP multicast group and, therefore, are no longer interested in receiving 
+the multicast group trafﬁc.
+NOTE As you will learn later, IGMP is a rather overloaded protocol. IGMP messages are used for 
+several purposes other than the original Host Membership model deﬁned in RFC 1112. 
+Several multicast routing protocols, such as Distance Vector Multicast Routing Protocol 
+(DVMRP) and Protocol Independent Multicast (PIM) version 1, make use of special IGMP 
+message types to transmit their routing control information. Other multicast control and 
+diagnostic functions (such as mtrace), which are totally unrelated to the Host Membership 
+model, also use a special IGMP message type to accomplish their task, and others are being 
+proposed still. All of this activity results in what I call the “Y APIOI” category of protocols, 
+yet another protocol inside of IGMP.
+Using the information obtained via IGMP, routers maintain a list of multicast group 
+memberships on a per interface basis. A multicast group membership is active on an 
+interface if at least one host on that interface has signaled its desire, via IGMP, to receive 
+the multicast group trafﬁc.
+This chapter examines the IGMP protocol—versions 1 and 2—in great detail so that you 
+can become better acquainted with its operational aspects. This chapter also takes a quick 
+peek at what IGMP version 3 (in draft proposal stage as this book is being written) may 
+someday offer in terms of new capabilities.
+0779.book  Page 57  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 79 =====
+58     Chapter 3:  Internet Group Management Protocol
+IGMP Version 1
+Why bother learning IGMPv1 if IGMPv2 is now the standard? The reason is simple: most 
+IP stacks in today’s hosts still use IGMPv1. The pervasive Microsoft Windows 95 operating 
+system includes built-in support for IP multicast, but unless you download an upgraded 
+version of Microsoft’s Winsock DLL, you will be running IGMPv1. On the other hand, if 
+you have upgraded to Windows 98, it contains full support for IGMPv2. The same is true 
+for many UNIX implementations. Unless you install a patch or are running the very latest 
+version of the UNIX operating system, you very possibly will be using IGMPv1. Because 
+you are likely to be dealing with older versions of these platforms that support only 
+IGMPv1, you need to understand how it works and know its limitations.
+This section focuses on the details of IGMPv1, including
+• IGMPv1 Message Format
+• The IGMPv1 Query Process
+• IGMPv1 Report Suppression Mechanism
+• IGMPv1 Query Router
+• The IGMPv1 Join Process
+• The IGMPv1 Leave Process
+IGMPv1 Message Format
+IGMP messages are transmitted inside IP datagrams and denoted by an IP protocol number 
+of 2. IGMP messages are transmitted with the IP time-to-live (TTL) ﬁeld set to 1 and, 
+therefore, are local in scope and not forwarded by routers. Figure 3-1 shows the format of 
+an IGMPv1 message.
+Figure 3-1 IGMPv1 Message Format
+The following sections deﬁne the ﬁelds, as depicted in Figure 3-1, that make up an IGMPv1 
+message.
+Version
+04 7 1 5 3 1 23
+Type Unused
+Group Address
+Checksum
+0779.book  Page 58  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 80 =====
+IGMP Version 1     59
+Version Field
+The Version ﬁeld contains the IGMP version identiﬁcation and is therefore set to 1. This 
+ﬁeld has been eliminated in version 2, as noted in the “IGMP Version 2” section later in this 
+chapter. A predecessor to IGMP version 1, whose version number is 0, is described in 
+RFC 988.
+Type Field
+In version 1 of IGMP, the following two message types are used between hosts and routers:
+• Membership Query
+• Membership Report
+Checksum Field
+The Checksum ﬁeld is a 16-bit, one’s complement of the one’s complement sum of the 
+IGMP message. The Checksum ﬁeld is zeroed when making the checksum computation.
+Group Address Field
+The Group Address ﬁeld contains the multicast group address when a Membership Report 
+is being sent. This ﬁeld is zero when used in the Membership Query and should be ignored 
+by hosts.
+The IGMPv1 Query-Response Process
+IGMP primarily uses a Query-Response model that allows the multicast router to determine 
+which multicast groups are active (that is, have one or more hosts interested in a multicast 
+group) on the local subnet. Figure 3-2 shows the Query-Response process in operation.
+Figure 3-2 IGMPv1 Query-Response Process
+Router A
+Suppressed
+224.1.1.1 H1
+#3
+Report
+224.1.1.1 H2
+#2
+#1
+Report
+224.2.2.2 H3
+#4
+IGMPv1
+Querier
+Router B
+IGMPv1
+Non-Querier
+Query to
+224.0.0.1
+0779.book  Page 59  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 81 =====
+60     Chapter 3:  Internet Group Management Protocol
+In this example, Hosts H1 and H2 each want to receive multicast trafﬁc for group 224.1.1.1. 
+Furthermore, Host H3 wants to receive multicast trafﬁc for group 224.2.2.2. Router A is the 
+IGMP Querier for the subnet and is responsible for performing the queries. Router B is a 
+non-querier and simply listens and records the hosts’ responses.
+The IGMPv1 Query-Response mechanism for this example works as follows:
+1 Router A (the IGMP Querier) periodically (the default is every 60 seconds) multicasts 
+an IGMPv1 Membership Query to the All-Hosts multicast group (224.0.0.1) on the 
+local subnet. All hosts must listen to this group as long as they have enabled multicast 
+so that these queries can be received.
+2 All hosts receive the IGMPv1 Membership Query, and one host (in this example it’s 
+H2) responds ﬁrst by multicasting an IGMPv1 Membership Report to the multicast 
+group, 224.1.1.1, of which the host is a member. This report informs the routers on the 
+subnet that a host is interested in receiving multicast trafﬁc for group 224.1.1.1.
+3 Because Host H1 is listening to multicast group 224.1.1.1, it hears the IGMPv1 
+Membership Report that was multicast by Host H2. Host H1, therefore, suppresses the 
+sending of its report for group 224.1.1.1 because H2 already has informed the routers 
+on the subnet that there is at least one host interested in receiving multicast trafﬁc for 
+group 224.1.1.1. This Report Suppression mechanism helps reduce the amount of 
+trafﬁc on the local network.
+4 Host H3 has also received the IGMPv1 Membership Query, and it responds by 
+multicasting an IGMPv1 Membership Report to the multicast group 224.2.2.2, of 
+which it is a member. This report informs the routers on the subnet that a host is 
+interested in receiving multicast trafﬁc for group 224.2.2.2.
+As a result of this Query-Response exchange, Router A now knows that there are active 
+receivers for multicast groups 224.1.1.1 and 224.2.2.2 on the local subnet. In addition, 
+Router B has been eavesdropping on the whole process and also knows the same 
+information.
+NOTE Because of the Report Suppression mechanism, routers cannot keep track of the individual 
+hosts joined to a multicast group on a subnet. Therefore, they only keep track of the 
+multicast groups that are active on a subnet. Furthermore, even if the router could keep track 
+of all active members, doing so would not be desirable because it would prevent IGMP 
+from scaling on subnets with large numbers of hosts. Finally, it is not necessary for the 
+router to keep track of each individual member host because trafﬁc is forwarded on a group 
+address and interface basis.
+0779.book  Page 60  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 82 =====
+IGMP Version 1     61
+Report Suppression Mechanism
+The IGMP Report Suppression Mechanism helps to reduce the amount of IGMP trafﬁc on 
+a subnet to the minimum necessary to maintain a multicast group state. The following 
+describes this mechanism in more detail:
+1 When a host receives an IGMP Membership Query, the host starts a countdown 
+report-timer for each multicast group it has joined. Each report-timer is initialized to 
+a random value between zero and the maximum response interval. The default is 
+10 seconds.
+2 If a report-timer expires, the host multicasts an IGMP Membership report for the 
+active multicast group associated with the report-timer.
+3 If the host hears another host send an IGMP Membership Report, it cancels its report-
+timer associated with the received Membership Report, thereby suppressing the 
+sending of a Membership Report for the group.
+IGMPv1 Querier
+If multiple multicast routers are on a subnet, having more than one of them send IGMPv1 
+Queries is a waste of bandwidth. In this case, an IGMPv1 Querier, a router responsible for 
+sending all IGMPv1 Queries on a subnet, becomes essential. Unfortunately, RFC 1112 does 
+not specify how that IGMPv1 Querier is elected. Instead, IGMPv1 relies on the Layer 3 IP 
+Multicast Routing protocol (PIM, DVMRP, and so on) to resolve this conﬂict by electing a 
+Designated Router for the subnet.
+NOTE Notice that there is a distinct difference between the IGMP Querier and the Designated 
+Router. The multicast routing protocol selects the Designated Router to handle certain 
+multicast forwarding duties on the subnet. Exactly how the Designated Router is elected 
+depends on the multicast protocol in use. RFC 1112 assumed that this Designated Router 
+would also perform the tasks of sending IGMP Query messages. These two functions were 
+later separated in IGMPv2, which is described later in this chapter.
+The IGMPv1 Join Process
+To reduce the join latency (particularly when a host is the ﬁrst to join a multicast group on 
+a subnet), it is not necessary to wait for the next Membership Query before sending a 
+Membership Report to join a multicast group. Therefore, when a host wants to join a 
+multicast group, the host immediately will send one or more unsolicited Membership 
+Reports for the multicast group it desires to join.
+0779.book  Page 61  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 83 =====
+62     Chapter 3:  Internet Group Management Protocol
+NOTE It’s important to note that a host only uses IGMP to signal to the local multicast router that 
+it wants to start or stop receiving IP multicast trafﬁc. It is not necessary for the host to join 
+the group just to send multicast trafﬁc to the group. Therefore, send-only multicast 
+applications only need to begin sending trafﬁc addressed to the multicast group to trigger 
+the local multicast router to start forwarding the multicast trafﬁc to receivers elsewhere in 
+the network.
+Figure 3-3 illustrates this unsolicited join process. Here, Host H3 wants to receive trafﬁc 
+for multicast group 224.3.3.3.
+Figure 3-3 IGMPv1 Join Process
+Instead of waiting for the next Membership Query from Router A, it immediately multicasts 
+an unsolicited IGMPv1 Membership Report to group 224.3.3.3 to inform the routers on the 
+subnet of its desire to join this group.
+NOTE You occasionally may hear someone use the phrase, “sending an IGMP Join to a router.” 
+Although there is no such thing as an IGMP Join packet, the phrase is used frequently in 
+normal multicast conversations to signify that an unsolicited IGMP Membership Report 
+was sent to initiate a Join of a multicast group.
+The IGMPv1 Leave Process
+Unfortunately, IGMPv1 has a rather simple-minded method for hosts to leave a multicast 
+group; they just quietly go away. There is no Leave Group message in IGMPv1 to notify 
+the routers on the subnet that a host no longer wants to receive the multicast trafﬁc from a 
+speciﬁc group. The host simply stops processing trafﬁc for the multicast group and ceases 
+responding to IGMP Queries with IGMP Membership Reports for the group.
+Router A
+H1 H2
+Unsolicited
+Report
+224.3.3.3 H3
+IGMPv1
+Querier
+Router B
+IGMPv1
+Non-Querier
+0779.book  Page 62  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 84 =====
+IGMP Version 1     63
+As a result, the only way IGMPv1 routers know that there are no longer any active receivers 
+for a particular multicast group on a subnet is when the routers stop getting Membership 
+Reports. To facilitate this process, IGMPv1 routers associate a countdown timer with an 
+IGMP group on a subnet. When a Membership Report is received for the group on the 
+subnet, the timer is reset. For IGMPv1 routers, this timeout interval is typically three times 
+the Query Interval, or 3 minutes. This timeout interval means that the router may continue 
+to forward multicast trafﬁc onto the subnet for up to 3 minutes after all hosts have left the 
+multicast group. This worst-case timing scenario is shown in Figure 3-4.
+Figure 3-4 IGMPv1 Leave Group Timing
+This 3-minute leave latency can cause problems sometimes. Assume for the moment that 
+company ABC is sourcing ﬁve different channels of high-rate training videos from a 
+central, video-training server via ﬁve different multicast groups. Assume also that the 
+bandwidth available to each remote ﬁeld ofﬁce in ABC’s network has been sized to support 
+two active training-video streams at a time.
+If a user at one of these remote sites is unsure which “channel” (multicast group) contains 
+which training video, the user may simply “channel surf” to locate the desired training 
+video. This action would result in the user’s workstation joining and leaving each multicast 
+group as the user surfs the multicast groups for the desired video. In the worst-case 
+scenario, the user may have joined ﬁve of the multicast groups and left four of them in rapid 
+succession while surﬁng. As far as the user is concerned, he or she is now receiving the 
+correct training video (albeit with lots of errors due to some serious congestion problems). 
+Because the IGMPv1 leave latency can be as high as 3 minutes, however, the router will be 
+forwarding all ﬁve high-rate video streams onto the subnet for up to 3 minutes.
+General
+Query
+General
+Query
+General
+Query
+General
+Query
+Query Interval
+(60 seconds)
+Leave Latency
+3 x Query Interval ~ 3 minutes
+Query Interval
+(60 seconds)
+Query Interval
+(60 seconds)
+Last Host Quietly Leaves Group
+Query Resp. Intervals
+(10 seconds)
+Group Traffic Finally Stops
+0779.book  Page 63  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 85 =====
+64     Chapter 3:  Internet Group Management Protocol
+If some method had been available for the user’s workstation to signal the router that it had 
+left the other four groups, this leave latency could be shortened substantially and the 
+probability of this problem occurring reduced. This was one of the primary reasons for 
+developing IGMP version 2.
+IGMP Version 2
+In November 1997, IGMPv2 was ratiﬁed by the IETF as a standard in RFC 2236 that also 
+serves as an update to RFC 1112, which deﬁned IGMPv1 in an appendix. IGMPv2 was 
+developed primarily to address some of the shortcomings of IGMPv1 that were discovered 
+over time and through practical experience.
+The Query and Membership Report messages in IGMPv2 are identical to the IGMPv1 
+messages with two exceptions. The ﬁrst difference is that IGMPv2 Query messages are 
+broken into two categories: General Queries, which perform the same function as the old 
+IGMPv1 Queries, and Group-Speciﬁc Queries, which are queries directed to a single group. 
+The second difference is that IGMPv1 Membership Reports and IGMPv2 Membership 
+Reports have different IGMP Type codes. The (General) Query-Response process in 
+IGMPv2, however, is the same as IGMPv1. Because the process is identical in both 
+versions, this section does not repeat the earlier information. (Refer to the “IGMPv1 Query-
+Response Process” section of this chapter for more details.)
+IGMPv2 includes several new features that are discussed in the sections that follow. Here 
+is a quick summary of the key features added to IGMPv2:
+• Querier election process—Provides the capability for IGMPv2 routers to elect the 
+Query Router without having to rely on the multicast routing protocol to perform this 
+process.
+• Maximum Response Time ﬁeld—A new ﬁeld in Query messages permits the Query 
+Router to specify the maximum Query-Response time. This ﬁeld permits the tuning 
+of the Query-Response process to control response burstiness and to ﬁne-tune leave 
+latencies.
+• Group-Speciﬁc Query messages—Permits the Query Router to perform the query 
+operation on a speciﬁc group instead of all groups.
+• Leave Group messages—Provides hosts with a method of notifying routers on the 
+network that they wish to leave the group.
+The last two features enable hosts and routers to reduce the leave latency, which was such 
+a problem in IGMPv1, from minutes down to a few seconds.
+0779.book  Page 64  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 86 =====
+IGMP Version 2     65
+IGMPv2 Message Format
+The format of IGMPv2 messages is shown in Figure 3-5. Notice that the Type ﬁeld has been 
+merged with IGMPv1’s Version ﬁeld and now occupies a full octet. The values assigned to 
+the various message types have been chosen carefully to provide backward compatibility 
+with IGMPv1.
+Figure 3-5 IGMPv2 Message Format
+For example, the IGMPv1 Membership Query message contains a 0x1 in the 4-bit Version 
+ﬁeld and 0x1 in the 4-bit Type ﬁeld. Together they combine to form an 8-bit value of 0x11, 
+which is identical to the IGMPv2 Type code for a Membership Query. The IGMPv2 Type 
+code for a version 1 Membership Report likewise was carefully chosen to provide 
+compatibility between IGMPv1 and IGMPv2. This enables IGMPv2 hosts and routers to 
+recognize IGMPv1 messages when other IGMPv1 hosts or routers are on the network.
+The following sections deﬁne the ﬁelds, as depicted in Figure 3-5, that make up an IGMPv2 
+message.
+Type Field
+In version 2 of IGMP, the following four message types are used between hosts and routers:
+• Membership Query (Type code = 0x11)
+There are two subtypes of Membership Query messages:
+— General Query—Used to determine which multicast groups are active in 
+the same fashion as IGMPv1 does. A General Query is denoted by an all-
+zeros Group Address ﬁeld.
+— Group-Speciﬁc Query—Used to determine whether a speciﬁc multicast 
+group has any remaining members. A Group-Speciﬁc Query contains the 
+address of the group being queried.
+0 7 15 31 23
+Type Max. Resp.
+Time
+Group Address
+Checksum
+0779.book  Page 65  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 87 =====
+66     Chapter 3:  Internet Group Management Protocol
+• Version 1 Membership Report (Type code = 0x12)
+This message type is provided solely for backward compatibility with 
+IGMPv1.
+• Version 2 Membership Report (Type code = 0x16)
+• Leave Group (Type code = 0x17)
+Maximum Response Time Field
+This ﬁeld was unused previously in IGMPv1 messages. The Maximum Response Time 
+ﬁeld is used only in Membership Query messages and speciﬁes the maximum time in units 
+of 1/10 of a second that a host may wait to respond to a Query message. The default value 
+for this ﬁeld is 100 (10 seconds).
+Hosts use the Maximum Response Time value in this ﬁeld as the upper limit for the random 
+setting of their group report-timers, which are used by the Report Suppression mechanism. 
+The value in this ﬁeld may be tuned to control either the burstiness of membership 
+responses or leave latency.
+Checksum Field
+The Checksum ﬁeld is a 16-bit, one’s complement of the one’s complement sum of the 
+IGMP message. The Checksum ﬁeld is zeroed when making the checksum computation.
+Group Address Field
+When a General Query is sent, the Group Address ﬁeld is set to zero to differentiate it from 
+a Group-Speciﬁc Query, which contains the multicast group of the group being queried.
+When a Membership Report or Leave Group message is sent, this ﬁeld is set to the target 
+multicast group address.
+Query-Response Tuning
+Instead of an IGMPv2 host using a statically conﬁgured value for the Query-Response 
+Interval, the Maximum Response Time ﬁeld was added to the IGMPv2 Query message. The 
+Maximum Response Time ﬁeld permits the response time to be conﬁgured on the IGMP 
+0779.book  Page 66  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 88 =====
+IGMP Version 2     67
+Querier, which informs all hosts of the upper limit on the delay of their responses to the 
+query by placing the delay value in this ﬁeld.
+Tuning the Maximum Response Time value controls the burstiness of the response process. 
+This feature can be important when large numbers of groups are active on a subnet and you 
+want to spread the responses over a longer period of time. For example, Figure 3-6 depicts 
+a timing diagram showing General Queries and Responses for IGMPv2 default timer 
+settings for a subnet with 18 active groups spread across 18 different hosts.
+Figure 3-6 IGMPv2 Query-Response Tuning
+As you can see from this example, the 18 reports tend to be spread across the entire Query-
+Response Interval. This tendency is due to the random selection of the report-timer values 
+by the hosts in their Report Suppression process. This distribution is affected by the 
+randomness of the host’s random-number algorithm in their IGMPv2 implementation. The 
+responses, however, generally are spread across most of the Query-Response Interval.
+By increasing the Maximum Response Time value, as shown in Figure 3-7, the period over 
+which hosts may spread their responses to the General Query increases, thereby decreasing 
+the burstiness of the responses.
+General
+Query
+General
+Query
+Query Resp.
+Interval = 10 seconds
+Query Interval = 125 seconds
+Query Response Interval
+Host Membership Reports
+0779.book  Page 67  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 89 =====
+68     Chapter 3:  Internet Group Management Protocol
+Figure 3-7 Decreasing Response Burstiness
+Reducing this burstiness comes with some penalties. Increasing the Query Response 
+Interval by using a larger Maximum Response Time value also increases the leave latency 
+because the Query Router must now wait longer to make sure that there are no more hosts 
+for the group on the subnet. Therefore, your network design must strike a balance between 
+burstiness and leave latency.
+NOTE I remember an important government project that was pushing what today’s IP multicast 
+technology is capable of doing. This network typically would have the number of active 
+groups on a subnet in the thousands! Therefore, when the Query Router sent an IGMP 
+General Query, the hosts on the subnet generated thousands of reports. Needless to say, 
+careful tuning of the Query and Query-Response Intervals was crucial to making IP 
+multicast technology work properly on this busy multicast network.
+IGMPv2 Leave Group Messages
+IGMPv2 deﬁnes a new Leave Group message type that hosts should send when they leave 
+the group. The RFC says, “When a host leaves a multicast group, if it was the last host to 
+respond to a query with a Membership Report for that group, it should send a Leave Group 
+message to the all-routers multicast group (224.0.0.2).”
+General
+Query
+General
+Query
+General
+Query
+Query
+Resp.
+Interval
+Query
+Resp.
+Interval
+Query
+Resp.
+Interval
+Query Interval Query Interval
+General
+Query
+General
+Query
+General
+Query
+Query
+Resp.
+Interval
+Query
+Resp.
+Interval
+Query
+Resp.
+Interval
+Query Interval Query Interval
+0779.book  Page 68  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 90 =====
+IGMP Version 2     69
+The RFC goes on to say that “a host may always send a Leave Group message when it 
+leaves a group.” Unfortunately, the wording in this part of the RFC is may and not must. 
+This subtle distinction is important when using IGMP Snooping or Cisco Group 
+Management Protocol (CGMP) to optimize LAN switches to constrain multicast ﬂooding. 
+If a host does not always send a Leave Group message, then these optimization techniques 
+quickly can break down because there is no mechanism to report that the individual host 
+has left the group, and multicast trafﬁc for this group need not be forwarded out this port 
+on the switch.
+Fortunately, most IGMPv2 implementations (including most UNIX systems as well as 
+Microsoft Windows 98 and NT V5.0) appear to ﬁnd it easier to implement the Leave Group 
+processing by always sending a Leave Group message when the host leaves the group. 
+Checking whether the host was the last to respond to a query for the group takes 
+considerably more code.
+IGMPv2 Group-Speciﬁc Query Messages
+The other new message type in IGMPv2 is the Group-Speciﬁc Query, which is sent by the 
+IGMP Query Router, and whose purpose is exactly what its name implies—that is, to query 
+a single group instead of all groups. In a Group-Speciﬁc Query, the Group Address ﬁeld 
+contains the target group being queried. IGMPv2 hosts that receive this message respond 
+in the same manner as they do to a General Query.
+In addition to the Group Address ﬁeld containing the target group address, another 
+difference between Group-Speciﬁc Queries and General Queries is that Group-Speciﬁc 
+Queries further reduce Leave Group latency by using a much smaller value of Maximum 
+Response Time. The default is 1 second.
+IGMPv2 Leave Process
+Without an efﬁcient Leave process, as is the case in IGMPv1, the router continues to 
+forward multicast trafﬁc onto the local subnet for several minutes after the last host leaves 
+the group. The addition of the Leave Group and Group-Speciﬁc IGMPv2 messages, 
+coupled with the Maximum Response Time ﬁeld, permit IGMPv2 to reduce the leave 
+latency to only a few seconds. This situation is a signiﬁcant improvement over IGMPv1, 
+which has a worst-case leave latency of 3 minutes (assuming the default IGMPv1 timer 
+values are in use).
+Figure 3-8 depicts IGMPv2’s new Leave process. In this example, Hosts H2 and H3 are 
+currently members of multicast group 224.1.1.1, although Host H2 wants to leave the 
+group.
+0779.book  Page 69  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 91 =====
+70     Chapter 3:  Internet Group Management Protocol
+Figure 3-8 IGMPv2 Leave Process—Host H2 Leaves
+The sequence of events for Host H2 to leave the group is as follows:
+1 Host H2 multicasts an IGMPv2 Leave Group message to the All-Routers (224.0.0.2) 
+multicast group to inform all routers on the subnet that it is leaving the group.
+2 Router A (assumed to be the IGMP Query Router in this example) hears the Leave 
+Group message from Host H2. However, because routers keep a list only of the group 
+memberships that are active on a subnet—not individual hosts that are members—
+Router A sends a Group-Speciﬁc Query to determine whether any hosts remain for 
+group 224.1.1.1. Note that the Group-Speciﬁc Query is multicast to the target group 
+(that is, 224.1.1.1). Therefore, only hosts that are members of this group will respond.
+3 Host H3 is still a member of group 224.1.1.1 and, therefore, hears the Group-Speciﬁc 
+Query and responds to the query with an IGMPv2 Membership Report to inform the 
+routers on the subnet that a member of this group is still present. Notice that the 
+Report Suppression mechanism is used here, just as in the General Query case, to 
+avoid an implosion of responses when multiple members of the group are on the 
+subnet.
+Host H3 is now the last remaining member of group 224.1.1.1. Now, assume that Host H3 
+also wants to leave the group, as shown in Figure 3-9.
+Router A
+H1
+Leave to
+224.0.0.2
+224.1.1.1 H2
+#1
+Leave to
+224.1.1.1#3
+#2
+224.1.1.1 H3
+IGMPv2 Group Specific
+Query to 224.1.1.1
+0779.book  Page 70  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 92 =====
+IGMP Version 2     71
+Figure 3-9 IGMPv2 Leave Process—H3 Leaves
+The following sequence of events occurs when Host H3 leaves the group:
+1 Host H3 multicasts an IGMPv2 Leave Group message to the All-Routers (224.0.0.2) 
+multicast group to inform all routers on the subnet that it is leaving the group.
+2 Again, Router A hears the Leave Group message (this time from Host H3) and sends 
+a Group-Speciﬁc Query to determine whether any hosts remain for group 224.1.1.1.
+3 There are now no remaining members of group 224.1.1.1 on the subnet; therefore, no 
+hosts respond to the Group-Speciﬁc Query. Getting no response, Router A waits a 
+Last Member Query Interval (the default is 1 second) and sends another Group-
+Speciﬁc Query to which there is still no response. (The default number of tries is two.) 
+At this point, Router A times out the group and stops forwarding its trafﬁc onto the 
+subnet.
+Figure 3-10 depicts how the new mechanisms in IGMPv2 have reduced the leave latency.
+Router A
+H1 H2
+Leave to
+224.0.0.2
+#1
+#2
+224.1.1.1 H3
+IGMPv2 Group Specific
+Query to 224.1.1.1
+#3
+No Response
+Group 224.1.1.1
+Membership Deleted
+0779.book  Page 71  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 93 =====
+72     Chapter 3:  Internet Group Management Protocol
+Figure 3-10 IGMPv2 Leave Group Timing
+Instead of a total leave latency of roughly two complete query intervals, or 3 minutes, the 
+leave latency is now less than 3 seconds.
+Querier Election Process
+Another important feature added in version 2 of IGMP is the Querier Election process. 
+Instead of depending on the upper-layer multicast routing protocol, IGMPv2 uses the IP 
+addresses in General Query messages to elect the IGMP Query Router via the following 
+procedure:
+1 When IGMPv2 routers start, they each multicast an IGMPv2 General Query message 
+to the All-Multicast-Systems group (224.0.0.1) with their interface address in the 
+Source IP Address ﬁeld of the message.
+2 When an IGMPv2 router receives a General Query message, the router compares the 
+source IP address in the message with its own interface address. The router with the 
+lowest IP address on the subnet is elected the IGMP Querier.
+3 All non-querier routers start a querier timer that is reset whenever a General Query 
+message is received from the IGMP Querier. The default duration of this timer is two 
+times the Query Interval, or 250 seconds. If the querier timer expires, it is assumed 
+that the IGMP Querier has gone down, and the election process is run again to elect a 
+new IGMP Querier.
+Last Host Query Resp.
+Interval = 1 sec
+Leave Latency < 3 seconds
+Last Host Query Resp.
+Interval = 1 sec
+Group
+Specific
+Query
+Group
+Specific
+Query
+Leave
+Group
+Time
+Last Host
+Query Router
+0779.book  Page 72  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 94 =====
+IGMPv1— IGMPv2 Interoperability     73
+Early IGMPv2 Implementations
+Although IGMPv2 was ratiﬁed only recently by the IETF, early implementations based on 
+the IETF working drafts have been around for some time. Not surprisingly, some minor 
+differences exist between the ﬁnal speciﬁcation and these early implementations. Some of 
+the last minute changes/additions to the IGMPv2 speciﬁcation are
+• Query Interval timer—This timer was changed to 125 seconds. Early 
+implementations used a value of 60 seconds. This discrepancy can cause a problem 
+when a router with an early implementation is operating on the same LAN as a router 
+that is the IGMP Querier and is IGMPv2 compliant. In this case, the early 
+implementation router may believe erroneously that the IGMP Querier (the IGMPv2-
+compliant router) has gone down because the General Queries are 125 seconds apart.
+• Router Alert option—This IP packet header option was added late in the deﬁnition 
+to address some IGMP security issues. Early implementations of IGMPv2 running in 
+hosts may not send IGMP messages with the Router Alert option in the IP header. The 
+omission can cause a problem if an IGMPv2-compliant router is conﬁgured to ignore 
+IGMP messages without the Router Alert option.
+IGMPv1— IGMPv2 Interoperability
+Version 2 of IGMP is designed to be as backward compatible with version 1 as possible. To 
+accomplish this, some special interoperability rules are deﬁned in RFC 2236. The next few 
+sections examine interoperability scenarios:
+• V2 Host/v1 Routers—Deﬁnes how a version 2 host must behave in the presence of 
+an older version 1 router on the same LAN.
+• V1 Host/v2 Routers—Deﬁnes how a version 2 router must behave in the presence of 
+an older version 1 host on the same LAN.
+• Mixed v1 and v2 Routers—Deﬁnes how a version 2 router must behave in the 
+presence of an older version 1 router on the same LAN.
+V2 Host/V1 Routers Interoperability
+Version 1 routers see an IGMPv2 report as an invalid IGMP message type and ignore it. 
+Therefore, to maintain proper group membership, a version 2 host must send IGMPv1 
+reports when a version 1 router is active as the IGMP Querier. Figure 3-11 shows a 
+version 2 host on a LAN with an IGMPv1 Query Router.
+0779.book  Page 73  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 95 =====
+74     Chapter 3:  Internet Group Management Protocol
+Figure 3-11 IGMPv2 Host and IGMPv1 Router Interaction
+RULE When a version 2 host detects that the IGMP Querier is a version 1 router, it must always 
+respond with IGMPv1 Reports. A version 2 host may also suppress sending Leave Group 
+messages in this situation.
+Version 2 hosts can detect the difference between IGMPv1 and IGMPv2 Queries by 
+examining the octet corresponding to the Maximum Response Time ﬁeld. In IGMPv1 
+Queries, this ﬁeld is zero (and is interpreted as 100, or 10 seconds, by version 2 hosts), 
+whereas in IGMPv2 Queries it contains a nonzero Maximum Response Time value. When 
+an IGMPv1 Query is heard, the host marks the interface as an IGMPv1 interface and ceases 
+sending IGMPv2 messages.
+To maintain this interface state, the version 2 host starts a 400-second version 1 router 
+present countdown timer whenever an IGMPv1 Query is received on the interface. This 
+timer is reset (back to 400 seconds) when another IGMPv1 Query is received. If the 
+version 1 router present countdown timer expires, the interface is marked back to an 
+IGMPv2 interface and IGMPv2 messages may once again be sent.
+RULE A version 2 host must allow its Membership Reports to be suppressed by either IGMPv1 or 
+IGMPv2 Membership Reports.
+In order to maintain the proper operation of the Report Suppression mechanism, version 2 
+hosts also must be prepared to receive either IGMPv1 or IGMPv2 Reports from other hosts 
+on the LAN and to suppress their reports in the normal fashion.
+Router A
+H1 H2
+#2
+H3
+IGMPv1
+IGMPv1 IGMPv1 IGMPv2
+IGMPv1
+Report
+IGMPv1
+Query
+#1
+0779.book  Page 74  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 96 =====
+IGMPv1— IGMPv2 Interoperability     75
+V1 Host / V2 Routers
+Figure 3-12 shows a version 1 host on a LAN with a version 2 IGMP Query Router. 
+Version 1 hosts respond in the normal fashion to either IGMPv1 or IGMPv2 Queries 
+because IGMPv2 Queries have essentially the same format. Only the second octet differs 
+in an IGMPv2 message and is ignored by a version 1 host.
+Figure 3-12 IGMPv1 Host and IGMPv2 Router Interaction
+As a result, if a version 2 router is the IGMP Querier and there are version 1 hosts on the 
+LAN that are also members of a group, then IGMPv1 Reports for that group are always 
+received. This situation exists because IGMPv2 Reports do not trigger Report Suppression 
+in version 1 hosts. Version 1 hosts do not understand IGMPv2 Reports and, therefore, 
+ignore them. Thus, in some situations, as shown in Figure 3-12, both an IGMPv1 Report 
+and an IGMPv2 Report are received in response to a General Query.
+RULE Version 2 routers must set a version 1 host present countdown timer associated with the 
+group reported to note that there is a version 1 host on the LAN that is a member of this 
+group. This timer should be the same as the Group Membership Interval.
+While version 1 hosts are present for a particular group, routers must ignore any Leave 
+Group messages received for the group.
+If the IGMP Query Router were to process Leave Group messages, it would respond by 
+sending a Group-Speciﬁc Query to the group in the Leave Group message; however, 
+version 1 hosts ignore this message as an invalid IGMPv1 message type. If the version 1 
+host is the last member of the group, then there is no response to the Group-Speciﬁc Query 
+and the version 2 routers on the subnet incorrectly time out this group. For this reason, the 
+IGMPv2 Leave process is suspended for a group whenever a version 1 host is a member of 
+the group.
+Router A
+H1 H2
+#3
+H3
+IGMPv2
+IGMPv2 IGMPv1
+224.1.1.1
+V1 Report
+#2
+IGMPv2
+224.1.1.1
+V2 Report
+IGMPv2
+Query
+#1
+0779.book  Page 75  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 97 =====
+76     Chapter 3:  Internet Group Management Protocol
+Mixed V1 and V2 Routers Interoperability
+The initial draft implementations of IGMPv2 made several attempts at automatic detection 
+of IGMPv1 routers and dynamic IGMPv1 mode conﬁguration. None of these methods were 
+reliable, however, which led to another rule.
+RULE If any version 1 routers are present on a subnet, the use of IGMPv1 must be administratively 
+conﬁgured on all routers in the subnet.
+The Possibilities of IGMPv3
+Before IGMP version 2 even was ratiﬁed, work already had begun on version 3. Although 
+it is far too early to begin implementing code based on the IGMPv3 speciﬁcation, it is worth 
+looking at one of the key enhancements this new version of IGMP promises to provide.
+A common problem, particularly in multimedia conferencing, is that when a host joins a 
+multicast group, it is basically requesting that trafﬁc from all sources in the group be 
+delivered to the host’s subnet. Although several sources may be actively sending trafﬁc to 
+the group, a host actually may want to receive trafﬁc from just one source.
+For example, assume that a multimedia audio conference is in session and a speaker is 
+delivering a lecture. What happens if one member of the conference begins to “jam” the 
+session maliciously by talking or sending music? This scenario is a growing possibility as 
+multicast multimedia conferences on the Internet come under attack by a small segment of 
+the Internet community that interferes by jamming the conference with unwanted audio. 
+Most audio multimedia conferencing tools have a widget that allows the user to “mute” any 
+of the other members, thereby silencing the audio of this malicious user. Unfortunately, this 
+measure does not stop the ﬂow of the unwanted trafﬁc from being delivered to the host’s 
+subnet. This malicious behavior can take the form of a denial of service attack when the 
+jammer’s trafﬁc stream exceeds or congests the trafﬁc ﬂow to the host’s subnet.
+IGMPv3 may provide a key that will help to solve this problem by giving conference 
+members more control over the sources they want to receive via the network. Version 3 of 
+IGMP extends the Join/Leave mechanism beyond multicast groups to permit joins and 
+leaves to be issued for speciﬁc source/group pairs via IGMPv3 (S, G) Join/Leave messages 
+(as shown in Figure 3-13).
+0779.book  Page 76  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 98 =====
+Summary     77
+Figure 3-13 IGMPv3 (S, G) Join/Leaves
+In this example, two sources, 1.1.1.1 and 2.2.2.2 are both multicasting to group 224.1.1.1. 
+Host H1 wants to receive trafﬁc addressed to this group from Source 1.1.1.1 but not from 
+Source 2.2.2.2. To do so, H1 sends an IGMPv3 message containing a list of (S, G)s that it 
+wishes to join and a list of (S, G)s that it wishes to leave. Router R3 can now use this 
+information to prune trafﬁc from Source 2.2.2.2 so that only Source 1.1.1.1 trafﬁc is being 
+delivered to R3. For more information on IGMPv3, see http://www.ietf.org/internet-drafts/
+draft-ietf-idmr-igmp-v3-00.txt.
+Summary
+In this chapter, you’ve seen how IGMP is used as the basic signaling mechanism to inform 
+the routers on a subnet of a host’s desire to become a member of a particular multicast 
+group. IGMPv2 extended this signaling mechanism to allow hosts to signal when they no 
+longer wanted to belong to a multicast group. This extension to the protocol signiﬁcantly 
+has reduced the leave latency that, in turn, allows routers and switches to respond quickly 
+and shut off the ﬂow of unnecessary multicast trafﬁc to parts of the networks where it is no 
+longer needed.
+Finally, it is important to remember that IGMP is the only mechanism a host can use to 
+signal routers of its desire to receive multicast trafﬁc for a speciﬁc group. Hosts are neither 
+aware of, nor should they be concerned with, which routing protocol is in use by the routers 
+in the network. Instead, the routers in the network are responsible for knowing and 
+understanding the multicast routing protocol in use and for making sure that the multicast 
+trafﬁc is delivered to the members of the group throughout the network.
+Source = 1.1.1.1
+Group = 224.1.1.1
+Source = 2.2.2.2
+Group = 224.1.1.1
+R1
+ R2
+R3
+IGMPv3:
+Join 1.1.1.1, 224.1.1.1
+Leave 2.2.2.2, 224.1.1.1
+H1 - Member of 224.1.1.1
+0779.book  Page 77  Wednesday, September 22, 1999  5:46 PM
+===== PAGE 99 =====
+0779.book  Page 78  Wednesday, September 22, 1999  5:46 PM
