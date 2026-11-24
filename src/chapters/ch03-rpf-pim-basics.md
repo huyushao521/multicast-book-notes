@@ -1,7 +1,7 @@
 # ch03 RPF、分发树与 PIM 通用机制
 
 > **来源**：Aweya Ch1.6（RPF）、Ch1.10（组播路由体系架构）、Ch3（PIM 报文格式）、Ch5.6（DR 选举）、Ch5.9（Assert）、iPexpert Ch3–Ch4
-> **配图**：[D05 RPF](../diagrams/d05-rpf.svg)｜[D06 分发树](../diagrams/d06-trees.svg)
+> **配图**：[D05 RPF](../../diagrams/d05-rpf.svg)｜[D06 分发树](../../diagrams/d06-trees.svg)
 
 ---
 
@@ -33,7 +33,7 @@
 
 ## 2. RPF 详解
 
-![RPF](../diagrams/d05-rpf.svg)
+![RPF](../../diagrams/d05-rpf.svg)
 
 ### 2.1 为什么需要 RPF
 

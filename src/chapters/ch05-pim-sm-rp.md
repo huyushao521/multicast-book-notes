@@ -1,7 +1,7 @@
 # ch05 PIM-SM 状态机与 RP 发现体系
 
 > **来源**：Aweya Ch5（P.241–P.380，状态机/定时器/DR/Register/Join-Prune/Assert/刷新/RP 发现/SSM）、Williamson Ch7–Ch8、P.148–P.213、Ch12（P.314–P.351）、iPexpert Ch4、Ch7（静态 RP）、Ch8（AutoRP）、Ch9（BSR）
-> **配图**：[D08 PIM-SM 三阶段](../diagrams/d08-pim-sm.svg)｜[D09 RP 发现体系](../diagrams/d09-rp-discovery.svg)
+> **配图**：[D08 PIM-SM 三阶段](../../diagrams/d08-pim-sm.svg)｜[D09 RP 发现体系](../../diagrams/d09-rp-discovery.svg)
 
 ---
 
@@ -20,7 +20,7 @@
 **阶段一：构建共享树（RPT）**
 **阶段二：切换到源树（SPT）**
 
-![PIM-SM 三阶段](../diagrams/d08-pim-sm.svg)
+![PIM-SM 三阶段](../../diagrams/d08-pim-sm.svg)
 
 ### 1.1 阶段一：源注册
 
@@ -109,7 +109,7 @@
 
 ## 4. RP 发现机制全景
 
-![RP 发现体系](../diagrams/d09-rp-discovery.svg)
+![RP 发现体系](../../diagrams/d09-rp-discovery.svg)
 
 ### 4.1 静态 RP
 
@@ -199,7 +199,7 @@ interface Gi0/1
 | **MSDP Anycast-RP** | RP 之间用 MSDP 交换 SA；SA 携带 **RP-id（原始 RP 地址）** 与 **Originating RP** | 成熟、可跨域；MSDP Anycast-RP 场景下 **SA 必须包含 RP-id** |
 | **PIM Anycast-RP** | RP 之间用 MSDP 同步 **Register** 报文副本 | 简化版，依赖 MSDP 但不依赖 SA 语义 |
 
-![Anycast-RP 与 MSDP](../diagrams/d10-anycast-rp.svg)
+![Anycast-RP 与 MSDP](../../diagrams/d10-anycast-rp.svg)
 
 ```cisco
 ! 三个 RP 都配置同一个 Anycast 地址 + 各自的 RP-id

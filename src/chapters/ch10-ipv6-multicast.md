@@ -1,7 +1,7 @@
 # ch10 IPv6 组播（MLD / Embedded-RP / IPv6 MVPN）
 
 > **来源**：iPexpert Ch14（P.14-1–14-9）、Aweya Ch1.4.5（IPv6 地址与 MAC 映射）、Volume II Ch3（IPv6 MVPN, P.220–P.219）
-> **配图**：[D15 IPv6 组播模型](../diagrams/d15-ipv6.svg)
+> **配图**：[D15 IPv6 组播模型](../../diagrams/d15-ipv6.svg)
 
 ---
 
@@ -62,7 +62,7 @@
 
 ## 3. Embedded-RP（RFC 4607）
 
-![IPv6 组播模型](../diagrams/d15-ipv6.svg)
+![IPv6 组播模型](../../diagrams/d15-ipv6.svg)
 
 ### 3.1 问题
 

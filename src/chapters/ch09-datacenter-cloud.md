@@ -1,7 +1,7 @@
 # ch09 数据中心与云中的组播（VXLAN / EVPN / ACI / 公有云）
 
 > **来源**：Volume II Ch4（Multicast in Data Center Environments，P.225–P.253）、Ch5（Multicast Design Solutions，P.255–P.300）
-> **配图**：[D14 VXLAN/EVPN 组播](../diagrams/d14-vxlan.svg)
+> **配图**：[D14 VXLAN/EVPN 组播](../../diagrams/d14-vxlan.svg)
 
 ---
 
@@ -36,7 +36,7 @@
 
 ## 2. VXLAN + EVPN 组播（Volume II Ch4）
 
-![VXLAN/EVPN 组播](../diagrams/d14-vxlan.svg)
+![VXLAN/EVPN 组播](../../diagrams/d14-vxlan.svg)
 
 ### 2.1 VXLAN Flood-and-Learn vs EVPN
 

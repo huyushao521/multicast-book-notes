@@ -1,7 +1,7 @@
 # ch06 SSM 与 BIDIR-PIM
 
 > **来源**：Aweya Ch5.17–5.18（P.362–P.375，SSM）、Ch7（P.441–P.474，BIDIR-PIM）、Williamson Ch9（P.194–P.213，MOSPF）、iPexpert Ch6（P.6-1–6-33）、Volume II Ch5（SSM 选型）
-> **配图**：[D10 Anycast-RP](../diagrams/d10-anycast-rp.svg)｜[D11 BIDIR 双向树](../diagrams/d11-bidir.svg)
+> **配图**：[D10 Anycast-RP](../../diagrams/d10-anycast-rp.svg)｜[D11 BIDIR 双向树](../../diagrams/d11-bidir.svg)
 
 ---
 
@@ -61,7 +61,7 @@ ip igmp ssm-mapping static 239.1.1.1 10.1.2.6
 
 ## 2. BIDIR-PIM（RFC 5015）
 
-![BIDIR 双向共享树](../diagrams/d11-bidir.svg)
+![BIDIR 双向共享树](../../diagrams/d11-bidir.svg)
 
 ### 2.1 模型
 

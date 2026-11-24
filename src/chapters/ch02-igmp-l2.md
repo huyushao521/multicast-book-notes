@@ -1,7 +1,7 @@
 # ch02 IGMP 与二层组播（IGMP Snooping / Proxy / Fast Leave）
 
 > **来源**：Aweya Ch2（P.86–P.167，IGMPv1/v2/v3、Snooping、Proxy、Query Solicitation）、Williamson Ch3/Ch14–15、P.413–P.470（IGMP Snooping 与 CGMP）、iPexpert Ch2（P.2-1–2-26）
-> **配图**：[D03 IGMP 交互](../diagrams/d03-igmp-basic.svg)｜[D04 Snooping 效果](../diagrams/d04-snooping.svg)
+> **配图**：[D03 IGMP 交互](../../diagrams/d03-igmp-basic.svg)｜[D04 Snooping 效果](../../diagrams/d04-snooping.svg)
 
 ---
 
@@ -65,7 +65,7 @@
 
 ## 2. Querier：谁在问？
 
-![IGMP 交互](../diagrams/d03-igmp-basic.svg)
+![IGMP 交互](../../diagrams/d03-igmp-basic.svg)
 
 **为什么要 Querier**：二层交换机做 IGMP Snooping 后，需要知道"这个 VLAN 里谁是路由器"，才能把组播从路由器口转发到成员口。Querier 就是这个"锚点"。
 
@@ -88,7 +88,7 @@ ip igmp snooping vlan 10 querier 10.1.1.1   ! 或用 loopback 地址
 
 ## 3. IGMP Snooping：二层组播的核心
 
-![Snooping 效果](../diagrams/d04-snooping.svg)
+![Snooping 效果](../../diagrams/d04-snooping.svg)
 
 **工作原理**：
 

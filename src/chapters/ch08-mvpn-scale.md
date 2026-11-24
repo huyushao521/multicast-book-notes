@@ -1,7 +1,7 @@
 # ch08 大规模组播：MVPN / MLDP / Provider Multicast / 组播流量工程
 
 > **来源**：Volume II Ch2（Multicast Scalability and Transport Diversification，P.117–P.153）、Ch3（Multicast MPLS VPNs，P.155–P.224）、Williamson Ch16（Multicast Traffic Engineering，P.474–P.507）
-> **配图**：[D13 MVPN Default/Data MDT](../diagrams/d13-mvpn.svg)
+> **配图**：[D13 MVPN Default/Data MDT](../../diagrams/d13-mvpn.svg)
 
 ---
 
@@ -27,7 +27,7 @@
 
 ## 2. MVPN 的隧道模型
 
-![MVPN Default/Data MDT](../diagrams/d13-mvpn.svg)
+![MVPN Default/Data MDT](../../diagrams/d13-mvpn.svg)
 
 ### 2.1 两个层次（Volume II Ch3）
 

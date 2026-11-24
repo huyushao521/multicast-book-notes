@@ -1,7 +1,7 @@
 # ch12 组播排障方法论与综合案例
 
 > **来源**：iPexpert 全书（每章的 show/debug 工具箱与 Trouble Ticket 方法论）、Volume II Ch6（Advanced Multicast Troubleshooting，P.301–P.344）
-> **配图**：复用 [D05](../diagrams/d05-rpf.svg)、[D08](../diagrams/d08-pim-sm.svg)、[D12](../diagrams/d12-msdp.svg)、[D13](../diagrams/d13-mvpn.svg)、[D14](../diagrams/d14-vxlan.svg)
+> **配图**：复用 [D05](../../diagrams/d05-rpf.svg)、[D08](../../diagrams/d08-pim-sm.svg)、[D12](../../diagrams/d12-msdp.svg)、[D13](../../diagrams/d13-mvpn.svg)、[D14](../../diagrams/d14-vxlan.svg)
 
 ---
 

@@ -1,7 +1,7 @@
 # ch01 组播基础模型、地址体系与分发树模型
 
 > **来源**：Williamson Ch1–2（原理与收益）、Aweya Ch1.1–1.9（模型/地址/树/RPF 权威定义）、Aweya Ch1.8（管理域边界）
-> **配图**：[D01 地址空间](../diagrams/d01-address-scope.svg)｜[D02 MAC 映射](../diagrams/d02-mac-mapping.svg)｜[D05 RPF](../diagrams/d05-rpf.svg)｜[D06 分发树](../diagrams/d06-trees.svg)
+> **配图**：[D01 地址空间](../../diagrams/d01-address-scope.svg)｜[D02 MAC 映射](../../diagrams/d02-mac-mapping.svg)｜[D05 RPF](../../diagrams/d05-rpf.svg)｜[D06 分发树](../../diagrams/d06-trees.svg)
 
 ---
 
@@ -90,7 +90,7 @@ interface Gi0/1
 
 ## 3. 二层映射：01:00:5e 与 32 路冲突
 
-![IPv4 组播地址映射](../diagrams/d02-mac-mapping.svg)
+![IPv4 组播地址映射](../../diagrams/d02-mac-mapping.svg)
 
 映射规则（RFC 1112 / Aweya 1.4.3）：
 
@@ -144,7 +144,7 @@ MAC = 01:00:5e : XXXXXXXX : XXXXXXXX
 
 ## 5. 分发树模型
 
-![源树与共享树](../diagrams/d06-trees.svg)
+![源树与共享树](../../diagrams/d06-trees.svg)
 
 ### 5.1 源树 (Source Tree, SPT)
 
@@ -169,7 +169,7 @@ MAC = 01:00:5e : XXXXXXXX : XXXXXXXX
 
 ## 6. RPF：组播的"方向盘"
 
-![RPF 检查](../diagrams/d05-rpf.svg)
+![RPF 检查](../../diagrams/d05-rpf.svg)
 
 **RPF（Reverse Path Forwarding）**：收到组播包时，路由器查**单播路由表**，看"到源 S 的下一跳"是哪个接口；只有从该接口进来的组播包才转发，否则丢弃。
 

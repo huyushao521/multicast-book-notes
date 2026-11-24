@@ -1,7 +1,7 @@
 # ch04 PIM-DM 与 PIM-SDM（洪泛剪枝模型）
 
 > **来源**：Williamson Ch6（原理）/ Ch10（配置）/ Ch13（DVMRP 互操作，P.352–P.404）、Aweya Ch4（P.205–P.240）、iPexpert Ch3（PIM-DM）、Ch5（PIM-SDM）
-> **配图**：[D07 PIM-DM 洪泛与剪枝](../diagrams/d07-pim-dm.svg)
+> **配图**：[D07 PIM-DM 洪泛与剪枝](../../diagrams/d07-pim-dm.svg)
 
 ---
 

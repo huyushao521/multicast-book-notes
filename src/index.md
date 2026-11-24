@@ -25,33 +25,33 @@
 
 | 章 | 标题 | 核心问题 | 案例 |
 |---|---|---|---|
-| [第 1 章](chapters/ch01-basics.html) | 基础模型、地址体系与分发树 | 地址分区怎么背？MAC 为什么会冲突？ | 7 |
-| [第 2 章](chapters/ch02-igmp-l2.html) | IGMP 与二层组播 | Querier 为什么必须有？Snooping 怎么工作？ | 8 |
+| [第 1 章](../chapters/ch01-basics.html) | 基础模型、地址体系与分发树 | 地址分区怎么背？MAC 为什么会冲突？ | 7 |
+| [第 2 章](../chapters/ch02-igmp-l2.html) | IGMP 与二层组播 | Querier 为什么必须有？Snooping 怎么工作？ | 8 |
 
 ### 阶段二 · 协议核心
 
 | 章 | 标题 | 核心问题 | 案例 |
 |---|---|---|---|
-| [第 3 章](chapters/ch03-rpf-pim-basics.html) | RPF、分发树与 PIM 通用机制 | RPF 查什么？mroute 字段怎么读？ | 6 |
-| [第 4 章](chapters/ch04-pim-dm.html) | PIM-DM 与 PIM-SDM | 先泛洪后剪枝的代价是什么？ | 6 |
-| [第 5 章](chapters/ch05-pim-sm-rp.html) | PIM-SM 状态机与 RP 发现体系 | Register / SPT 切换 / AutoRP / BSR 全流程 | 9 |
-| [第 6 章](chapters/ch06-ssm-bidir.html) | SSM 与 BIDIR-PIM | 无 RP 无 MSDP 怎么做到？行情为何用 BIDIR？ | 6 |
+| [第 3 章](../chapters/ch03-rpf-pim-basics.html) | RPF、分发树与 PIM 通用机制 | RPF 查什么？mroute 字段怎么读？ | 6 |
+| [第 4 章](../chapters/ch04-pim-dm.html) | PIM-DM 与 PIM-SDM | 先泛洪后剪枝的代价是什么？ | 6 |
+| [第 5 章](../chapters/ch05-pim-sm-rp.html) | PIM-SM 状态机与 RP 发现体系 | Register / SPT 切换 / AutoRP / BSR 全流程 | 9 |
+| [第 6 章](../chapters/ch06-ssm-bidir.html) | SSM 与 BIDIR-PIM | 无 RP 无 MSDP 怎么做到？行情为何用 BIDIR？ | 6 |
 
 ### 阶段三 · 域间与规模化
 
 | 章 | 标题 | 核心问题 | 案例 |
 |---|---|---|---|
-| [第 7 章](chapters/ch07-msdp-mbgp.html) | MSDP 与 MBGP 域间组播 | Peer-RPF 四条规则怎么用？ | 6 |
-| [第 8 章](chapters/ch08-mvpn-scale.html) | MVPN / MLDP / Provider / 组播 TE | Default MDT 与 Data MDT 怎么分工？ | 6 |
+| [第 7 章](../chapters/ch07-msdp-mbgp.html) | MSDP 与 MBGP 域间组播 | Peer-RPF 四条规则怎么用？ | 6 |
+| [第 8 章](../chapters/ch08-mvpn-scale.html) | MVPN / MLDP / Provider / 组播 TE | Default MDT 与 Data MDT 怎么分工？ | 6 |
 
 ### 阶段四 · 场景实战
 
 | 章 | 标题 | 核心问题 | 案例 |
 |---|---|---|---|
-| [第 9 章](chapters/ch09-datacenter-cloud.html) | 数据中心与云中的组播 | VXLAN 组播为何退化成广播？云上没有组播怎么办？ | 6 |
-| [第 10 章](chapters/ch10-ipv6-multicast.html) | IPv6 组播 | Embedded-RP 为什么能干掉 MSDP？ | 6 |
-| [第 11 章](chapters/ch11-security.html) | 组播安全、过滤与限速 | 组播反射放大怎么防？源白名单怎么配？ | 6 |
-| [第 12 章](chapters/ch12-troubleshooting.html) | 排障方法论与综合案例 | 四步排障法与症状决策树 | 6 |
+| [第 9 章](../chapters/ch09-datacenter-cloud.html) | 数据中心与云中的组播 | VXLAN 组播为何退化成广播？云上没有组播怎么办？ | 6 |
+| [第 10 章](../chapters/ch10-ipv6-multicast.html) | IPv6 组播 | Embedded-RP 为什么能干掉 MSDP？ | 6 |
+| [第 11 章](../chapters/ch11-security.html) | 组播安全、过滤与限速 | 组播反射放大怎么防？源白名单怎么配？ | 6 |
+| [第 12 章](../chapters/ch12-troubleshooting.html) | 排障方法论与综合案例 | 四步排障法与症状决策树 | 6 |
 
 ---
 
@@ -74,10 +74,10 @@
 
 每个案例统一采用：**现象 → 定位命令 → 根因 → 处置 → 复盘**。
 
-- [第 1 章 · 基础与地址](chapters/ch01-basics.html) —— 行情只有部分终端收到、组播只能跑一跳、SSM 组地址被误配、Admin Scope 莫名剪断、GLOP 段误用、多出口导致 RPF 失败
-- [第 2 章 · IGMP 与二层](chapters/ch02-igmp-l2.html) —— 有 Report 无成员表、幽灵流量、Fast Leave 误伤、IGMP 报文风暴、Fast Leave 与共享设备冲突
-- [第 5 章 · PIM-SM 与 RP](chapters/ch05-pim-sm-rp.html) —— RP 未学习到、AutoRP TTL 不足、BSR 与静态冲突、哈希倾斜、Register 分片、Anycast-RP 缺 originator-id
-- [第 9 章 · 数据中心](chapters/ch09-datacenter-cloud.html) —— VXLAN 泛洪、Ingress Replication 缺失、跨 VNI 泄漏、underlay MTU、云上隧道缺静态 mroute
+- [第 1 章 · 基础与地址](../chapters/ch01-basics.html) —— 行情只有部分终端收到、组播只能跑一跳、SSM 组地址被误配、Admin Scope 莫名剪断、GLOP 段误用、多出口导致 RPF 失败
+- [第 2 章 · IGMP 与二层](../chapters/ch02-igmp-l2.html) —— 有 Report 无成员表、幽灵流量、Fast Leave 误伤、IGMP 报文风暴、Fast Leave 与共享设备冲突
+- [第 5 章 · PIM-SM 与 RP](../chapters/ch05-pim-sm-rp.html) —— RP 未学习到、AutoRP TTL 不足、BSR 与静态冲突、哈希倾斜、Register 分片、Anycast-RP 缺 originator-id
+- [第 9 章 · 数据中心](../chapters/ch09-datacenter-cloud.html) —— VXLAN 泛洪、Ingress Replication 缺失、跨 VNI 泄漏、underlay MTU、云上隧道缺静态 mroute
 
 ---
 

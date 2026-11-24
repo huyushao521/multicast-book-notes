@@ -1,7 +1,7 @@
 # ch07 MSDP 与 MBGP 域间组播
 
 > **来源**：Aweya Ch6（P.382–P.439，MSDP 完整机制）、Williamson Ch17（P.508–P.525，域间组播）、iPexpert Ch10（P.10-1–10-27，MSDP）、Ch12（P.12-1–12-30，MP-BGP）、Volume II Ch1（Interdomain Routing and Internet Multicast）
-> **配图**：[D12 MSDP Peer-RPF](../diagrams/d12-msdp.svg)｜[D10 Anycast-RP](../diagrams/d10-anycast-rp.svg)
+> **配图**：[D12 MSDP Peer-RPF](../../diagrams/d12-msdp.svg)｜[D10 Anycast-RP](../../diagrams/d10-anycast-rp.svg)
 
 ---
 
@@ -98,7 +98,7 @@ ip msdp sa-cache local maximum 1000
 
 ## 4. MSDP Anycast-RP 与 PIM Anycast-RP（Aweya 6.13）
 
-![Anycast-RP 与 MSDP](../diagrams/d10-anycast-rp.svg)
+![Anycast-RP 与 MSDP](../../diagrams/d10-anycast-rp.svg)
 
 **背景**：多个 RP 使用同一 Anycast 地址。若源注册到 RP-A、接收者 Join 到 RP-B，RP-B 需要知道该源。
 

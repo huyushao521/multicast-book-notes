@@ -1,7 +1,7 @@
 # ch11 组播安全、过滤与限速
 
 > **来源**：iPexpert Ch13（P.13-1–13-19，Multicast Security and Advanced Features）、Volume II Ch1（P.100–P.105 边界防护）、Ch5（P.285–P.300 场景安全）、Williamson Ch14–15（L2 收敛）、Aweya Ch5.7（Register 过滤）
-> **配图**：[D16 组播安全边界](../diagrams/d16-security.svg)
+> **配图**：[D16 组播安全边界](../../diagrams/d16-security.svg)
 
 ---
 
@@ -34,7 +34,7 @@
 
 ## 2. 防护手段全景
 
-![组播安全边界](../diagrams/d16-security.svg)
+![组播安全边界](../../diagrams/d16-security.svg)
 
 | 层次 | 手段 | 作用 |
 |---|---|---|

@@ -415,6 +415,20 @@ EXTRA_CSS = u"""
 """
 
 
+def rewrite_links(html):
+    """Markdown 源码以 src/ 为基准写路径，输出时统一剥离一层 '../'。
+
+    - src/chapters/x.md 的 ../../diagrams/y.svg → chapters/x.html 的 ../diagrams/y.svg
+    - src/index.md 的 ../chapters/x.html      → index.html 的 chapters/x.html
+    """
+    def fix(m):
+        attr, val = m.group(1), m.group(2)
+        if val.startswith('../'):
+            val = val[3:]
+        return '%s="%s"' % (attr, val)
+    return re.sub(r'(href|src)="([^"]+)"', fix, html)
+
+
 def render_md(path):
     with open(path, "r", encoding="utf-8") as f:
         text = f.read()
@@ -424,10 +438,10 @@ def render_md(path):
     })
     html = md.convert(text)
     md.reset()
-    return html
+    return rewrite_links(html)
 
 
-def build_nav(active_id=None):
+def build_nav(active_id=None, base=""):
     out = []
     for phase, items in PHASES:
         out.append('    <details class="group part" data-part="%s" open>' % phase.split("·")[0].strip())
@@ -435,8 +449,8 @@ def build_nav(active_id=None):
         out.append("      <ul>")
         for cid, title in items:
             active = " active" if cid == active_id else ""
-            out.append('        <li><a href="chapters/%s.html" data-path="chapters/%s.html"%s>%s</a></li>'
-                       % (cid, cid, active, title))
+            out.append('        <li><a href="%schapters/%s.html" data-path="chapters/%s.html"%s>%s</a></li>'
+                       % (base, cid, cid, active, title))
         out.append("      </ul>")
         out.append("    </details>")
     return "\n".join(out)
@@ -501,7 +515,7 @@ def main():
                 continue
             body = render_md(src)
             html = LAYOUT.format(title=title, site_title=SITE_TITLE, site_sub=SITE_SUB,
-                                 nav=build_nav(cid), content=body, base="../",
+                                 nav=build_nav(cid, "../"), content=body, base="../",
                                  prevnext=prev_next(cid))
             with open(os.path.join(OUT_CHAPTERS, cid + ".html"), "w", encoding="utf-8") as f:
                 f.write(html)
