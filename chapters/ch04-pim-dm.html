@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 4 章 · PIM-DM 与 PIM-SDM · IP 组播学习路线</title>
+<meta name="description" content="IP 组播学习路线：四阶段十二章精读笔记，78 个生产案例，16 张 SVG 拓扑图。">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230969da'/><circle cx='16' cy='16' r='4' fill='white'/><circle cx='16' cy='6' r='2.6' fill='white'/><circle cx='25' cy='21' r='2.6' fill='white'/><circle cx='7' cy='21' r='2.6' fill='white'/><path d='M16 10.6V8.6M18.9 17.6l3.4 2M13.1 17.6l-3.4 2' stroke='white' stroke-width='1.6'/></svg>">
+<link rel="stylesheet" href="../assets/css/site.css">
+<script>
+/* 尽早写入主题，避免刷新时闪白 */
+(function () {
+  var saved = null;
+  try { saved = localStorage.getItem('mc-theme'); } catch (e) {}
+  var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.setAttribute('data-theme', saved || (dark ? 'dark' : 'light'));
+})();
+</script>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<input type="checkbox" id="nav-toggle" hidden>
+<label for="nav-toggle" class="nav-toggle-btn">☰ 目录</label>
+
+<button type="button" class="theme-toggle floating" data-theme-toggle aria-label="切换深色/浅色主题" title="切换深色/浅色主题">
+  <span class="theme-icon" aria-hidden="true">◐</span><span class="theme-text">深色</span>
+</button>
+
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-row">
+      <a href="../index.html">IP 组播学习路线<span>精读笔记 · 四阶段十二章</span></a>
+      <button type="button" class="theme-toggle" data-theme-toggle aria-label="切换深色/浅色主题" title="切换深色/浅色主题">
+        <span class="theme-icon" aria-hidden="true">◐</span><span class="theme-text">深色</span>
+      </button>
+    </div>
+    <div class="search-wrap">
+      <input type="search" id="nav-search" placeholder="搜索章节…" autocomplete="off" aria-label="搜索章节">
+    </div>
+  </div>
+
+  <nav class="nav">
+    <details class="group" id="page-toc-group" open>
+      <summary>本页目录</summary>
+      <ul class="toc" id="toc-list"></ul>
+    </details>
+
+    <details class="group" id="home-group" open>
+      <summary>首页</summary>
+      <ul><li><a href="../index.html" data-path="index.html">学习路线总览</a></li></ul>
+    </details>
+    <details class="group part" data-part="阶段一" open>
+      <summary>阶段一 · 地基</summary>
+      <ul>
+        <li><a href="chapters/ch01-basics.html" data-path="chapters/ch01-basics.html">第 1 章 · 基础模型与地址体系</a></li>
+        <li><a href="chapters/ch02-igmp-l2.html" data-path="chapters/ch02-igmp-l2.html">第 2 章 · IGMP 与二层组播</a></li>
+      </ul>
+    </details>
+    <details class="group part" data-part="阶段二" open>
+      <summary>阶段二 · 协议核心</summary>
+      <ul>
+        <li><a href="chapters/ch03-rpf-pim-basics.html" data-path="chapters/ch03-rpf-pim-basics.html">第 3 章 · RPF 与 PIM 通用机制</a></li>
+        <li><a href="chapters/ch04-pim-dm.html" data-path="chapters/ch04-pim-dm.html" active>第 4 章 · PIM-DM 与 PIM-SDM</a></li>
+        <li><a href="chapters/ch05-pim-sm-rp.html" data-path="chapters/ch05-pim-sm-rp.html">第 5 章 · PIM-SM 与 RP 发现</a></li>
+        <li><a href="chapters/ch06-ssm-bidir.html" data-path="chapters/ch06-ssm-bidir.html">第 6 章 · SSM 与 BIDIR-PIM</a></li>
+      </ul>
+    </details>
+    <details class="group part" data-part="阶段三" open>
+      <summary>阶段三 · 域间与规模化</summary>
+      <ul>
+        <li><a href="chapters/ch07-msdp-mbgp.html" data-path="chapters/ch07-msdp-mbgp.html">第 7 章 · MSDP 与 MBGP 域间组播</a></li>
+        <li><a href="chapters/ch08-mvpn-scale.html" data-path="chapters/ch08-mvpn-scale.html">第 8 章 · MVPN / MLDP / 组播 TE</a></li>
+      </ul>
+    </details>
+    <details class="group part" data-part="阶段四" open>
+      <summary>阶段四 · 场景实战</summary>
+      <ul>
+        <li><a href="chapters/ch09-datacenter-cloud.html" data-path="chapters/ch09-datacenter-cloud.html">第 9 章 · 数据中心与云中的组播</a></li>
+        <li><a href="chapters/ch10-ipv6-multicast.html" data-path="chapters/ch10-ipv6-multicast.html">第 10 章 · IPv6 组播</a></li>
+        <li><a href="chapters/ch11-security.html" data-path="chapters/ch11-security.html">第 11 章 · 组播安全与过滤</a></li>
+        <li><a href="chapters/ch12-troubleshooting.html" data-path="chapters/ch12-troubleshooting.html">第 12 章 · 排障方法论</a></li>
+      </ul>
+    </details>
+  </nav>
+</aside>
+
+<label for="nav-toggle" class="backdrop"></label>
+
+<main class="main">
+  <article class="content">
+<h1 id="ch04-pim-dm-pim-sdm">ch04 PIM-DM 与 PIM-SDM（洪泛剪枝模型）</h1>
+<blockquote>
+<p><strong>来源</strong>：Williamson Ch6（原理）/ Ch10（配置）/ Ch13（DVMRP 互操作，P.352–P.404）、Aweya Ch4（P.205–P.240）、iPexpert Ch3（PIM-DM）、Ch5（PIM-SDM）
+<strong>配图</strong>：<a href="../diagrams/d07-pim-dm.svg">D07 PIM-DM 洪泛与剪枝</a></p>
+</blockquote>
+<hr />
+<h2 id="_1">学习目标</h2>
+<ol>
+<li>解释 PIM-DM 的"先泛洪后剪枝"模型，与 ASM/SM 的差异；</li>
+<li>说清 (S,G) 状态的建立、剪枝、Graft 与 State-Refresh 机制；</li>
+<li>理解 PIM-SDM（稀疏-稠密混合）的自动回落机制与适用场景；</li>
+<li>掌握 PIM-DM 排障命令与典型故障；</li>
+<li>判断一个业务该用 PIM-DM、PIM-SDM 还是 PIM-SM。</li>
+</ol>
+<hr />
+<h2 id="1-pim-dm">1. 为什么还需要 PIM-DM</h2>
+<p>PIM-DM 是<strong>最原始</strong>的组播协议（DVMRP 的简化版），设计前提是"<strong>接收者密集分布在全网</strong>"。</p>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>PIM-DM</th>
+<th>PIM-SM</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>初始行为</td>
+<td><strong>先泛洪</strong>全网，再剪除无用分支</td>
+<td>从 RP 开始<strong>按需</strong>建树</td>
+</tr>
+<tr>
+<td>状态</td>
+<td>只有 <code>(S,G)</code>，无共享树</td>
+<td><code>(*,G)</code> + <code>(S,G)</code></td>
+</tr>
+<tr>
+<td>需要 RP</td>
+<td>否</td>
+<td>是</td>
+</tr>
+<tr>
+<td>源注册</td>
+<td>无</td>
+<td>Register</td>
+</tr>
+<tr>
+<td>收敛速度</td>
+<td>慢（先泛洪后剪）</td>
+<td>快（按需）</td>
+</tr>
+<tr>
+<td>适用</td>
+<td>源稀疏、接收者密集（如企业网内"全网都收"的培训流）</td>
+<td>通用</td>
+</tr>
+</tbody>
+</table>
+<p><strong>当前现网定位</strong>：PIM-DM 基本只出现在以下场景：
+1. <strong>遗留网络</strong>（老设备、老终端、老业务）；
+2. <strong>与 DVMRP 互联</strong>（Williamson Ch13 专门讲这个）；
+3. <strong>PIM-SDM 模式</strong>：在 PIM-SM 域的"稀疏侧"自动回落。</p>
+<blockquote>
+<p>实战建议：新建组播网络一律用 PIM-SM/SSM；PIM-DM 只在"必须兼容"的场景使用，并且要在设计文档中说明理由。</p>
+</blockquote>
+<hr />
+<h2 id="2-pim-dm-aweya-48">2. PIM-DM 核心流程（Aweya 4.8）</h2>
+<h3 id="21">2.1 初始泛洪</h3>
+<ol>
+<li>源发包，DR 收到后检查 RPF 接口，<strong>从所有其他接口泛洪</strong>；</li>
+<li>每台下游路由器收到后，若 RPF 检查通过且<strong>没有该 (S,G) 状态</strong>，则：
+   - 建立 <code>(S,G)</code> 状态；
+   - 若该接口上<strong>无成员</strong>（无 IGMP 成员、无下游 (S,G)）→ 向上游发送 <strong>Prune</strong>；
+   - 若有成员 → 继续泛洪。</li>
+</ol>
+<h3 id="22-prune">2.2 剪枝消息（Prune）</h3>
+<ul>
+<li>Prune 携带 <strong>Prune State Refresh（PSR）位</strong>：<code>1</code> = 希望上游发 State-Refresh（"别再洪泛了"）；<code>0</code> = 希望上游继续泛泛（默认，因上游可能还有其他源）。</li>
+<li><strong>Prune Override</strong>：若某条链路是 <strong>点到点链路</strong>且两端都是 PIM 路由器，上游收到 Prune 后<strong>不会剪除该链路</strong>（因为链路上可能有其他路由器需要这条 flooded 树）→ 这是 PIM-DM 在点到点网络上的"洪泛保留"优化。</li>
+</ul>
+<h3 id="23-graft">2.3 Graft 机制</h3>
+<p>被剪掉的支路上有新接收者出现时，需要<strong>重新接入</strong>：</p>
+<div class="codehilite"><pre><span></span><code>接收侧 → 上游: Join（携带该 (S,G) 的 Graft）
+上游 → 接收侧: Graft-Ack（确认）
+</code></pre></div>
+
+<ul>
+<li>Graft 沿树上行传播直到源侧 DR；</li>
+<li>中间路由器如果因为 State-Refresh 已删除状态，则重新建立；</li>
+<li><strong>Graft 风暴风险</strong>：多个下游同时 Graft → 上游需用 <strong>Graft 抑制/合并机制</strong>。</li>
+</ul>
+<h3 id="24-state-refresh">2.4 State-Refresh 机制</h3>
+<p><strong>问题</strong>：PIM-DM 的洪泛是"周期性重来"还是"记忆型"？答案是记忆型——状态保存在路由器上。但如果上游重启或状态丢失，需要重新洪泛。</p>
+<p><strong>State-Refresh 报文</strong>：</p>
+<ul>
+<li>周期性地沿树向下发，带 <code>(S,G)</code> 与<strong>跳数度量</strong>；</li>
+<li>下游收到后：刷新状态老化时间、确认路径正确；</li>
+<li>若收到的度量与本地不符 → 说明路径变化 → <strong>删除旧状态并重新洪泛</strong>。</li>
+</ul>
+<p>关键参数：</p>
+<div class="codehilite"><pre><span></span><code>ip pim state-refresh interval 60      ! 发送周期（秒）
+ip pim state-refresh ttl 255           ! State-Refresh 的 TTL
+</code></pre></div>
+
+<h3 id="25-assert-in-pim-dm">2.5 Assert in PIM-DM</h3>
+<p>与 PIM-SM 的 Assert 类似，但比较维度是 <strong>(S,G) 的跳数度量</strong>（Aweya 4.9）：多路访问网段上离源最近的路由器成为 Assert Winner，避免重复转发。</p>
+<hr />
+<h2 id="3-pim-sdm-williamson-ch510ipexpert-ch5">3. PIM-SDM（稀疏-稠密混合，Williamson Ch5/10、iPexpert Ch5）</h2>
+<p><strong>动机</strong>：真实网络常常"大部分区域稀疏（只有少数接收者），少部分区域稠密（大量接收者）"。</p>
+<p><strong>PIM-SDM 的机制</strong>：</p>
+<ol>
+<li>默认按 <strong>PIM-SM</strong> 运作（有 RP，走共享树）；</li>
+<li>当 RP 上收到某源的 <strong>Register</strong> 但该源没有对应的 <code>(S,G)</code> 共享树状态时（说明该源所在区域是"稠密"的），该区域<strong>自动切换到 PIM-DM 行为</strong>：源侧直接向全网泛洪；</li>
+<li>稠密区与稀疏区之间通过 <strong>PIM-DM/PIM-SM 边界</strong>协调（Williamson Ch10 有专门的边界配置）。</li>
+</ol>
+<div class="codehilite"><pre><span></span><code>! 稀疏-稠密边界路由器上的配置
+ip pim sparse-dense-mode
+interface Gi0/1
+ ip pim sparse-dense-mode
+</code></pre></div>
+
+<p><strong>代价</strong>：</p>
+<ul>
+<li>边界路由器上需要 <strong>MSDP</strong> 来交换跨域的源信息；</li>
+<li>复杂度显著上升，状态量增加。</li>
+</ul>
+<blockquote>
+<p>现实中 <strong>PIM-SDM 已很少使用</strong>，主流是纯 PIM-SM / SSM。阅读本书主要是理解其"边界"与"回落"思想。</p>
+</blockquote>
+<hr />
+<h2 id="4-dvmrp-williamson-ch13">4. 与 DVMRP 的互操作（Williamson Ch13）</h2>
+<p>DVMRP（Distance Vector Multicast Routing Protocol）是老牌组播协议，历史上用于 MBone。</p>
+<p><strong>关键概念</strong>：</p>
+<ul>
+<li><strong>DVMRP Distance</strong>：到源的跳数度量，用于 Assert 与剪枝决策；</li>
+<li><strong>Distance Offset（偏移）</strong>：允许在边界对度量做偏移，避免 DVMRP 域与 PIM 域之间出现度量冲突；</li>
+<li><strong>PIM-DVMRP 边界</strong>：DVMRP 域与 PIM 域互联时用隧道（GRE）或物理接口，边界路由器做 <strong>unicast-multicast congruence（单播-组播一致）</strong> 检查——DVMRP 依赖单播路由，边界处必须保证两边单播路径一致，否则 RPF 判定不一致导致环路。</li>
+</ul>
+<blockquote>
+<p>现实价值：几乎为零。除非你要维护一套 20 年前的 MBone 遗留网络。这一章读懂"为什么组播强依赖单播一致性"即可。</p>
+</blockquote>
+<hr />
+<h2 id="5">5. 排障命令</h2>
+<div class="codehilite"><pre><span></span><code>! PIM-DM 专用
+show ip pim interface                       ! 模式：sparse / dense / sparse-dense
+show ip mroute dense                        ! 仅看稠密模式表项
+show ip mroute 239.1.1.1 detail             ! 查看 Prune / Assert / Graft 状态
+show ip pim neighbor                        ! 邻居与 DR
+debug ip pim dense-mode                     ! 密度模式调试
+debug pim message dense-mode                ! 报文级调试
+debug ip mpacket                           ! 数据包级（含 RPF 判定）
+
+! 状态刷新
+show ip pim state-refresh                  ! PSR 状态
+</code></pre></div>
+
+<hr />
+<h2 id="6-6">6. 生产案例（6 例）</h2>
+<h3 id="4-1pim-dm">案例 4-1：PIM-DM 网络中组播风暴（带宽打满）</h3>
+<p><strong>现象</strong>：某分支链路带宽 100% 打满，但只有 3 个接收端。
+<strong>定位</strong>：<code>show ip mroute 239.1.1.1 detail</code> 显示大量接口在 Outgoing list；<code>debug ip pim dense-mode</code> 看到持续泛洪。
+<strong>根因</strong>：PIM-DM 在<strong>多路访问网段</strong>（同交换机下多台路由器）泛洪时，需要 Assert 消重；若 Assert 被 ACL 过滤或接口配置为 <code>ip pim dense-mode</code> 但未启用 Assert 抑制，导致重复泛洪。
+<strong>处置</strong>：放行 224.0.0.13；确认 <code>ip pim assert</code> 生效；检查网段是否需要改为 PIM-SM。
+<strong>复盘</strong>：新建网络不用 PIM-DM；存量 PIM-DM 改造为 PIM-SM 是根本解法。</p>
+<h3 id="4-2prune-graft">案例 4-2：Prune 后无法恢复（Graft 失败）</h3>
+<p><strong>现象</strong>：接收端新加入组后一直收不到流；重启接收侧路由器后恢复。
+<strong>定位</strong>：<code>debug pim message</code> 看到 Graft 发出但无 Graft-Ack 返回；上游状态中 (S,G) 不存在。
+<strong>根因</strong>：上游因 State-Refresh 已删除状态，Graft 无人应答，树上无路径。
+<strong>处置</strong>：手工触发一次洪泛（重启源侧 DR 或 <code>clear ip mroute *</code>）；长期方案是改用 PIM-SM。
+<strong>复盘</strong>：PIM-DM 的恢复机制脆弱，生产上出现过一次即应立项改造。</p>
+<h3 id="4-3prune-override">案例 4-3：Prune Override 导致支路无法剪除</h3>
+<p><strong>现象</strong>：某点到点链路上的组播流量一直不下线，即使对端无人接收。
+<strong>定位</strong>：链路上游收到 Prune 但未剪除；确认链路为点到点。
+<strong>根因</strong>：Prune Override 机制：点到点链路上游不剪除（怕影响链路上其他路由器）。
+<strong>处置</strong>：接受该行为；或改为 PIM-SM（共享树按需剪除，无此问题）。
+<strong>复盘</strong>：PIM-DM 的剪枝语义天然"粗"，业务上要接受一定冗余。</p>
+<h3 id="4-4pim-sdm">案例 4-4：PIM-SDM 域边界处组播单向可达</h3>
+<p><strong>现象</strong>：稀疏区与稠密区之间，稠密区→稀疏区正常，稀疏区→稠密区不通。
+<strong>定位</strong>：边界路由器 <code>show ip mroute</code> 两侧状态不一致；<code>show ip msdp peer</code> 显示 MSDP peer 缺失。
+<strong>根因</strong>：PIM-SDM 边界需要 MSDP 交换源信息，MSDP peer 未建立。
+<strong>处置</strong>：配置 MSDP peer 并保证 peer-RPF 通过。
+<strong>复盘</strong>：PIM-SDM 边界 = "PIM-DM 域 + PIM-SM 域 + MSDP"，缺一不可。</p>
+<h3 id="4-5state-refresh">案例 4-5：State-Refresh 路径不一致导致状态反复重建</h3>
+<p><strong>现象</strong>：组播流量周期性闪断，每隔几分钟重连一次。
+<strong>定位</strong>：<code>debug ip pim state-refresh</code> 显示收到的度量与本地记录不符；随后状态被删除并重新泛洪。
+<strong>根因</strong>：链路冗余切换后 State-Refresh 仍沿旧路径到达，度量不匹配。
+<strong>处置</strong>：确认链路切换后的收敛时间；升级软件版本（PIM State-Refresh 处理有增强）。
+<strong>复盘</strong>：组播对链路抖动的敏感度高于单播，冗余链路切换要专门做组播收敛测试。</p>
+<h3 id="4-6dvmrp-pim">案例 4-6：DVMRP 遗留域与 PIM 域互联后出现环路</h3>
+<p><strong>现象</strong>：组播包在两域之间来回转发，TTL 异常递减。
+<strong>定位</strong>：边界路由器 <code>debug ip mpacket</code> 显示包在 DVMRP 与 PIM 之间循环。
+<strong>根因</strong>：<strong>单播-组播一致性（unicast-multicast congruence）</strong> 被破坏——两域的单播路径不对称，而 DVMRP 与 PIM 都依赖单播做 RPF。
+<strong>处置</strong>：修正单播路由使两域对称；或改用隧道 + 静态 mroute 明确路径。
+<strong>复盘</strong>：这是"组播强依赖单播"最极端的例子，遗留互联必须做对称性设计。</p>
+<hr />
+<h2 id="7">7. 自测清单</h2>
+<ol>
+<li>PIM-DM 的"先泛洪后剪枝"与 PIM-SM 的"按需建树"在收敛时间与状态量上的差别？</li>
+<li>Prune 报文中的 PSR 位作用是什么？</li>
+<li>Prune Override 在什么链路类型下生效？为什么？</li>
+<li>Graft/Graft-Ack 机制解决什么问题？它的风险是什么？</li>
+<li>State-Refresh 报文里的度量不匹配会导致什么动作？</li>
+<li>PIM-SDM 自动切换到 DM 的触发条件是什么？</li>
+<li>单播-组播一致性的含义是什么？破坏它会导致什么后果？</li>
+</ol>
+<h2 id="8">8. 延伸阅读</h2>
+<ul>
+<li>Aweya Ch4（P.205–P.240）：PIM-DM 协议状态、Prune/Join/Graft、Assert、State-Refresh</li>
+<li>Williamson Ch6（P.128–P.177）、Ch10（P.214–P.239）、Ch13（P.352–P.404）</li>
+<li>iPexpert Ch3（P.3-1–3-49）、Ch5（P.5-1–5-40）</li>
+</ul>
+  </article>
+  <footer class="page-foot">
+<a class="prev" href="ch03-rpf-pim-basics.html"><span class="dir">← 上一章</span><span class="ttl">第 3 章 · RPF 与 PIM 通用机制</span></a><a class="next" href="ch05-pim-sm-rp.html"><span class="dir">下一章 →</span><span class="ttl">第 5 章 · PIM-SM 与 RP 发现</span></a>
+    <p class="foot-note">内容基于公开出版物整理，仅用于技术学习；命令示例请以设备实际版本手册为准。</p>
+  </footer>
+</main>
+
+<button type="button" class="to-top" id="to-top" aria-label="回到顶部" title="回到顶部">↑</button>
+
+<script>
+(function () {
+  var content = document.querySelector('.content');
+  var here = location.pathname;
+
+  /* ---------- 当前章节高亮 + 展开所属分组 ---------- */
+  var active = null;
+  document.querySelectorAll('.nav a[data-path]').forEach(function (a) {
+    if (here.indexOf('/' + a.dataset.path) !== -1 || here.indexOf(a.dataset.path) !== -1) {
+      a.classList.add('active');
+      active = a;
+    }
+  });
+  if (active) {
+    var g = active.closest('details');
+    if (g) g.open = true;
+  }
+
+  /* ---------- 生成本页目录（取 h2 / h3） ---------- */
+  var heads = content ? content.querySelectorAll('h2, h3') : [];
+  var tocList = document.getElementById('toc-list');
+  heads.forEach(function (h, i) {
+    h.id = 'sec-' + (i + 1);
+    var li = document.createElement('li');
+    li.className = h.tagName === 'H3' ? 'lvl3' : 'lvl2';
+    var a = document.createElement('a');
+    a.href = '#' + h.id;
+    a.textContent = h.textContent.trim();
+    li.appendChild(a);
+    tocList.appendChild(li);
+  });
+  if (!heads.length) {
+    var g = document.getElementById('page-toc-group');
+    if (g) g.remove();
+  }
+
+  /* ---------- 目录滚动高亮 ---------- */
+  if (heads.length) {
+    var links = tocList.querySelectorAll('a');
+    var onScroll = function () {
+      var idx = 0;
+      heads.forEach(function (h, i) {
+        if (h.getBoundingClientRect().top <= 100) idx = i;
+      });
+      links.forEach(function (a, i) { a.classList.toggle('active', i === idx); });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+
+  /* ---------- 阅读进度条 ---------- */
+  var bar = document.getElementById('progress');
+  function paintProgress() {
+    if (!bar) return;
+    var h = document.documentElement.scrollHeight - window.innerHeight;
+    var p = h > 0 ? (window.scrollY / h) * 100 : 0;
+    bar.style.width = Math.min(100, Math.max(0, p)) + '%';
+  }
+  window.addEventListener('scroll', paintProgress, { passive: true });
+  paintProgress();
+
+  /* ---------- 回到顶部 ---------- */
+  var top = document.getElementById('to-top');
+  if (top) {
+    top.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    window.addEventListener('scroll', function () {
+      top.style.opacity = window.scrollY > 400 ? '1' : '0';
+    }, { passive: true });
+  }
+
+  /* ---------- 侧栏搜索过滤 ---------- */
+  var search = document.getElementById('nav-search');
+  if (search) {
+    search.addEventListener('input', function () {
+      var q = search.value.trim().toLowerCase();
+      document.querySelectorAll('.nav .group.part').forEach(function (grp) {
+        var hit = 0;
+        grp.querySelectorAll('li').forEach(function (li) {
+          var t = (li.textContent || '').toLowerCase();
+          var ok = !q || t.indexOf(q) !== -1;
+          li.style.display = ok ? '' : 'none';
+          if (ok) hit++;
+        });
+        grp.style.display = hit ? '' : 'none';
+        if (q && hit) grp.open = true;
+      });
+    });
+  }
+
+  /* ---------- 代码块复制按钮 ---------- */
+  document.querySelectorAll('.content pre').forEach(function (pre) {
+    var btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.type = 'button';
+    btn.textContent = '复制';
+    btn.addEventListener('click', function () {
+      var code = pre.querySelector('code');
+      var text = code ? code.innerText : pre.innerText;
+      navigator.clipboard.writeText(text).then(function () {
+        btn.textContent = '已复制';
+        setTimeout(function () { btn.textContent = '复制'; }, 1500);
+      }).catch(function () { btn.textContent = '复制失败'; });
+    });
+    pre.appendChild(btn);
+  });
+
+  /* ---------- 移动端点目录后自动收起 ---------- */
+  document.querySelectorAll('.nav a[data-path]').forEach(function (a) {
+    a.addEventListener('click', function () {
+      document.getElementById('nav-toggle').checked = false;
+    });
+  });
+
+  /* ---------- 主题切换 ---------- */
+  var root = document.documentElement;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+
+  function paintButtons(theme) {
+    var dark = theme === 'dark';
+    document.querySelectorAll('[data-theme-toggle]').forEach(function (btn) {
+      btn.querySelector('.theme-icon').textContent = dark ? '☀' : '☾';
+      btn.querySelector('.theme-text').textContent = dark ? '浅色' : '深色';
+      btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+      btn.title = dark ? '切换到浅色主题' : '切换到深色主题';
+    });
+  }
+
+  function applyTheme(theme) {
+    root.setAttribute('data-theme', theme);
+    paintButtons(theme);
+  }
+
+  paintButtons(root.getAttribute('data-theme') || 'light');
+
+  document.querySelectorAll('[data-theme-toggle]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+      try { localStorage.setItem('mc-theme', next); } catch (e) {}
+    });
+  });
+
+  if (mq) {
+    var onScheme = function (e) {
+      var saved = null;
+      try { saved = localStorage.getItem('mc-theme'); } catch (err) {}
+      if (!saved) applyTheme(e.matches ? 'dark' : 'light');
+    };
+    if (mq.addEventListener) mq.addEventListener('change', onScheme);
+    else if (mq.addListener) mq.addListener(onScheme);
+  }
+})();
+</script>
+</body>
+</html>

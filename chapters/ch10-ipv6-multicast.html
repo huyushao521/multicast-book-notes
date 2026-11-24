@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 10 章 · IPv6 组播 · IP 组播学习路线</title>
+<meta name="description" content="IP 组播学习路线：四阶段十二章精读笔记，78 个生产案例，16 张 SVG 拓扑图。">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230969da'/><circle cx='16' cy='16' r='4' fill='white'/><circle cx='16' cy='6' r='2.6' fill='white'/><circle cx='25' cy='21' r='2.6' fill='white'/><circle cx='7' cy='21' r='2.6' fill='white'/><path d='M16 10.6V8.6M18.9 17.6l3.4 2M13.1 17.6l-3.4 2' stroke='white' stroke-width='1.6'/></svg>">
+<link rel="stylesheet" href="../assets/css/site.css">
+<script>
+/* 尽早写入主题，避免刷新时闪白 */
+(function () {
+  var saved = null;
+  try { saved = localStorage.getItem('mc-theme'); } catch (e) {}
+  var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.setAttribute('data-theme', saved || (dark ? 'dark' : 'light'));
+})();
+</script>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<input type="checkbox" id="nav-toggle" hidden>
+<label for="nav-toggle" class="nav-toggle-btn">☰ 目录</label>
+
+<button type="button" class="theme-toggle floating" data-theme-toggle aria-label="切换深色/浅色主题" title="切换深色/浅色主题">
+  <span class="theme-icon" aria-hidden="true">◐</span><span class="theme-text">深色</span>
+</button>
+
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-row">
+      <a href="../index.html">IP 组播学习路线<span>精读笔记 · 四阶段十二章</span></a>
+      <button type="button" class="theme-toggle" data-theme-toggle aria-label="切换深色/浅色主题" title="切换深色/浅色主题">
+        <span class="theme-icon" aria-hidden="true">◐</span><span class="theme-text">深色</span>
+      </button>
+    </div>
+    <div class="search-wrap">
+      <input type="search" id="nav-search" placeholder="搜索章节…" autocomplete="off" aria-label="搜索章节">
+    </div>
+  </div>
+
+  <nav class="nav">
+    <details class="group" id="page-toc-group" open>
+      <summary>本页目录</summary>
+      <ul class="toc" id="toc-list"></ul>
+    </details>
+
+    <details class="group" id="home-group" open>
+      <summary>首页</summary>
+      <ul><li><a href="../index.html" data-path="index.html">学习路线总览</a></li></ul>
+    </details>
+    <details class="group part" data-part="阶段一" open>
+      <summary>阶段一 · 地基</summary>
+      <ul>
+        <li><a href="chapters/ch01-basics.html" data-path="chapters/ch01-basics.html">第 1 章 · 基础模型与地址体系</a></li>
+        <li><a href="chapters/ch02-igmp-l2.html" data-path="chapters/ch02-igmp-l2.html">第 2 章 · IGMP 与二层组播</a></li>
+      </ul>
+    </details>
+    <details class="group part" data-part="阶段二" open>
+      <summary>阶段二 · 协议核心</summary>
+      <ul>
+        <li><a href="chapters/ch03-rpf-pim-basics.html" data-path="chapters/ch03-rpf-pim-basics.html">第 3 章 · RPF 与 PIM 通用机制</a></li>
+        <li><a href="chapters/ch04-pim-dm.html" data-path="chapters/ch04-pim-dm.html">第 4 章 · PIM-DM 与 PIM-SDM</a></li>
+        <li><a href="chapters/ch05-pim-sm-rp.html" data-path="chapters/ch05-pim-sm-rp.html">第 5 章 · PIM-SM 与 RP 发现</a></li>
+        <li><a href="chapters/ch06-ssm-bidir.html" data-path="chapters/ch06-ssm-bidir.html">第 6 章 · SSM 与 BIDIR-PIM</a></li>
+      </ul>
+    </details>
+    <details class="group part" data-part="阶段三" open>
+      <summary>阶段三 · 域间与规模化</summary>
+      <ul>
+        <li><a href="chapters/ch07-msdp-mbgp.html" data-path="chapters/ch07-msdp-mbgp.html">第 7 章 · MSDP 与 MBGP 域间组播</a></li>
+        <li><a href="chapters/ch08-mvpn-scale.html" data-path="chapters/ch08-mvpn-scale.html">第 8 章 · MVPN / MLDP / 组播 TE</a></li>
+      </ul>
+    </details>
+    <details class="group part" data-part="阶段四" open>
+      <summary>阶段四 · 场景实战</summary>
+      <ul>
+        <li><a href="chapters/ch09-datacenter-cloud.html" data-path="chapters/ch09-datacenter-cloud.html">第 9 章 · 数据中心与云中的组播</a></li>
+        <li><a href="chapters/ch10-ipv6-multicast.html" data-path="chapters/ch10-ipv6-multicast.html" active>第 10 章 · IPv6 组播</a></li>
+        <li><a href="chapters/ch11-security.html" data-path="chapters/ch11-security.html">第 11 章 · 组播安全与过滤</a></li>
+        <li><a href="chapters/ch12-troubleshooting.html" data-path="chapters/ch12-troubleshooting.html">第 12 章 · 排障方法论</a></li>
+      </ul>
+    </details>
+  </nav>
+</aside>
+
+<label for="nav-toggle" class="backdrop"></label>
+
+<main class="main">
+  <article class="content">
+<h1 id="ch10-ipv6-mld-embedded-rp-ipv6-mvpn">ch10 IPv6 组播（MLD / Embedded-RP / IPv6 MVPN）</h1>
+<blockquote>
+<p><strong>来源</strong>：iPexpert Ch14（P.14-1–14-9）、Aweya Ch1.4.5（IPv6 地址与 MAC 映射）、Volume II Ch3（IPv6 MVPN, P.220–P.219）
+<strong>配图</strong>：<a href="../diagrams/d15-ipv6.svg">D15 IPv6 组播模型</a></p>
+</blockquote>
+<hr />
+<h2 id="_1">学习目标</h2>
+<ol>
+<li>说出 IPv6 组播地址结构与作用域（scope）体系；</li>
+<li>解释 MLDv1/v2 与 IGMPv1/v3 的对应关系及 MLD Snooping；</li>
+<li>说清 Embedded-RP 的编码原理与它为什么"不需要 MSDP"；</li>
+<li>掌握 IPv6 下的 PIM 差异与 IPv6 MVPN 的部署要点；</li>
+<li>排查 IPv6 组播典型故障。</li>
+</ol>
+<hr />
+<h2 id="1-ipv6">1. IPv6 组播地址</h2>
+<div class="codehilite"><pre><span></span><code>|   8    |  4    |  4    |               112 bits               |
++--------+-------+-------+-------------------------------------+
+| 111111 | flags | scope |            Group ID                 |
++--------+-------+-------+-------------------------------------+
+</code></pre></div>
+
+<ul>
+<li>前缀固定 <code>FF00::/8</code>；</li>
+<li><strong>flags</strong>：T（临时地址）、P（基于前缀）、R（预留）；</li>
+<li><strong>scope</strong>：</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>scope</th>
+<th>含义</th>
+<th>跨路由器</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>本节点</td>
+<td>否</td>
+</tr>
+<tr>
+<td>1</td>
+<td>链路本地</td>
+<td>否</td>
+</tr>
+<tr>
+<td>2</td>
+<td>链路本地</td>
+<td>否</td>
+</tr>
+<tr>
+<td>3</td>
+<td>区域域（Realm-local）</td>
+<td>有限</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>管理域（Admin-local）</strong></td>
+<td>有限（对应 IPv4 的 Admin Scope）</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>站点本地（Site-local）</strong></td>
+<td>跨域但限于站点</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>组织本地（Organization-local）</strong></td>
+<td>跨域</td>
+</tr>
+<tr>
+<td>14</td>
+<td>全局</td>
+<td>是</td>
+</tr>
+</tbody>
+</table>
+<p><strong>关键差异（与你的笔记一致）</strong>：IPv6 用 <strong>scope（作用域标识）</strong> 划分组播域，<strong>不再需要 IPv4 那样的边界路由器（BGR）+ Admin Scope 机制</strong>。</p>
+<p><strong>MAC 映射</strong>：前缀固定 <code>33:33</code>，取低 32 位 → <strong>同样存在 32 路冲突</strong>（Aweya 1.4.5）。</p>
+<hr />
+<h2 id="2-mldmulticast-listener-discovery">2. MLD（Multicast Listener Discovery）</h2>
+<table>
+<thead>
+<tr>
+<th>版本</th>
+<th>对应 IPv4</th>
+<th>报文</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>MLDv1</strong></td>
+<td>IGMPv2</td>
+<td>Listener Query（130）、Listener Report（131）、Listener Done（132）</td>
+</tr>
+<tr>
+<td><strong>MLDv2</strong></td>
+<td>IGMPv3</td>
+<td>支持 (G,S) 订阅、源过滤、Record Type</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>MLD 是 <strong>ICMPv6 的一个子协议</strong>（类型 130–132）；</li>
+<li><strong>MLD Snooping</strong>：二层交换机监听 MLD 报文收敛组播，等价于 IGMP Snooping；</li>
+<li>路由器上 MLD 与 PIM 配合：<strong>MLD 负责成员发现，PIM 负责转发</strong>。</li>
+</ul>
+<blockquote>
+<p><strong>关键对应关系（记忆点）</strong>：MLDv1 ↔ IGMPv2（都有 Leave/Done）；MLDv2 ↔ IGMPv3（都有 (G,S) 与源过滤）。</p>
+</blockquote>
+<hr />
+<h2 id="3-embedded-rprfc-4607">3. Embedded-RP（RFC 4607）</h2>
+<p><img alt="IPv6 组播模型" src="../diagrams/d15-ipv6.svg" /></p>
+<h3 id="31">3.1 问题</h3>
+<p>IPv4 的 ASM 跨域需要 <strong>MSDP</strong>（交换 SA）来让远端的 RP 知道源的地址。IPv6 不想这么复杂。</p>
+<h3 id="32-rp">3.2 解法：把 RP 地址"编码"进组地址</h3>
+<ul>
+<li>约定一组 IPv6 组播地址（如 <code>FF7x:...::/96</code>）专门用于 Embedded-RP；</li>
+<li><strong>组地址的低 32 bit</strong> 编码为 <code>FF02::FFxx:xxxx</code>，其中 <code>xx:xxxx</code> 就是 <strong>RP 地址的低 32 位</strong>（RPA）；</li>
+<li>接收端收到组播包时，直接从组地址推导出 RP 地址，<strong>不需要任何信令</strong>。</li>
+</ul>
+<p><strong>前提</strong>：接收端能通过<strong>单播路由</strong>解析该 RPA 地址（因此 RP 必须是全局可达或至少在单播域内可达）。</p>
+<h3 id="33">3.3 收益</h3>
+<table>
+<thead>
+<tr>
+<th>收益</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>不需要 MSDP</strong></td>
+<td>IPv6 域间组播不用部署 MSDP + MBGP 组合</td>
+</tr>
+<tr>
+<td><strong>不需要 BSR</strong></td>
+<td>无需 RP 发现机制</td>
+</tr>
+<tr>
+<td><strong>单一全球 RP 即可</strong></td>
+<td>与你的笔记一致："single RP within globally shared MC domains (eliminates need for MSDP)"</td>
+</tr>
+</tbody>
+</table>
+<h3 id="34-ssm">3.4 SSM 段</h3>
+<ul>
+<li>IPv6 的 <strong>FF3x::/32</strong> 为 SSM 段，天然无需 RP；</li>
+<li>配合 <strong>MLDv2</strong> 使用。</li>
+</ul>
+<hr />
+<h2 id="4-ipv6-pim">4. IPv6 下的 PIM</h2>
+<ul>
+<li><strong>PIMv2 for IPv6</strong>（RFC 7761）：协议框架与 IPv4 相同，地址族不同；</li>
+<li><strong>地址类型变化</strong>：PIM 报文中的 Group/Source 地址从 32 位变为 128 位；</li>
+<li><strong>Bootstrap Router</strong>：IPv6 也用 BSR 分发 Group→RP 映射（组播路由组 <code>FF02::2:66</code>）；</li>
+<li><strong>IPv6 Embedded RP</strong> 与 BSR 可共存。</li>
+</ul>
+<hr />
+<h2 id="5-ipv6-mvpnvolume-ii-ch3">5. IPv6 MVPN（Volume II Ch3）</h2>
+<ul>
+<li>MVPN 的 IPv6 版本（RFC 6513 扩展 / Draft）支持 IPv6 组播；</li>
+<li>关键点：</li>
+<li>PE 间用 <strong>MLDP</strong> 建 Default MDT / Data MDT；</li>
+<li>VPNv6 地址族与 IPv4 MVPN 并列配置；</li>
+<li>IPv6 组播同样受"同 VNI/同 VRF 边界"约束；</li>
+<li>大规模 IPv6 域间组播通常用 <strong>SSM（FF3x::/32）</strong> 以规避 MSDP 复杂度。</li>
+</ul>
+<hr />
+<h2 id="6">6. 排障命令</h2>
+<div class="codehilite"><pre><span></span><code>show ipv6 mroute
+show ipv6 mroute &lt;group&gt; detail
+show ipv6 mld groups
+show ipv6 mld groups &lt;group&gt;
+show ipv6 mld interface
+show ipv6 mld neighbor
+show ipv6 igmp? (不存在，IPv6 用 mld)
+show ipv6 pim neighbor
+show ipv6 pim interface
+show ipv6 pim rp mapping
+show ip igmp snooping groups vlan 10   ! 若设备支持 IPv6 MLD snooping 用 show ipv6 mld snooping
+show ipv6 mroute vrf &lt;vrf&gt;
+debug ipv6 mld
+debug ipv6 pim
+</code></pre></div>
+
+<hr />
+<h2 id="7-6">7. 生产案例（6 例）</h2>
+<h3 id="10-1ipv6-mld-report">案例 10-1：IPv6 组播源收不到 MLD Report</h3>
+<p><strong>现象</strong>：IPv6 组播不通，源发流正常；<code>show ipv6 mld groups</code> 为空。
+<strong>定位</strong>：<code>show ipv6 mld interface</code> 显示接口未启用 MLD；<code>debug ipv6 mld</code> 无报文。
+<strong>根因</strong>：接口未配置 <code>ipv6 pim sparse-mode</code>（PIM 启用后才启用 MLD 监听）。
+<strong>处置</strong>：接口配置 <code>ipv6 pim sparse-mode</code>；确认主机已加入 IPv6 组（<code>ip maddr</code>）。
+<strong>复盘</strong>：IPv6 的成员管理与 PIM 绑定，不像 IPv4 有独立开关，容易漏配。</p>
+<h3 id="10-2embedded-rp">案例 10-2：Embedded-RP 组不通</h3>
+<p><strong>现象</strong>：使用 <code>FF7E::...</code> 组播地址，接收端加入后无流量；<code>show ipv6 pim rp mapping</code> 为空。
+<strong>定位</strong>：确认组地址属于 Embedded-RP 段；检查接收端能否<strong>单播</strong> ping 通推导出的 RPA。
+<strong>根因</strong>：接收端<strong>单播不可达</strong> RPA（推导出的 RP 地址无法解析），或组地址不在 Embedded-RP 规划段内。
+<strong>处置</strong>：保证 RPA 的单播可达性（IGP 通告）；确认地址段规划正确。
+<strong>复盘</strong>：Embedded-RP 的隐含前提是"单播可达"，做方案时必须把单播可达性当作显式检查项。</p>
+<h3 id="10-3ipv6-as-msdp">案例 10-3：IPv6 组播跨 AS 不通（仍想用 MSDP）</h3>
+<p><strong>现象</strong>：IPv6 跨 AS 组播不通，团队按 IPv4 经验部署 MSDP。
+<strong>定位</strong>：IPv6 场景下 MSDP 不适用；<code>show ipv6 pim rp mapping</code> 无学习结果。
+<strong>根因</strong>：IPv6 用 Embedded-RP / SSM 替代 MSDP，部署 MSDP 是"用 IPv4 的思路解决 IPv6 的问题"。
+<strong>处置</strong>：改用 Embedded-RP 或 SSM（FF3x::/32）；删除多余的 MSDP 配置。
+<strong>复盘</strong>：IPv6 组播的核心简化是"去 MSDP、去 BGR"，设计时优先用 SSM。</p>
+<h3 id="10-4mld-snooping">案例 10-4：MLD Snooping 未启用导致二层泛洪</h3>
+<p><strong>现象</strong>：IPv6 组播在接入层泛洪到所有端口，带宽浪费；<code>show ipv6 mld snooping groups</code> 无内容。
+<strong>定位</strong>：交换机上 MLD Snooping 全局关闭。
+<strong>根因</strong>：交换机默认对 IPv6 组播做泛洪处理。
+<strong>处置</strong>：全局 + per-VLAN 启用 MLD Snooping，并配置 querier。
+<strong>复盘</strong>：新建网络同时规划 IGMP Snooping 与 MLD Snooping，二者机制对称。</p>
+<h3 id="10-5ipv6-scope">案例 10-5：IPv6 组播 scope 越界</h3>
+<p><strong>现象</strong>：站点本地 scope（FF05::）的组播流跑到了组织本地甚至全局。
+<strong>定位</strong>：检查路由/接口上的 scope 过滤配置；<code>show ipv6 mroute</code> 中 scope 异常。
+<strong>根因</strong>：scope 依赖网络规划与设备策略，IPv6 不像 IPv4 有强制的 Admin Scope 边界，必须靠配置约束。
+<strong>处置</strong>：在边界使用 ACL/PBR 限制组地址前缀范围。
+<strong>复盘</strong>：IPv6 的 scope 是"约定 + 策略"，不是"协议强制"，需要在设计中明确每个 scope 的边界执行点。</p>
+<h3 id="10-6ipv6-mvpn-vrf">案例 10-6：IPv6 MVPN 中组播跨 VRF 不通</h3>
+<p><strong>现象</strong>：VPNv6 站点间组播不通；<code>show ipv6 mroute vrf</code> 无条目。
+<strong>定位</strong>：检查 BGP <code>address-family ipv6 mvpn</code> 是否配置并对等体激活；核心接口 <code>mldp</code> 是否启用。
+<strong>根因</strong>：MVPN 的 IPv6 地址族未激活，或 MLDP 未建立 FEC。
+<strong>处置</strong>：补齐 IPv6 MVPN 地址族与 MLDP；确认 Default MDT 建立。
+<strong>复盘</strong>：IPv6 MVPN 与 IPv4 MVPN 是两套并行配置，容易只做一半。</p>
+<hr />
+<h2 id="8">8. 自测清单</h2>
+<ol>
+<li>IPv6 组播地址的 flags 与 scope 各占几位？scope=2/5/8 分别是什么域？</li>
+<li>MLDv1/MLDv2 分别对应 IPv4 的哪个版本？依据是什么？</li>
+<li>IPv6 用什么机制替代了 IPv4 的 Admin Scope 边界？</li>
+<li>Embedded-RP 如何把 RP 地址编码进组地址？对接收端的前置要求是什么？</li>
+<li>为什么 IPv6 跨域组播不需要 MSDP？</li>
+<li>IPv6 的 SSM 段是哪个？配合什么版本的主机协议？</li>
+<li>IPv6 MVPN 需要同时配置哪三样东西？</li>
+</ol>
+<h2 id="9">9. 延伸阅读</h2>
+<ul>
+<li>iPexpert Ch14（P.14-1–14-9）</li>
+<li>Aweya Ch1.4.5（P.53–P.54）</li>
+<li>Volume II Ch3（P.220–P.219）：IPv6 MVPN</li>
+<li>延伸：<code>RFC 3810</code>（MLD）、<code>RFC 4607</code>（Embedded-RP）、<code>RFC 7761</code>（PIMv2 IPv6）、<code>RFC 6513</code>（MVPN）</li>
+</ul>
+  </article>
+  <footer class="page-foot">
+<a class="prev" href="ch09-datacenter-cloud.html"><span class="dir">← 上一章</span><span class="ttl">第 9 章 · 数据中心与云中的组播</span></a><a class="next" href="ch11-security.html"><span class="dir">下一章 →</span><span class="ttl">第 11 章 · 组播安全与过滤</span></a>
+    <p class="foot-note">内容基于公开出版物整理，仅用于技术学习；命令示例请以设备实际版本手册为准。</p>
+  </footer>
+</main>
+
+<button type="button" class="to-top" id="to-top" aria-label="回到顶部" title="回到顶部">↑</button>
+
+<script>
+(function () {
+  var content = document.querySelector('.content');
+  var here = location.pathname;
+
+  /* ---------- 当前章节高亮 + 展开所属分组 ---------- */
+  var active = null;
+  document.querySelectorAll('.nav a[data-path]').forEach(function (a) {
+    if (here.indexOf('/' + a.dataset.path) !== -1 || here.indexOf(a.dataset.path) !== -1) {
+      a.classList.add('active');
+      active = a;
+    }
+  });
+  if (active) {
+    var g = active.closest('details');
+    if (g) g.open = true;
+  }
+
+  /* ---------- 生成本页目录（取 h2 / h3） ---------- */
+  var heads = content ? content.querySelectorAll('h2, h3') : [];
+  var tocList = document.getElementById('toc-list');
+  heads.forEach(function (h, i) {
+    h.id = 'sec-' + (i + 1);
+    var li = document.createElement('li');
+    li.className = h.tagName === 'H3' ? 'lvl3' : 'lvl2';
+    var a = document.createElement('a');
+    a.href = '#' + h.id;
+    a.textContent = h.textContent.trim();
+    li.appendChild(a);
+    tocList.appendChild(li);
+  });
+  if (!heads.length) {
+    var g = document.getElementById('page-toc-group');
+    if (g) g.remove();
+  }
+
+  /* ---------- 目录滚动高亮 ---------- */
+  if (heads.length) {
+    var links = tocList.querySelectorAll('a');
+    var onScroll = function () {
+      var idx = 0;
+      heads.forEach(function (h, i) {
+        if (h.getBoundingClientRect().top <= 100) idx = i;
+      });
+      links.forEach(function (a, i) { a.classList.toggle('active', i === idx); });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+
+  /* ---------- 阅读进度条 ---------- */
+  var bar = document.getElementById('progress');
+  function paintProgress() {
+    if (!bar) return;
+    var h = document.documentElement.scrollHeight - window.innerHeight;
+    var p = h > 0 ? (window.scrollY / h) * 100 : 0;
+    bar.style.width = Math.min(100, Math.max(0, p)) + '%';
+  }
+  window.addEventListener('scroll', paintProgress, { passive: true });
+  paintProgress();
+
+  /* ---------- 回到顶部 ---------- */
+  var top = document.getElementById('to-top');
+  if (top) {
+    top.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    window.addEventListener('scroll', function () {
+      top.style.opacity = window.scrollY > 400 ? '1' : '0';
+    }, { passive: true });
+  }
+
+  /* ---------- 侧栏搜索过滤 ---------- */
+  var search = document.getElementById('nav-search');
+  if (search) {
+    search.addEventListener('input', function () {
+      var q = search.value.trim().toLowerCase();
+      document.querySelectorAll('.nav .group.part').forEach(function (grp) {
+        var hit = 0;
+        grp.querySelectorAll('li').forEach(function (li) {
+          var t = (li.textContent || '').toLowerCase();
+          var ok = !q || t.indexOf(q) !== -1;
+          li.style.display = ok ? '' : 'none';
+          if (ok) hit++;
+        });
+        grp.style.display = hit ? '' : 'none';
+        if (q && hit) grp.open = true;
+      });
+    });
+  }
+
+  /* ---------- 代码块复制按钮 ---------- */
+  document.querySelectorAll('.content pre').forEach(function (pre) {
+    var btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.type = 'button';
+    btn.textContent = '复制';
+    btn.addEventListener('click', function () {
+      var code = pre.querySelector('code');
+      var text = code ? code.innerText : pre.innerText;
+      navigator.clipboard.writeText(text).then(function () {
+        btn.textContent = '已复制';
+        setTimeout(function () { btn.textContent = '复制'; }, 1500);
+      }).catch(function () { btn.textContent = '复制失败'; });
+    });
+    pre.appendChild(btn);
+  });
+
+  /* ---------- 移动端点目录后自动收起 ---------- */
+  document.querySelectorAll('.nav a[data-path]').forEach(function (a) {
+    a.addEventListener('click', function () {
+      document.getElementById('nav-toggle').checked = false;
+    });
+  });
+
+  /* ---------- 主题切换 ---------- */
+  var root = document.documentElement;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+
+  function paintButtons(theme) {
+    var dark = theme === 'dark';
+    document.querySelectorAll('[data-theme-toggle]').forEach(function (btn) {
+      btn.querySelector('.theme-icon').textContent = dark ? '☀' : '☾';
+      btn.querySelector('.theme-text').textContent = dark ? '浅色' : '深色';
+      btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+      btn.title = dark ? '切换到浅色主题' : '切换到深色主题';
+    });
+  }
+
+  function applyTheme(theme) {
+    root.setAttribute('data-theme', theme);
+    paintButtons(theme);
+  }
+
+  paintButtons(root.getAttribute('data-theme') || 'light');
+
+  document.querySelectorAll('[data-theme-toggle]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+      try { localStorage.setItem('mc-theme', next); } catch (e) {}
+    });
+  });
+
+  if (mq) {
+    var onScheme = function (e) {
+      var saved = null;
+      try { saved = localStorage.getItem('mc-theme'); } catch (err) {}
+      if (!saved) applyTheme(e.matches ? 'dark' : 'light');
+    };
+    if (mq.addEventListener) mq.addEventListener('change', onScheme);
+    else if (mq.addListener) mq.addListener(onScheme);
+  }
+})();
+</script>
+</body>
+</html>

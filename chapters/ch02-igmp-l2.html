@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 2 章 · IGMP 与二层组播 · IP 组播学习路线</title>
+<meta name="description" content="IP 组播学习路线：四阶段十二章精读笔记，78 个生产案例，16 张 SVG 拓扑图。">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230969da'/><circle cx='16' cy='16' r='4' fill='white'/><circle cx='16' cy='6' r='2.6' fill='white'/><circle cx='25' cy='21' r='2.6' fill='white'/><circle cx='7' cy='21' r='2.6' fill='white'/><path d='M16 10.6V8.6M18.9 17.6l3.4 2M13.1 17.6l-3.4 2' stroke='white' stroke-width='1.6'/></svg>">
+<link rel="stylesheet" href="../assets/css/site.css">
+<script>
+/* 尽早写入主题，避免刷新时闪白 */
+(function () {
+  var saved = null;
+  try { saved = localStorage.getItem('mc-theme'); } catch (e) {}
+  var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.setAttribute('data-theme', saved || (dark ? 'dark' : 'light'));
+})();
+</script>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<input type="checkbox" id="nav-toggle" hidden>
+<label for="nav-toggle" class="nav-toggle-btn">☰ 目录</label>
+
+<button type="button" class="theme-toggle floating" data-theme-toggle aria-label="切换深色/浅色主题" title="切换深色/浅色主题">
+  <span class="theme-icon" aria-hidden="true">◐</span><span class="theme-text">深色</span>
+</button>
+
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-row">
+      <a href="../index.html">IP 组播学习路线<span>精读笔记 · 四阶段十二章</span></a>
+      <button type="button" class="theme-toggle" data-theme-toggle aria-label="切换深色/浅色主题" title="切换深色/浅色主题">
+        <span class="theme-icon" aria-hidden="true">◐</span><span class="theme-text">深色</span>
+      </button>
+    </div>
+    <div class="search-wrap">
+      <input type="search" id="nav-search" placeholder="搜索章节…" autocomplete="off" aria-label="搜索章节">
+    </div>
+  </div>
+
+  <nav class="nav">
+    <details class="group" id="page-toc-group" open>
+      <summary>本页目录</summary>
+      <ul class="toc" id="toc-list"></ul>
+    </details>
+
+    <details class="group" id="home-group" open>
+      <summary>首页</summary>
+      <ul><li><a href="../index.html" data-path="index.html">学习路线总览</a></li></ul>
+    </details>
+    <details class="group part" data-part="阶段一" open>
+      <summary>阶段一 · 地基</summary>
+      <ul>
+        <li><a href="chapters/ch01-basics.html" data-path="chapters/ch01-basics.html">第 1 章 · 基础模型与地址体系</a></li>
+        <li><a href="chapters/ch02-igmp-l2.html" data-path="chapters/ch02-igmp-l2.html" active>第 2 章 · IGMP 与二层组播</a></li>
+      </ul>
+    </details>
+    <details class="group part" data-part="阶段二" open>
+      <summary>阶段二 · 协议核心</summary>
+      <ul>
+        <li><a href="chapters/ch03-rpf-pim-basics.html" data-path="chapters/ch03-rpf-pim-basics.html">第 3 章 · RPF 与 PIM 通用机制</a></li>
+        <li><a href="chapters/ch04-pim-dm.html" data-path="chapters/ch04-pim-dm.html">第 4 章 · PIM-DM 与 PIM-SDM</a></li>
+        <li><a href="chapters/ch05-pim-sm-rp.html" data-path="chapters/ch05-pim-sm-rp.html">第 5 章 · PIM-SM 与 RP 发现</a></li>
+        <li><a href="chapters/ch06-ssm-bidir.html" data-path="chapters/ch06-ssm-bidir.html">第 6 章 · SSM 与 BIDIR-PIM</a></li>
+      </ul>
+    </details>
+    <details class="group part" data-part="阶段三" open>
+      <summary>阶段三 · 域间与规模化</summary>
+      <ul>
+        <li><a href="chapters/ch07-msdp-mbgp.html" data-path="chapters/ch07-msdp-mbgp.html">第 7 章 · MSDP 与 MBGP 域间组播</a></li>
+        <li><a href="chapters/ch08-mvpn-scale.html" data-path="chapters/ch08-mvpn-scale.html">第 8 章 · MVPN / MLDP / 组播 TE</a></li>
+      </ul>
+    </details>
+    <details class="group part" data-part="阶段四" open>
+      <summary>阶段四 · 场景实战</summary>
+      <ul>
+        <li><a href="chapters/ch09-datacenter-cloud.html" data-path="chapters/ch09-datacenter-cloud.html">第 9 章 · 数据中心与云中的组播</a></li>
+        <li><a href="chapters/ch10-ipv6-multicast.html" data-path="chapters/ch10-ipv6-multicast.html">第 10 章 · IPv6 组播</a></li>
+        <li><a href="chapters/ch11-security.html" data-path="chapters/ch11-security.html">第 11 章 · 组播安全与过滤</a></li>
+        <li><a href="chapters/ch12-troubleshooting.html" data-path="chapters/ch12-troubleshooting.html">第 12 章 · 排障方法论</a></li>
+      </ul>
+    </details>
+  </nav>
+</aside>
+
+<label for="nav-toggle" class="backdrop"></label>
+
+<main class="main">
+  <article class="content">
+<h1 id="ch02-igmp-igmp-snooping-proxy-fast-leave">ch02 IGMP 与二层组播（IGMP Snooping / Proxy / Fast Leave）</h1>
+<blockquote>
+<p><strong>来源</strong>：Aweya Ch2（P.86–P.167，IGMPv1/v2/v3、Snooping、Proxy、Query Solicitation）、Williamson Ch3/Ch14–15、P.413–P.470（IGMP Snooping 与 CGMP）、iPexpert Ch2（P.2-1–2-26）
+<strong>配图</strong>：<a href="../diagrams/d03-igmp-basic.svg">D03 IGMP 交互</a>｜<a href="../diagrams/d04-snooping.svg">D04 Snooping 效果</a></p>
+</blockquote>
+<hr />
+<h2 id="_1">学习目标</h2>
+<ol>
+<li>说清 IGMPv1/v2/v3 的报文类型、定时器与行为差异，并判断该用哪一版；</li>
+<li>解释 Querier 的选举机制与"为什么必须有 Querier"；</li>
+<li>解释 IGMP Snooping 的工作原理、Report Suppression、Fast Leave 与 Querier 的关系；</li>
+<li>能在现网选择并配置 IGMP Snooping / PIM Snooping / IGMP Proxy / Query Solicitation；</li>
+<li>掌握 IGMP 类故障的定位命令与常见根因。</li>
+</ol>
+<hr />
+<h2 id="1-igmp">1. IGMP 报文总览</h2>
+<table>
+<thead>
+<tr>
+<th>版本</th>
+<th>报文</th>
+<th>方向</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>v1</td>
+<td><strong>Membership Query</strong>（<code>130</code>）</td>
+<td>Querier → 全体</td>
+<td>问"有没有人要这个组"</td>
+</tr>
+<tr>
+<td>v1</td>
+<td><strong>Membership Report</strong>（<code>131</code>）</td>
+<td>主机 → Querier</td>
+<td>我要加入 G</td>
+</tr>
+<tr>
+<td>v2</td>
+<td>Query（<code>130</code>，含 Max Resp Time）</td>
+<td>Querier → 全体</td>
+<td>同 v1，但带响应时间窗</td>
+</tr>
+<tr>
+<td>v2</td>
+<td><strong>Leave Group</strong>（<code>132</code>）</td>
+<td>主机 → Querier</td>
+<td>我要走（触发具体查询）</td>
+</tr>
+<tr>
+<td>v2</td>
+<td>Report（<code>131</code>）</td>
+<td>主机 → Querier</td>
+<td>报告成员关系（可抑制）</td>
+</tr>
+<tr>
+<td>v3</td>
+<td>Membership Query（<code>130</code>，带 QRV 与 S/QRV）</td>
+<td>Querier → 全体</td>
+<td>支持 General / Group-Specific / Group-and-Source-Specific</td>
+</tr>
+<tr>
+<td>v3</td>
+<td>Membership Report（<code>131</code>，含 Record Type）</td>
+<td>主机 → Querier</td>
+<td>支持 <code>IS_INCLUDE</code>/<code>IS_EXCLUDE</code>/<code>TO_IN</code>/<code>TO_EX</code></td>
+</tr>
+<tr>
+<td>v3</td>
+<td><strong>IGMPv3 Report 的特殊用法</strong></td>
+<td>主机 → 路由器</td>
+<td><code>IGMPv3 Report</code> 也可作为<strong>离开通知</strong>（<code>TO_IN</code> 空源列表）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="11-igmpv1">1.1 IGMPv1</h3>
+<ul>
+<li>只有 Query 与 Report；</li>
+<li><strong>无 Leave 消息</strong> → 主机离开后，路由器必须等 <strong>3× Query Interval（约 3 分钟）</strong> 才会把组从表项中删除 → "幽灵流量"；</li>
+<li><strong>Report 抑制机制</strong>：同一子网内多个主机加入同组时，只有第一个主机发 Report，其余主机<strong>不发</strong>，减少流量（也造成"交换机看不到全部成员"，需靠 Snooping 的 Report 抑制计数补偿）。</li>
+</ul>
+<h3 id="12-igmpv2">1.2 IGMPv2</h3>
+<p>改进三点：</p>
+<ol>
+<li><strong>Leave Group 消息</strong>：主机离开立即通知，路由器随即发 Group-Specific Query 确认（无成员则删表项）；</li>
+<li><strong>Group-Specific Query</strong>：路由器向 224.0.1.102（G）发送，只问该组还有没有人；</li>
+<li><strong>Report 抑制</strong>：同一组同一时刻只允许一个主机发 Report（抑制窗口由 Query 携带的 Max Response Time 决定，默认为 10s）。</li>
+</ol>
+<p><strong>关键定时器（默认值）</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>定时器</th>
+<th>默认</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Query Interval (QI)</td>
+<td>125 s</td>
+<td>Querier 发送 General Query 的间隔</td>
+</tr>
+<tr>
+<td>Max Response Time</td>
+<td>10 s</td>
+<td>主机回复 Report 的随机抖动上限</td>
+</tr>
+<tr>
+<td>Group Membership Interval</td>
+<td>260 s ≈ 2×QI+10</td>
+<td>组成员老化时间</td>
+</tr>
+</tbody>
+</table>
+<h3 id="13-igmpv3">1.3 IGMPv3</h3>
+<p>核心是<strong>源过滤</strong>与<strong>精确订阅</strong>：</p>
+<ul>
+<li>Report 携带 <code>Record Type</code>：<code>IS_INCLUDE</code>（我要收 S1,S2）、<code>IS_EXCLUDE</code>（我要收"除 S3 外所有源"）、<code>TO_IN</code>、<code>TO_EX</code>；</li>
+<li>支持 <strong>SSM</strong>：<code>IGMPv3 Report (G,S)</code> 直接告诉路由器"只要 S 的这个组" → 不需要 RP，天然防伪源；</li>
+<li>主机可<strong>一次报文完成加入与退出</strong>（你的笔记已记录此点）；</li>
+<li>Query 中带 <strong>QRV（Querier Robustness Variable）</strong>：接收端用它参与 Querier 选举——<strong>数值大的优先</strong>（v3 的选举规则与 v1/v2 的"IP 小者胜"相反！）。</li>
+</ul>
+<blockquote>
+<p><strong>版本兼容坑</strong>：IGMPv2 主机无法参与 v3 的 QRV 选举，因此混合版本环境下 Querier 选举会出现"v2 主机不支持 QRV"的兼容问题（RFC 3376 有专门的兼容处理）。</p>
+</blockquote>
+<hr />
+<h2 id="2-querier">2. Querier：谁在问？</h2>
+<p><img alt="IGMP 交互" src="../diagrams/d03-igmp-basic.svg" /></p>
+<p><strong>为什么要 Querier</strong>：二层交换机做 IGMP Snooping 后，需要知道"这个 VLAN 里谁是路由器"，才能把组播从路由器口转发到成员口。Querier 就是这个"锚点"。</p>
+<p><strong>选举规则</strong>：</p>
+<ul>
+<li><strong>IGMPv1/v2</strong>：所有启用了组播路由的路由器都发 Query，<strong>IP 地址最小者</strong>成为 Querier；</li>
+<li><strong>IGMPv3</strong>：比较 QRV，<strong>QRV 大者</strong>胜；QRV 相同比 IP，小者胜；</li>
+<li>选举失败风险：若 Querier 所在设备故障且无人接替，Snooping 表项将因老化被清空 → 组播中断。</li>
+</ul>
+<p><strong>Querier 与 PIM DR 的关系</strong>：PIM DR 本身就发送 IGMP Query（因为 PIM DR 需要维护 IGMP 成员关系以做最后一跳与 SPT 切换）。因此在纯 PIM 网络中，通常<strong>不需要额外配置 querier</strong>；只有当 VLAN 内<strong>没有路由器的 IGMP 接口</strong>（如纯二层旁路、嵌入式设备）时，才需要 <code>ip igmp snooping querier</code>。</p>
+<div class="codehilite"><pre><span></span><code>! 二层交换机上做 Querier（指定地址与版本）
+ip igmp snooping querier 10.1.1.1
+ip igmp snooping vlan 10
+ip igmp snooping vlan 10 querier 10.1.1.1   ! 或用 loopback 地址
+</code></pre></div>
+
+<hr />
+<h2 id="3-igmp-snooping">3. IGMP Snooping：二层组播的核心</h2>
+<p><img alt="Snooping 效果" src="../diagrams/d04-snooping.svg" /></p>
+<p><strong>工作原理</strong>：</p>
+<ol>
+<li>交换机监听所有经过的 IGMP 报文；</li>
+<li>收到 <strong>Report</strong> → 在"组播组 + 端口"表项中加入该端口（成员口）；</li>
+<li>收到 <strong>Leave</strong>（v2）→ 标记该端口为"待剪除"，并<strong>由 Querier 发 Group-Specific Query</strong>；若在响应窗口内无 Report，则剪除该端口；</li>
+<li>收到 <strong>Query</strong> → 记录"路由器口（mrouter port）"，组播从该口进来时正常转发；</li>
+<li>组播包到达时：<strong>仅在 mrouter 口 + 成员口转发</strong>，其余端口剪除。</li>
+</ol>
+<p><strong>Report Suppression 的二层含义</strong>：一个 Report 来自某端口，交换机把该端口加入成员表；其他主机再发相同 Report 会被抑制（因为交换机做了抑制转发）。因此交换机的成员端口计数可能小于实际主机数——<strong>排查时不要以端口数当主机数</strong>。</p>
+<p><strong>Fast Leave（快速离开）</strong>：</p>
+<ul>
+<li>收到 Leave 后<strong>立即剪除该端口</strong>，不做 Group-Specific Query 确认；</li>
+<li>前提：交换机知道"该端口后面只有这一个主机"（<strong>explicit host tracking</strong>，即交换机通过 <code>show ip igmp snooping groups</code> 学习到端口上的主机数量）；</li>
+<li><strong>风险</strong>：若一个端口后面接了 IPTV 机顶盒（STB）盒子 + 机顶盒后面还有电视/其他共享设备，直接剪除会造成<strong>其他设备断流</strong>。</li>
+</ul>
+<div class="codehilite"><pre><span></span><code>! Fast Leave 配置（全局或按组）
+ip igmp snooping fast-leave
+ip igmp snooping vlan 10 fast-leave
+! 明确跟踪端口主机数（用于确认哪些端口可以 fast leave）
+ip igmp snooping explicit-host-tracking vlan 10
+</code></pre></div>
+
+<p><strong>相关技术对比</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>机制</th>
+<th>工作层</th>
+<th>特点</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>IGMP Snooping</strong></td>
+<td>L2</td>
+<td>标准做法，按 IGMP 报文学习组播成员</td>
+</tr>
+<tr>
+<td><strong>PIM Snooping</strong></td>
+<td>L2</td>
+<td>监听 PIM Join/Prune 来学习组播转发关系，比 IGMP Snooping 更精确（知道上游是谁），但需 L3 设备参与</td>
+</tr>
+<tr>
+<td><strong>CGMP</strong>（Cisco 私有）</td>
+<td>L2</td>
+<td>老方案，交换机与 CGMP 服务器通信，现已基本被 IGMP Snooping 取代</td>
+</tr>
+<tr>
+<td><strong>IGMP Proxy</strong></td>
+<td>L3 设备</td>
+<td>见下节</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-igmp-proxy-query-solicitation">4. IGMP Proxy 与 Query Solicitation</h2>
+<h3 id="41-igmp-proxy">4.1 IGMP Proxy</h3>
+<p><strong>场景</strong>：接入交换机不支持 Snooping（或非组播感知设备），需要在 L3 网关（如路由器、无线 AC、防火墙）上"代理"主机完成成员管理。</p>
+<ul>
+<li>网关<strong>代替主机</strong>发 IGMP Report（对上游），并<strong>代替路由器</strong>向主机发 Query；</li>
+<li>网关自己维护"哪些主机要哪个组"的本地表。</li>
+</ul>
+<div class="codehilite"><pre><span></span><code>ip igmp proxy
+interface Vlan10
+ ip igmp proxy
+</code></pre></div>
+
+<p><strong>代价</strong>：网关成为单点；组播数据仍需经网关转发（除非网关做组播路由）。</p>
+<h3 id="42-igmp-query-solicitationaweya-28">4.2 IGMP Query Solicitation（Aweya 2.8）</h3>
+<p><strong>场景</strong>：接入交换机做 Snooping，但 VLAN 内没有路由器（数据来自外部组播源或运营商专线）。</p>
+<p><strong>做法</strong>：网关/路由器<strong>自己发</strong> IGMP Query Solicitation，让交换机误以为它是 Querier，从而保持 mrouter 口并维持成员表。</p>
+<div class="codehilite"><pre><span></span><code>interface Gi0/1
+ ip igmp query-solicitation
+</code></pre></div>
+
+<hr />
+<h2 id="5-ipexpert-ch2">5. 排障命令速查（iPexpert Ch2）</h2>
+<div class="codehilite"><pre><span></span><code>! 二层侧
+show ip igmp snooping groups            ! 组 → 端口映射（成员口/标志位）
+show ip igmp snooping groups vlan 10
+show ip igmp snooping mrouter            ! 路由器口列表
+show ip igmp snooping querier            ! 当前 Querier 是谁
+show ip igmp snooping vlan 10 detail     ! 每端口主机明细（explicit host tracking）
+
+! 三层侧
+show ip igmp groups                      ! 路由器上的 IGMP 成员表
+show ip igmp groups 239.1.1.1 detail
+show ip igmp interface Gi0/1
+show ip igmp query-interval              ! QI / Max Response Time / QRY
+
+! 调试（慎用，会很吵）
+debug ip igmp
+debug igmp packets
+</code></pre></div>
+
+<hr />
+<h2 id="6-8">6. 生产案例（8 例）</h2>
+<h3 id="2-1">案例 2-1：主机加入组播但交换机无成员表项</h3>
+<p><strong>现象</strong>：PC 加入 <code>239.1.1.1</code>，PC 能收到流，但同 VLAN 另一台 PC 收不到；交换机上查不到该组的成员口。
+<strong>定位</strong>：<code>show ip igmp snooping groups vlan 10</code> 为空；<code>show ip igmp snooping mrouter</code> 为空。
+<strong>根因</strong>：VLAN 内<strong>没有 Querier</strong>，交换机从未收到 Query，因此不认为任何口是 mrouter 口，也不建立老化计时器；或交换机上未启用 <code>ip igmp snooping vlan 10</code>。
+<strong>处置</strong>：在汇聚层路由器上确认已有 Query（<code>debug ip igmp</code>）；若该 VLAN 无路由接口，则在交换机上配置 <code>ip igmp snooping querier</code>。
+<strong>复盘</strong>：每个承载组播的 VLAN 必须有 Querier（路由器或静态 querier）。</p>
+<h3 id="2-2">案例 2-2：主机离开后组播仍在占用带宽</h3>
+<p><strong>现象</strong>：用户下线后，其端口仍在接收组播，交换机端口流量不降。
+<strong>定位</strong>：<code>show ip igmp snooping groups</code> 中该端口带 <code>L</code>（leave）标志但未消失；<code>show ip igmp snooping querier</code> 显示 querier 为 <code>0.0.0.0</code>。
+<strong>根因</strong>：IGMPv1 主机（无 Leave）或 Querier 缺失 → 只能等待老化（3×QI ≈ 6 分钟）。
+<strong>处置</strong>：终端统一升级到 IGMPv2/v3；确认 Querier 存在。
+<strong>复盘</strong>：终端 IGMP 版本不一致是组播"幽灵流量"的常见根因，必须纳入资产检查项。</p>
+<h3 id="2-3fast-leave">案例 2-3：Fast Leave 导致同端口其他设备断流</h3>
+<p><strong>现象</strong>：某 IPTV 端口用户拔线重启后，机顶盒正常但同 IPTV 共享的其他设备（如机顶盒后接的终端）断流。
+<strong>定位</strong>：交换机日志有 <code>IGMP_FAST_LEAVE</code>；该端口下挂着多个 MAC。
+<strong>根因</strong>：开启了 Fast Leave，但该端口并非"单主机"（IPTV 场景常见"STB+PC 共享"或串接设备）。
+<strong>处置</strong>：关闭该 VLAN 的 fast-leave，或用 explicit host tracking 精确配置。
+<strong>复盘</strong>：Fast Leave 只在"端口=单主机"或"已确认设备独占"的场景使用。</p>
+<h3 id="2-4-cpu-igmp">案例 2-4：交换机 CPU 被 IGMP 报文打满</h3>
+<p><strong>现象</strong>：某接入交换机 CPU 占用 80%+，业务时延抖动。
+<strong>定位</strong>：<code>show processes cpu sorted</code> 显示 <code>IP Input</code> 居首；<code>debug ip igmp</code> 显示大量 IGMP 报文。
+<strong>根因</strong>：大量主机频繁发 IGMP Report（如视频客户端异常重连），或存在 <strong>IGMP 报文环路/风暴</strong>（两台设备间互发 Query）。
+<strong>处置</strong>：配置 <code>ip igmp snooping</code> 抑制多余 Report；对不可信端口做 IGMP 过滤（ACL 只允许 224.0.0.1/22 与必要组）。
+<strong>复盘</strong>：IGMP 也是可被攻击的放大面，需在边界做限速。</p>
+<h3 id="2-5-igmp">案例 2-5：主机报 IGMP 但路由侧无组成员</h3>
+<p><strong>现象</strong>：PC 抓包能看到 IGMPv3 Report，但 <code>show ip igmp groups</code> 空。
+<strong>定位</strong>：对比 <code>show ip igmp groups</code> 与 <code>show ip igmp interface</code>；检查该接口是否 <code>ip pim sparse-mode</code>；检查 <code>ip igmp</code> 是否被 <code>ip igmp access-group</code> 过滤。
+<strong>根因</strong>：接口未启用 PIM；或接口上配置了 <code>ip igmp ssm-mapping</code> 但主机发送的是 <code>IS_EXCLUDE</code>（IGMPv2 语义），SSM 段不匹配。
+<strong>处置</strong>：接口配置 <code>ip pim sparse-mode</code>；核对 SSM range 与映射表。
+<strong>复盘</strong>："主机发了 Report"≠"路由器收下"，中间还有接口 ACL、IGMP 版本、SSM 范围三道门。</p>
+<h3 id="2-6-vlan">案例 2-6：跨 VLAN 的组播在三层交换机上不通</h3>
+<p><strong>现象</strong>：同 VLAN 正常，跨 VLAN 不通。
+<strong>定位</strong>：<code>show ip igmp groups</code> 在 SVI 上有成员；<code>show ip mroute</code> 无条目或 RPF 失败。
+<strong>根因</strong>：SVI 上未启用 <code>ip pim sparse-mode</code>；或 SVI 到源的单播路由缺失导致 RPF 失败。
+<strong>处置</strong>：<code>interface Vlan10 / ip pim sparse-mode</code>；补齐到源的路由（必要时静态 mroute）。
+<strong>复盘</strong>：组播 VLAN 间的转发依赖 <strong>SVI 上的 PIM + 到源的路由</strong>，缺一不可。</p>
+<h3 id="2-7-pim-snooping">案例 2-7：二层使用 PIM Snooping 后反而不通</h3>
+<p><strong>现象</strong>：改造前组播正常，改成 PIM Snooping 后部分业务不通。
+<strong>定位</strong>：<code>show ip igmp snooping groups</code> 与 <code>show ip pim snooping</code> 对比，发现部分组在 IGMP Snooping 表里有、PIM Snooping 表里没有。
+<strong>根因</strong>：PIM Snooping 需要设备能收到 PIM Join/Prune 并解析出上游口；若 PIM 报文被 ACL 过滤或该 VLAN 内无 PIM 邻居，则无法建立条目。
+<strong>处置</strong>：放行 PIM 协议（224.0.0.13），或回退到 IGMP Snooping。
+<strong>复盘</strong>：PIM Snooping 不是 IGMP Snooping 的"升级版"，二者依赖不同报文，改造需重新验证。</p>
+<h3 id="2-8">案例 2-8：无线终端加入组播后频繁掉线</h3>
+<p><strong>现象</strong>：Wi-Fi 终端订阅组播后，AP 上有组播流量但客户端看视频卡顿。
+<strong>定位</strong>：<code>show ip igmp snooping groups vlan &lt;无线VLAN&gt;</code> 发现终端 MAC 不在成员表；检查 AP 是否有 "multicast optimization / IGMP snooping" 选项。
+<strong>根因</strong>：部分 AP/控制器默认对组播做 <strong>IGMP snooping 剪枝</strong>，或 AP 自身不做组播转发（需在 WLAN 配置中启用 multicast）。
+<strong>处置</strong>：在控制器上启用组播直传/组播优化，或对无线 VLAN 关闭 AP 侧剪枝。
+<strong>复盘</strong>：无线是组播的"隐形黑洞"，PoC 必须覆盖无线接入。</p>
+<hr />
+<h2 id="7">7. 自测清单</h2>
+<ol>
+<li>IGMPv1 主机离开组后，为什么组播流量还会持续约 3 分钟？</li>
+<li>IGMPv3 的 Querier 选举规则与 v1/v2 有何不同？为什么会出现兼容问题？</li>
+<li>Report Suppression 对交换机成员表项计数有什么影响？为什么 <code>show ip igmp snooping groups</code> 的端口数不等于主机数？</li>
+<li>什么条件下 Fast Leave 是安全的？</li>
+<li>IGMP Proxy 与 IGMP Snooping 分别在哪一层、解决什么问题？</li>
+<li><code>ip igmp query-solicitation</code> 什么时候必须配？</li>
+</ol>
+<h2 id="8">8. 延伸阅读</h2>
+<ul>
+<li>Aweya Ch2.3–2.10（P.87–P.167）：IGMPv1/v2/v3 报文与状态机、IGMP Snooping、IGMP Proxy、Query Solicitation、Fast Leave</li>
+<li>Williamson Ch14（P.408–P.442）：IGMP Snooping 完整过程、CGMP、交换机泛洪抑制</li>
+<li>Williamson Ch15（P.444–P.470）：NBMA 上的组播（伪广播、PIM NBMA 模式）</li>
+<li>iPexpert Ch2（P.2-1–2-26）：IGMP 排障场景与命令工具</li>
+<li>延伸：<code>RFC 1112</code>（IGMPv1）、<code>RFC 2236</code>（IGMPv2）、<code>RFC 3376</code>（IGMPv3）</li>
+</ul>
+  </article>
+  <footer class="page-foot">
+<a class="prev" href="ch01-basics.html"><span class="dir">← 上一章</span><span class="ttl">第 1 章 · 基础模型与地址体系</span></a><a class="next" href="ch03-rpf-pim-basics.html"><span class="dir">下一章 →</span><span class="ttl">第 3 章 · RPF 与 PIM 通用机制</span></a>
+    <p class="foot-note">内容基于公开出版物整理，仅用于技术学习；命令示例请以设备实际版本手册为准。</p>
+  </footer>
+</main>
+
+<button type="button" class="to-top" id="to-top" aria-label="回到顶部" title="回到顶部">↑</button>
+
+<script>
+(function () {
+  var content = document.querySelector('.content');
+  var here = location.pathname;
+
+  /* ---------- 当前章节高亮 + 展开所属分组 ---------- */
+  var active = null;
+  document.querySelectorAll('.nav a[data-path]').forEach(function (a) {
+    if (here.indexOf('/' + a.dataset.path) !== -1 || here.indexOf(a.dataset.path) !== -1) {
+      a.classList.add('active');
+      active = a;
+    }
+  });
+  if (active) {
+    var g = active.closest('details');
+    if (g) g.open = true;
+  }
+
+  /* ---------- 生成本页目录（取 h2 / h3） ---------- */
+  var heads = content ? content.querySelectorAll('h2, h3') : [];
+  var tocList = document.getElementById('toc-list');
+  heads.forEach(function (h, i) {
+    h.id = 'sec-' + (i + 1);
+    var li = document.createElement('li');
+    li.className = h.tagName === 'H3' ? 'lvl3' : 'lvl2';
+    var a = document.createElement('a');
+    a.href = '#' + h.id;
+    a.textContent = h.textContent.trim();
+    li.appendChild(a);
+    tocList.appendChild(li);
+  });
+  if (!heads.length) {
+    var g = document.getElementById('page-toc-group');
+    if (g) g.remove();
+  }
+
+  /* ---------- 目录滚动高亮 ---------- */
+  if (heads.length) {
+    var links = tocList.querySelectorAll('a');
+    var onScroll = function () {
+      var idx = 0;
+      heads.forEach(function (h, i) {
+        if (h.getBoundingClientRect().top <= 100) idx = i;
+      });
+      links.forEach(function (a, i) { a.classList.toggle('active', i === idx); });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+
+  /* ---------- 阅读进度条 ---------- */
+  var bar = document.getElementById('progress');
+  function paintProgress() {
+    if (!bar) return;
+    var h = document.documentElement.scrollHeight - window.innerHeight;
+    var p = h > 0 ? (window.scrollY / h) * 100 : 0;
+    bar.style.width = Math.min(100, Math.max(0, p)) + '%';
+  }
+  window.addEventListener('scroll', paintProgress, { passive: true });
+  paintProgress();
+
+  /* ---------- 回到顶部 ---------- */
+  var top = document.getElementById('to-top');
+  if (top) {
+    top.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    window.addEventListener('scroll', function () {
+      top.style.opacity = window.scrollY > 400 ? '1' : '0';
+    }, { passive: true });
+  }
+
+  /* ---------- 侧栏搜索过滤 ---------- */
+  var search = document.getElementById('nav-search');
+  if (search) {
+    search.addEventListener('input', function () {
+      var q = search.value.trim().toLowerCase();
+      document.querySelectorAll('.nav .group.part').forEach(function (grp) {
+        var hit = 0;
+        grp.querySelectorAll('li').forEach(function (li) {
+          var t = (li.textContent || '').toLowerCase();
+          var ok = !q || t.indexOf(q) !== -1;
+          li.style.display = ok ? '' : 'none';
+          if (ok) hit++;
+        });
+        grp.style.display = hit ? '' : 'none';
+        if (q && hit) grp.open = true;
+      });
+    });
+  }
+
+  /* ---------- 代码块复制按钮 ---------- */
+  document.querySelectorAll('.content pre').forEach(function (pre) {
+    var btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.type = 'button';
+    btn.textContent = '复制';
+    btn.addEventListener('click', function () {
+      var code = pre.querySelector('code');
+      var text = code ? code.innerText : pre.innerText;
+      navigator.clipboard.writeText(text).then(function () {
+        btn.textContent = '已复制';
+        setTimeout(function () { btn.textContent = '复制'; }, 1500);
+      }).catch(function () { btn.textContent = '复制失败'; });
+    });
+    pre.appendChild(btn);
+  });
+
+  /* ---------- 移动端点目录后自动收起 ---------- */
+  document.querySelectorAll('.nav a[data-path]').forEach(function (a) {
+    a.addEventListener('click', function () {
+      document.getElementById('nav-toggle').checked = false;
+    });
+  });
+
+  /* ---------- 主题切换 ---------- */
+  var root = document.documentElement;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+
+  function paintButtons(theme) {
+    var dark = theme === 'dark';
+    document.querySelectorAll('[data-theme-toggle]').forEach(function (btn) {
+      btn.querySelector('.theme-icon').textContent = dark ? '☀' : '☾';
+      btn.querySelector('.theme-text').textContent = dark ? '浅色' : '深色';
+      btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+      btn.title = dark ? '切换到浅色主题' : '切换到深色主题';
+    });
+  }
+
+  function applyTheme(theme) {
+    root.setAttribute('data-theme', theme);
+    paintButtons(theme);
+  }
+
+  paintButtons(root.getAttribute('data-theme') || 'light');
+
+  document.querySelectorAll('[data-theme-toggle]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+      try { localStorage.setItem('mc-theme', next); } catch (e) {}
+    });
+  });
+
+  if (mq) {
+    var onScheme = function (e) {
+      var saved = null;
+      try { saved = localStorage.getItem('mc-theme'); } catch (err) {}
+      if (!saved) applyTheme(e.matches ? 'dark' : 'light');
+    };
+    if (mq.addEventListener) mq.addEventListener('change', onScheme);
+    else if (mq.addListener) mq.addListener(onScheme);
+  }
+})();
+</script>
+</body>
+</html>

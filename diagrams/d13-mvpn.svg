@@ -1,0 +1,34 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='900' height='400' viewBox='0 0 900 400'>
+<rect width='900' height='400' fill='#ffffff'/>
+<text x='450.0' y='26' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='16' font-weight='bold' fill='#1f4e79' text-anchor='middle'>D13  MVPN：Default MDT 与 Data MDT</text>
+<g><ellipse cx='180' cy='120' rx='60.0' ry='30' fill='#f2f2f2' stroke='#666666' stroke-width='1.4'/>
+<text x='180' y='125' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#444'>VRF-A CE</text></g>
+<g><ellipse cx='180' cy='300' rx='60.0' ry='30' fill='#f2f2f2' stroke='#666666' stroke-width='1.4'/>
+<text x='180' y='305' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#444'>VRF-B CE</text></g>
+<g><circle cx='340' cy='120' r='26' fill='#dbe9f6' stroke='#1f4e79' stroke-width='1.6'/>
+<path d='M 329 113 L 351 113 M 329 120 L 351 120 M 329 127 L 351 127' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='340' y='162' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>PE1</text></g>
+<g><circle cx='340' cy='300' r='26' fill='#dbe9f6' stroke='#1f4e79' stroke-width='1.6'/>
+<path d='M 329 293 L 351 293 M 329 300 L 351 300 M 329 307 L 351 307' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='340' y='342' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>PE2</text></g>
+<g><circle cx='700' cy='120' r='26' fill='#dbe9f6' stroke='#1f4e79' stroke-width='1.6'/>
+<path d='M 689 113 L 711 113 M 689 120 L 711 120 M 689 127 L 711 127' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='700' y='162' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>PE3</text></g>
+<g><circle cx='700' cy='300' r='26' fill='#dbe9f6' stroke='#1f4e79' stroke-width='1.6'/>
+<path d='M 689 293 L 711 293 M 689 300 L 711 300 M 689 307 L 711 307' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='700' y='342' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>PE4</text></g>
+<g><rect x='425.0' y='183.0' width='190' height='54' rx='6' fill='#eaf3e0' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='520' y='214' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>MPLS Core
+(Default MDT 隧道)</text></g>
+<line x1='390' y1='120' x2='425' y2='190' stroke='#2e7d32' stroke-width='1.6' stroke-dasharray='5,4'/>
+<text x='470' y='140' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#2e7d32'>数据 MDT (数据面)</text>
+<line x1='390' y1='300' x2='425' y2='230' stroke='#2e7d32' stroke-width='1.6' stroke-dasharray='5,4'/>
+<text x='470' y='300' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#2e7d32'>数据 MDT</text>
+<line x1='615' y1='190' x2='650' y2='140' stroke='#2e7d32' stroke-width='1.6' stroke-dasharray='5,4'/>
+<text x='570' y='150' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#2e7d32'>数据 MDT</text>
+<line x1='615' y1='230' x2='650' y2='280' stroke='#2e7d32' stroke-width='1.6' stroke-dasharray='5,4'/>
+<text x='570' y='290' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#2e7d32'>数据 MDT</text>
+<path d='M 340 140 Q 520 60, 700 140' fill='none' stroke='#1565c0' stroke-width='1.6' stroke-dasharray='6,4'/>
+<text x='520' y='66' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11.5' fill='#1565c0' text-anchor='middle' font-weight='normal'>Default MDT：全组共享的隧道（数据面承载组播业务）</text>
+<text x='30' y='380' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11.5' fill='#666666' text-anchor='start' font-weight='normal'>信令面：MLDP/mLDP 或 PIM 在 VPN 内；MLDP FEC 元素建立 Default MDT，Data MDT 按需触发</text>
+</svg>

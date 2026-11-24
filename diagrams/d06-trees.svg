@@ -1,0 +1,49 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='900' height='400' viewBox='0 0 900 400'>
+<rect width='900' height='400' fill='#ffffff'/>
+<text x='450.0' y='26' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='16' font-weight='bold' fill='#1f4e79' text-anchor='middle'>D06  源树 (S,G) vs 共享树 (*,G) 与 RPT-bit 切换</text>
+<text x='30' y='58' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' fill='#1f4e79' text-anchor='start' font-weight='bold'>PIM-SM 初始：接收者经 RP 走共享树 RPT</text>
+<g><rect x='45.0' y='94.0' width='90' height='32' rx='3' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<rect x='53.0' y='85.0' width='74' height='9' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<text x='90' y='114' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#222'>源 S</text></g>
+<g><circle cx='300' cy='110' r='26' fill='#dbe9f6' stroke='#1f4e79' stroke-width='1.6'/>
+<path d='M 289 103 L 311 103 M 289 110 L 311 110 M 289 117 L 311 117' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='300' y='152' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>R2</text></g>
+<g><circle cx='520' cy='110' r='24' fill='#fff2cc' stroke='#c00000' stroke-width='2'/>
+<text x='520' y='115' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='13' font-weight='bold' text-anchor='middle' fill='#c00000'>RP</text></g>
+<g><circle cx='700' cy='110' r='26' fill='#dbe9f6' stroke='#1f4e79' stroke-width='1.6'/>
+<path d='M 689 103 L 711 103 M 689 110 L 711 110 M 689 117 L 711 117' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='700' y='152' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>Last-hop</text></g>
+<g><rect x='815.0' y='94.0' width='90' height='32' rx='3' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<rect x='823.0' y='85.0' width='74' height='9' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<text x='860' y='114' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#222'>接收者</text></g>
+<line x1='140' y1='110' x2='250' y2='110' stroke='#1f4e79' stroke-width='1.6'/>
+<line x1='350' y1='110' x2='470' y2='110' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='410.0' y='104.0' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#1f4e79'>Register</text>
+<line x1='570' y1='110' x2='650' y2='110' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='610.0' y='104.0' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#1f4e79'>(*,G) Join</text>
+<line x1='750' y1='110' x2='810' y2='110' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='30' y='220' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' fill='#1f4e79' text-anchor='start' font-weight='bold'>SPT 切换：最后一跳收到 (S,G) Join 后向上游建 SPT，并对 RP 发 (S,G,rpt) Prune</text>
+<g><rect x='45.0' y='264.0' width='90' height='32' rx='3' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<rect x='53.0' y='255.0' width='74' height='9' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<text x='90' y='284' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#222'>源 S</text></g>
+<g><circle cx='300' cy='280' r='26' fill='#dbe9f6' stroke='#1f4e79' stroke-width='1.6'/>
+<path d='M 289 273 L 311 273 M 289 280 L 311 280 M 289 287 L 311 287' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='300' y='322' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>R2</text></g>
+<g><circle cx='520' cy='280' r='26' fill='#dbe9f6' stroke='#1f4e79' stroke-width='1.6'/>
+<path d='M 509 273 L 531 273 M 509 280 L 531 280 M 509 287 L 531 287' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='520' y='322' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>中转 R3</text></g>
+<g><circle cx='700' cy='280' r='26' fill='#dbe9f6' stroke='#1f4e79' stroke-width='1.6'/>
+<path d='M 689 273 L 711 273 M 689 280 L 711 280 M 689 287 L 711 287' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='700' y='322' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>Last-hop</text></g>
+<g><rect x='815.0' y='264.0' width='90' height='32' rx='3' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<rect x='823.0' y='255.0' width='74' height='9' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<text x='860' y='284' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#222'>接收者</text></g>
+<line x1='140' y1='280' x2='250' y2='280' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='195.0' y='274.0' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#1f4e79'>SPT 数据</text>
+<line x1='350' y1='280' x2='470' y2='280' stroke='#1f4e79' stroke-width='1.6'/>
+<line x1='570' y1='280' x2='650' y2='280' stroke='#1f4e79' stroke-width='1.6'/>
+<line x1='750' y1='280' x2='810' y2='280' stroke='#1f4e79' stroke-width='1.6'/>
+<path d='M 700 300 Q 600 400, 520 300' fill='none' stroke='#c00000' stroke-width='1.6' stroke-dasharray='6,4'/>
+<text x='610' y='392' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11.5' fill='#c00000' text-anchor='middle' font-weight='normal'>(S,G,rpt) Prune → 剪断共享树支路</text>
+<text x='30' y='372' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11.5' fill='#666666' text-anchor='start' font-weight='normal'>阈值：RPT 上游带宽超限（默认 0 kbps 即触发）或收到 (S,G) Join 都会触发切换；SPT-bit 标记在 RPT 上</text>
+</svg>

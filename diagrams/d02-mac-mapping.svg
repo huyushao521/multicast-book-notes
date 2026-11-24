@@ -1,0 +1,29 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='900' height='360' viewBox='0 0 900 360'>
+<rect width='900' height='360' fill='#ffffff'/>
+<text x='450.0' y='26' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='16' font-weight='bold' fill='#1f4e79' text-anchor='middle'>D02  IPv4 组播地址 → 以太网组播 MAC 映射（低 23 位）</text>
+<text x='30' y='62' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' fill='#666666' text-anchor='start' font-weight='normal'>224.0.0.0/24 之前的 8 位保留，仅低 23 位参与映射</text>
+<rect x='60' y='90' width='180' height='70' rx='6' fill='#dbe9f6' stroke='#1f4e79' stroke-width='1.4'/>
+<text x='150' y='120' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='14' fill='#1f4e79' text-anchor='middle' font-weight='bold'>224.0.0.1</text>
+<text x='150' y='145' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='10.5' fill='#666666' text-anchor='middle' font-weight='normal'>↓  0x01005E + 低23位</text>
+<rect x='60' y='165' width='180' height='46' rx='6' fill='#eaf3e0' stroke='#1f4e79' stroke-width='1.4'/>
+<text x='150' y='194' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='13.5' fill='#1b5e20' text-anchor='middle' font-weight='bold'>01:00:5e:00:00:01</text>
+<rect x='270' y='90' width='180' height='70' rx='6' fill='#dbe9f6' stroke='#1f4e79' stroke-width='1.4'/>
+<text x='360' y='120' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='14' fill='#1f4e79' text-anchor='middle' font-weight='bold'>224.0.1.129</text>
+<text x='360' y='145' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='10.5' fill='#666666' text-anchor='middle' font-weight='normal'>↓  0x01005E + 低23位</text>
+<rect x='270' y='165' width='180' height='46' rx='6' fill='#eaf3e0' stroke='#1f4e79' stroke-width='1.4'/>
+<text x='360' y='194' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='13.5' fill='#1b5e20' text-anchor='middle' font-weight='bold'>01:00:5e:00:01:81</text>
+<rect x='480' y='90' width='180' height='70' rx='6' fill='#dbe9f6' stroke='#1f4e79' stroke-width='1.4'/>
+<text x='570' y='120' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='14' fill='#1f4e79' text-anchor='middle' font-weight='bold'>239.1.2.3</text>
+<text x='570' y='145' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='10.5' fill='#666666' text-anchor='middle' font-weight='normal'>↓  0x01005E + 低23位</text>
+<rect x='480' y='165' width='180' height='46' rx='6' fill='#eaf3e0' stroke='#1f4e79' stroke-width='1.4'/>
+<text x='570' y='194' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='13.5' fill='#1b5e20' text-anchor='middle' font-weight='bold'>01:00:5e:01:02:03</text>
+<rect x='690' y='90' width='180' height='70' rx='6' fill='#dbe9f6' stroke='#1f4e79' stroke-width='1.4'/>
+<text x='780' y='120' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='14' fill='#1f4e79' text-anchor='middle' font-weight='bold'>232.1.1.1</text>
+<text x='780' y='145' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='10.5' fill='#666666' text-anchor='middle' font-weight='normal'>↓  0x01005E + 低23位</text>
+<rect x='690' y='165' width='180' height='46' rx='6' fill='#eaf3e0' stroke='#1f4e79' stroke-width='1.4'/>
+<text x='780' y='194' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='13.5' fill='#1b5e20' text-anchor='middle' font-weight='bold'>01:00:5e:01:01:01</text>
+<g><rect x='320.0' y='263.0' width='260' height='34' rx='6' fill='#eaf3e0' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='450' y='284' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>交换机 MAC 表 / 组播表</text></g>
+<text x='30' y='320' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11.5' fill='#c00000' text-anchor='start' font-weight='normal'>冲突：32 个组播地址共享同一 MAC（224.0.0.1/2/3/4/5 ... 映射到 01:00:5e:00:00:01）→ 需 IGMP Snooping 精确收敛</text>
+<text x='30' y='340' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11.5' fill='#666666' text-anchor='start' font-weight='normal'>IPv6：33:33:xxxx:xxxx → 由低 32 位映射，同样存在 32 路冲突</text>
+</svg>

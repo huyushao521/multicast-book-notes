@@ -1,0 +1,35 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='900' height='400' viewBox='0 0 900 400'>
+<rect width='900' height='400' fill='#ffffff'/>
+<text x='450.0' y='26' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='16' font-weight='bold' fill='#1f4e79' text-anchor='middle'>D10  Anycast-RP 与 MSDP 冗余（MSDP Anycast-RP / PIM Anycast-RP）</text>
+<g><circle cx='250' cy='120' r='24' fill='#fff2cc' stroke='#c00000' stroke-width='2'/>
+<text x='250' y='125' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='13' font-weight='bold' text-anchor='middle' fill='#c00000'>RP-A</text></g>
+<g><circle cx='250' cy='280' r='24' fill='#fff2cc' stroke='#c00000' stroke-width='2'/>
+<text x='250' y='285' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='13' font-weight='bold' text-anchor='middle' fill='#c00000'>RP-B</text></g>
+<g><rect x='80.0' y='170.0' width='120' height='60' rx='6' fill='#eaf3e0' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='140' y='204' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>Loopback
+10.10.10.1
+Anycast</text></g>
+<line x1='140' y1='180' x2='200' y2='140' stroke='#c00000' stroke-width='1.6'/>
+<line x1='140' y1='220' x2='200' y2='260' stroke='#c00000' stroke-width='1.6'/>
+<g><circle cx='560' cy='200' r='26' fill='#dbe9f6' stroke='#1f4e79' stroke-width='1.6'/>
+<path d='M 549 193 L 571 193 M 549 200 L 571 200 M 549 207 L 571 207' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='560' y='242' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>AS1 Border</text></g>
+<g><circle cx='760' cy='200' r='26' fill='#dbe9f6' stroke='#1f4e79' stroke-width='1.6'/>
+<path d='M 749 193 L 771 193 M 749 200 L 771 200 M 749 207 L 771 207' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='760' y='242' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>AS2 Border</text></g>
+<g><rect x='365.0' y='68.0' width='170' height='44' rx='6' fill='#eaf3e0' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='450' y='94' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>MSDP Peer
+(RP-A ↔ RP-B)</text></g>
+<line x1='560' y1='175' x2='535' y2='120' stroke='#2e7d32' stroke-width='1.6' stroke-dasharray='5,4'/>
+<text x='547.5' y='141.5' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#2e7d32'>SA</text>
+<line x1='760' y1='175' x2='535' y2='120' stroke='#2e7d32' stroke-width='1.6' stroke-dasharray='5,4'/>
+<text x='647.5' y='141.5' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#2e7d32'>SA</text>
+<line x1='560' y1='225' x2='535' y2='280' stroke='#2e7d32' stroke-width='1.6' stroke-dasharray='5,4'/>
+<text x='547.5' y='246.5' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#2e7d32'>SA</text>
+<line x1='760' y1='225' x2='535' y2='280' stroke='#2e7d32' stroke-width='1.6' stroke-dasharray='5,4'/>
+<text x='647.5' y='246.5' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#2e7d32'>SA</text>
+<text x='600' y='320' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11.5' fill='#666666' text-anchor='middle' font-weight='normal'>MSDP Anycast-RP：SA 消息携带原始 RP(RP-id) + 原地址</text>
+<text x='600' y='340' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11.5' fill='#666666' text-anchor='middle' font-weight='normal'>PIM Anycast-RP：靠 MSDP 同步 + Register 复制，无 SA 依赖</text>
+<text x='30' y='60' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11.5' fill='#666666' text-anchor='start' font-weight='normal'>核心要点：任何cast IP 相同，路由最优路径收敛到最近 RP；</text>
+<text x='30' y='78' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11.5' fill='#666666' text-anchor='start' font-weight='normal'>MSDP Anycast-RP 需在 RP 上配置 msdp originator-id，并保留 SA 中的 RP-id</text>
+</svg>

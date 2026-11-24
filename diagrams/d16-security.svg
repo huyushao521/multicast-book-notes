@@ -1,0 +1,20 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='900' height='380' viewBox='0 0 900 380'>
+<rect width='900' height='380' fill='#ffffff'/>
+<text x='450.0' y='26' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='16' font-weight='bold' fill='#1f4e79' text-anchor='middle'>D16  组播安全边界与过滤</text>
+<g><rect x='90.0' y='165.0' width='120' height='50' rx='6' fill='#eaf3e0' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='150' y='194' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>边界路由器
+(BGR)</text></g>
+<g><ellipse cx='360' cy='190' rx='75.0' ry='30' fill='#f2f2f2' stroke='#666666' stroke-width='1.4'/>
+<text x='360' y='195' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#444'>AS 内部
+(组播域)</text></g>
+<g><ellipse cx='660' cy='190' rx='70.0' ry='30' fill='#f2f2f2' stroke='#666666' stroke-width='1.4'/>
+<text x='660' y='195' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#444'>AS 外部
+(公共域)</text></g>
+<line x1='210' y1='190' x2='285' y2='190' stroke='#c00000' stroke-width='1.6'/>
+<text x='247.5' y='184.0' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#c00000'>mroute + ACL</text>
+<line x1='435' y1='190' x2='590' y2='190' stroke='#c00000' stroke-width='1.6' stroke-dasharray='5,4'/>
+<text x='512' y='178' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#c00000'>禁止穿越</text>
+<text x='30' y='300' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11.5' fill='#333' text-anchor='start' font-weight='normal'>三层过滤：ip mroute ... in/out access-list /  prefix-list</text>
+<text x='30' y='322' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11.5' fill='#333' text-anchor='start' font-weight='normal'>防伪源：ip pim accept-register list / msdp originator-id 校验 / TTL 阈值</text>
+<text x='30' y='344' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11.5' fill='#333' text-anchor='start' font-weight='normal'>限速：ip multicast rate-limit（按接口/组）</text>
+</svg>

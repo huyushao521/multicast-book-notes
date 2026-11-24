@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 6 章 · SSM 与 BIDIR-PIM · IP 组播学习路线</title>
+<meta name="description" content="IP 组播学习路线：四阶段十二章精读笔记，78 个生产案例，16 张 SVG 拓扑图。">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230969da'/><circle cx='16' cy='16' r='4' fill='white'/><circle cx='16' cy='6' r='2.6' fill='white'/><circle cx='25' cy='21' r='2.6' fill='white'/><circle cx='7' cy='21' r='2.6' fill='white'/><path d='M16 10.6V8.6M18.9 17.6l3.4 2M13.1 17.6l-3.4 2' stroke='white' stroke-width='1.6'/></svg>">
+<link rel="stylesheet" href="../assets/css/site.css">
+<script>
+/* 尽早写入主题，避免刷新时闪白 */
+(function () {
+  var saved = null;
+  try { saved = localStorage.getItem('mc-theme'); } catch (e) {}
+  var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.setAttribute('data-theme', saved || (dark ? 'dark' : 'light'));
+})();
+</script>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<input type="checkbox" id="nav-toggle" hidden>
+<label for="nav-toggle" class="nav-toggle-btn">☰ 目录</label>
+
+<button type="button" class="theme-toggle floating" data-theme-toggle aria-label="切换深色/浅色主题" title="切换深色/浅色主题">
+  <span class="theme-icon" aria-hidden="true">◐</span><span class="theme-text">深色</span>
+</button>
+
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-row">
+      <a href="../index.html">IP 组播学习路线<span>精读笔记 · 四阶段十二章</span></a>
+      <button type="button" class="theme-toggle" data-theme-toggle aria-label="切换深色/浅色主题" title="切换深色/浅色主题">
+        <span class="theme-icon" aria-hidden="true">◐</span><span class="theme-text">深色</span>
+      </button>
+    </div>
+    <div class="search-wrap">
+      <input type="search" id="nav-search" placeholder="搜索章节…" autocomplete="off" aria-label="搜索章节">
+    </div>
+  </div>
+
+  <nav class="nav">
+    <details class="group" id="page-toc-group" open>
+      <summary>本页目录</summary>
+      <ul class="toc" id="toc-list"></ul>
+    </details>
+
+    <details class="group" id="home-group" open>
+      <summary>首页</summary>
+      <ul><li><a href="../index.html" data-path="index.html">学习路线总览</a></li></ul>
+    </details>
+    <details class="group part" data-part="阶段一" open>
+      <summary>阶段一 · 地基</summary>
+      <ul>
+        <li><a href="chapters/ch01-basics.html" data-path="chapters/ch01-basics.html">第 1 章 · 基础模型与地址体系</a></li>
+        <li><a href="chapters/ch02-igmp-l2.html" data-path="chapters/ch02-igmp-l2.html">第 2 章 · IGMP 与二层组播</a></li>
+      </ul>
+    </details>
+    <details class="group part" data-part="阶段二" open>
+      <summary>阶段二 · 协议核心</summary>
+      <ul>
+        <li><a href="chapters/ch03-rpf-pim-basics.html" data-path="chapters/ch03-rpf-pim-basics.html">第 3 章 · RPF 与 PIM 通用机制</a></li>
+        <li><a href="chapters/ch04-pim-dm.html" data-path="chapters/ch04-pim-dm.html">第 4 章 · PIM-DM 与 PIM-SDM</a></li>
+        <li><a href="chapters/ch05-pim-sm-rp.html" data-path="chapters/ch05-pim-sm-rp.html">第 5 章 · PIM-SM 与 RP 发现</a></li>
+        <li><a href="chapters/ch06-ssm-bidir.html" data-path="chapters/ch06-ssm-bidir.html" active>第 6 章 · SSM 与 BIDIR-PIM</a></li>
+      </ul>
+    </details>
+    <details class="group part" data-part="阶段三" open>
+      <summary>阶段三 · 域间与规模化</summary>
+      <ul>
+        <li><a href="chapters/ch07-msdp-mbgp.html" data-path="chapters/ch07-msdp-mbgp.html">第 7 章 · MSDP 与 MBGP 域间组播</a></li>
+        <li><a href="chapters/ch08-mvpn-scale.html" data-path="chapters/ch08-mvpn-scale.html">第 8 章 · MVPN / MLDP / 组播 TE</a></li>
+      </ul>
+    </details>
+    <details class="group part" data-part="阶段四" open>
+      <summary>阶段四 · 场景实战</summary>
+      <ul>
+        <li><a href="chapters/ch09-datacenter-cloud.html" data-path="chapters/ch09-datacenter-cloud.html">第 9 章 · 数据中心与云中的组播</a></li>
+        <li><a href="chapters/ch10-ipv6-multicast.html" data-path="chapters/ch10-ipv6-multicast.html">第 10 章 · IPv6 组播</a></li>
+        <li><a href="chapters/ch11-security.html" data-path="chapters/ch11-security.html">第 11 章 · 组播安全与过滤</a></li>
+        <li><a href="chapters/ch12-troubleshooting.html" data-path="chapters/ch12-troubleshooting.html">第 12 章 · 排障方法论</a></li>
+      </ul>
+    </details>
+  </nav>
+</aside>
+
+<label for="nav-toggle" class="backdrop"></label>
+
+<main class="main">
+  <article class="content">
+<h1 id="ch06-ssm-bidir-pim">ch06 SSM 与 BIDIR-PIM</h1>
+<blockquote>
+<p><strong>来源</strong>：Aweya Ch5.17–5.18（P.362–P.375，SSM）、Ch7（P.441–P.474，BIDIR-PIM）、Williamson Ch9（P.194–P.213，MOSPF）、iPexpert Ch6（P.6-1–6-33）、Volume II Ch5（SSM 选型）
+<strong>配图</strong>：<a href="../diagrams/d10-anycast-rp.svg">D10 Anycast-RP</a>｜<a href="../diagrams/d11-bidir.svg">D11 BIDIR 双向树</a></p>
+</blockquote>
+<hr />
+<h2 id="_1">学习目标</h2>
+<ol>
+<li>解释 SSM 的工作方式、四大优势与三种落地路径（原生 IGMPv3 / SSM-Mapping 静态 / SSM-Mapping DNS）；</li>
+<li>描述 BIDIR-PIM 的双向共享树模型与 DF 选举；</li>
+<li>说清 Phantom-RP 与 Anycast-RP 的差异；</li>
+<li>掌握 SSM 与 BIDIR 的选型依据与共存限制；</li>
+<li>排查 SSM/BIDIR 典型故障。</li>
+</ol>
+<hr />
+<h2 id="1-ssmsource-specific-multicast">1. SSM（Source-Specific Multicast）</h2>
+<h3 id="11">1.1 语义</h3>
+<p>接收者订阅的是 <strong>(G,S) 对</strong>，而不是"某个组的所有源"。</p>
+<div class="codehilite"><pre><span></span><code>IGMPv3:  Membership Report  Group=239.1.1.1, Source=10.1.2.5  → 只收 10.1.2.5 的流
+</code></pre></div>
+
+<h3 id="12">1.2 四大优势（与你的自有笔记完全一致）</h3>
+<table>
+<thead>
+<tr>
+<th>优势</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>无 RP</strong></td>
+<td>不需要 RP、不需要 Register、不需要共享树</td>
+</tr>
+<tr>
+<td><strong>无 MSDP</strong></td>
+<td>跨域天然可行（源与组的对应关系由应用层/IGMPv3 直接给出）</td>
+</tr>
+<tr>
+<td><strong>无共享树</strong></td>
+<td>只有源树 (S,G)，路径最短、无 RP 瓶颈</td>
+</tr>
+<tr>
+<td><strong>源过滤安全</strong></td>
+<td>接收者只接受指定源 → 杜绝伪源注入</td>
+</tr>
+</tbody>
+</table>
+<h3 id="13">1.3 三条落地路径</h3>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>条件</th>
+<th>配置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A. 原生 IGMPv3</strong></td>
+<td>主机支持 IGMPv3，能表达 (G,S)</td>
+<td><code>ip pim ssm range 232.0.0.0/8</code></td>
+</tr>
+<tr>
+<td><strong>B. IGMPv2 + 静态 SSM-Mapping</strong></td>
+<td>主机只支持 IGMPv2，但组→源关系固定</td>
+<td><code>ip igmp ssm-mapping static 239.1.1.1 10.1.2.5</code></td>
+</tr>
+<tr>
+<td><strong>C. IGMPv2 + 动态 SSM-Mapping（DNS）</strong></td>
+<td>组→源关系可由 DNS 解析（如 <code>ssm.map.example.com</code>）</td>
+<td><code>ip igmp ssm-mapping dynamic</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>SSM-Mapping 的工作位置</strong>：在 <strong>Last-hop 路由器</strong>上，把主机发来的 <code>(*,G)</code> Report 翻译为 <code>(G,S)</code>，然后按 SSM 流程处理。</p>
+<div class="codehilite"><pre><span></span><code>! 路由器侧
+ip pim ssm range 232.0.0.0/8
+ip igmp ssm-mapping static 239.1.1.1 10.1.2.5
+ip igmp ssm-mapping static 239.1.1.1 10.1.2.6
+</code></pre></div>
+
+<blockquote>
+<p><strong>注意</strong>：SSM-Mapping 必须在<strong>每一台最后一跳路由器</strong>上配置，否则同一组在不同接入点行为不一致。</p>
+</blockquote>
+<h3 id="14-ssm-ssm">1.4 SSM 的"伪 SSM"陷阱</h3>
+<p>很多设备文档写 "SSM 支持 232/8"，但<strong>实际 232/8 组地址 + IGMPv2 主机 = 完全不通</strong>（因为主机无法表达源）。这是现网最常见的 SSM 故障。</p>
+<hr />
+<h2 id="2-bidir-pimrfc-5015">2. BIDIR-PIM（RFC 5015）</h2>
+<p><img alt="BIDIR 双向共享树" src="../diagrams/d11-bidir.svg" /></p>
+<h3 id="21">2.1 模型</h3>
+<ul>
+<li>只有 *<em>(<em>,G)</em></em> 状态，<strong>没有 (S,G)</strong>；</li>
+<li><strong>没有 Register</strong>（源不需要注册到 RP）；</li>
+<li><strong>没有共享树/源树之分</strong>：RP 作为树的"中心"，源与接收者分别向 RP 建<strong>单向支路</strong>，合起来是"双向共享树"；</li>
+<li>每个与 RP 相连的网段选出一个 <strong>DF（Designated Forwarder）</strong>，负责本段与 RP 之间的转发。</li>
+</ul>
+<h3 id="22-aweya-73">2.2 术语（Aweya 7.3）</h3>
+<table>
+<thead>
+<tr>
+<th>术语</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>RPA</strong></td>
+<td>RP Address，RP 的地址</td>
+</tr>
+<tr>
+<td><strong>DF</strong></td>
+<td>Designated Forwarder，负责在本网段与 RP 间收发</td>
+</tr>
+<tr>
+<td><strong>RPT</strong></td>
+<td>由 DF 到 RP 的单向路径（Receiver-side / Source-side 两条）</td>
+</tr>
+<tr>
+<td><strong>BR</strong></td>
+<td>Bidir-capable Router，宣告 Bidir-Capable Option 的路由器</td>
+</tr>
+</tbody>
+</table>
+<h3 id="23-df-aweya-78">2.3 DF 选举（Aweya 7.8）</h3>
+<p><strong>选举原则</strong>：</p>
+<ol>
+<li>先比较 <strong>DF Priority</strong>（Hello 中的 Bidir-Capable Option 携带，<strong>数值大者胜</strong>）；</li>
+<li>相同则比较 <strong>链路度量</strong>（RFC 4191）/ 接口度量（RFC 5015），<strong>小者胜</strong>；</li>
+<li>再相同则比较 <strong>Router ID / IP 地址</strong>，<strong>大者胜</strong>（与 PIM DR 的"小者胜"相反！）。</li>
+</ol>
+<p><strong>可靠性增强报文</strong>（Aweya 7.8.4）：<strong>Offer / Winner / Backoff / Pass</strong>——用于在网络震荡时避免 DF 频繁切换。</p>
+<div class="codehilite"><pre><span></span><code>ip pim bidir-enable
+ip pim rp-address 10.1.1.1 bidir
+interface Gi0/1
+ ip pim sparse-mode
+ ip pim bidir-enable
+</code></pre></div>
+
+<h3 id="24-phantom-rpaweya-710">2.4 Phantom-RP（Aweya 7.10）</h3>
+<p><strong>问题</strong>：BIDIR-PIM 依赖单一 RP 地址，RP 宕机即中断。</p>
+<p><strong>Phantom-RP 做法</strong>：用 <strong>Anycast 地址</strong>配置一个"虚拟 RP"，多个真实 RP 都宣告这个 Anycast 地址：</p>
+<div class="codehilite"><pre><span></span><code>ip pim rp-address 10.100.100.100 bidir
+! 每台真实 RP 上额外配置：
+ip pim phantom-rp 10.100.100.100 bidir
+</code></pre></div>
+
+<p><strong>与 Anycast-RP 的区别</strong>：</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Anycast-RP（PIM-SM）</th>
+<th>Phantom-RP（BIDIR-PIM）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>是否有 Register</td>
+<td>有</td>
+<td>无</td>
+</tr>
+<tr>
+<td>是否需要 MSDP 交换源</td>
+<td>是</td>
+<td>否</td>
+</tr>
+<tr>
+<td>源侧行为</td>
+<td>源注册到最近的 RP</td>
+<td>源直接向 RP 发组播</td>
+</tr>
+<tr>
+<td>冗余粒度</td>
+<td>RP 对（源/收可能不同）</td>
+<td>任意 RP 均可服务任意源/收</td>
+</tr>
+</tbody>
+</table>
+<h3 id="25-bidir-pim">2.5 BIDIR-PIM 的适用场景（选型依据）</h3>
+<p><strong>适合</strong>：源多、接收者少，且拓扑接近"星型/对称"——典型是<strong>金融市场行情</strong>（成百上千个源网关 → 少量行情终端）。</p>
+<p><strong>不适合</strong>：</p>
+<ul>
+<li>源少接收者多（用 SSM 或 PIM-SM）；</li>
+<li>需要源过滤（SSM 的强项）；</li>
+<li>需要跨域且不想引入 MSDP（SSM 更简单）。</li>
+</ul>
+<blockquote>
+<p>与你的笔记一致："BiDir = only shared tree (only use for topology with many senders)"。</p>
+</blockquote>
+<hr />
+<h2 id="3-ssm-bidir-asm">3. SSM / BIDIR / ASM 对照配置速查</h2>
+<div class="codehilite"><pre><span></span><code>! ---- ASM（PIM-SM）----
+ip pim rp-address 10.1.1.1
+ip pim rp-address 10.2.2.2 239.1.0.0 255.255.0.0
+
+! ---- SSM ----
+ip pim ssm range 232.0.0.0/8
+ip igmp ssm-mapping static 239.1.1.1 10.1.2.5
+
+! ---- BIDIR-PIM ----
+ip pim rp-address 10.1.1.1 bidir
+ip pim bidir-enable
+interface Gi0/1
+ ip pim sparse-mode
+ ip pim bidir-enable
+
+! ---- 混合模式（同一设备同时 ASM+SSM）----
+ip pim rp-address 10.1.1.1
+ip pim ssm range 232.0.0.0/8
+</code></pre></div>
+
+<hr />
+<h2 id="4">4. 排障命令</h2>
+<div class="codehilite"><pre><span></span><code>show ip pim ssm range                       ! SSM 范围
+show ip igmp ssm-mapping                   ! SSM 映射表
+show ip igmp ssm-mapping group 239.1.1.1
+show ip pim rp-address bidir               ! BIDIR RP
+show ip pim df                              ! DF 选举结果
+show ip pim df detail                      ! DF 优先级/地址/状态
+show ip mroute 239.1.1.1 detail            ! BIDIR 下只有 (*,G)，无 (S,G)
+show ip pim interface                       ! 看 bidir-enable 是否生效
+debug ip pim bidir                         ! BIDIR 调试
+</code></pre></div>
+
+<hr />
+<h2 id="5-6">5. 生产案例（6 例）</h2>
+<h3 id="6-1ssm">案例 6-1：SSM 组地址完全不通（最常见）</h3>
+<p><strong>现象</strong>：业务使用 <code>232.1.1.1</code>，源正常发流，接收端完全收不到。
+<strong>定位</strong>：</p>
+<div class="codehilite"><pre><span></span><code>show ip pim ssm range                       ! 范围是否包含 232.1.1.1
+show ip igmp groups 232.1.1.1               ! 是否有成员
+show ip igmp ssm-mapping                    ! 映射是否存在
+show ip mroute 232.1.1.1                   ! 无表项
+</code></pre></div>
+
+<p><strong>根因</strong>：接收主机只跑 <strong>IGMPv2</strong>，只能发 <code>(*,G)</code> Report，无法表达 (G,S)；且未配置 SSM-Mapping。
+<strong>处置</strong>：主机升级 IGMPv3；或配置 <code>ip igmp ssm-mapping static 232.1.1.1 &lt;源IP&gt;</code>。
+<strong>复盘</strong>：SSM 三要素（IGMPv3/SSM-Mapping + <code>ip pim ssm range</code> + 正确订阅）缺一不可。</p>
+<h3 id="6-2ssm-mapping">案例 6-2：SSM-Mapping 只配了部分接入点</h3>
+<p><strong>现象</strong>：同一组播业务在 A 楼正常，B 楼不通。
+<strong>定位</strong>：<code>show ip igmp ssm-mapping</code> 在 A 楼路由器有、B 楼没有。
+<strong>根因</strong>：SSM-Mapping 是<strong>本地 Last-hop 行为</strong>，不是全域状态；配置时漏了部分接入点。
+<strong>处置</strong>：补齐所有 Last-hop 设备；用配置模板 + 审计脚本管控。
+<strong>复盘</strong>：凡是"本地生效"的特性（SSM-Mapping、Query Solicitation、Fast Leave）都要单独列清单。</p>
+<h3 id="6-3bidir-pim">案例 6-3：BIDIR-PIM 源侧无流量</h3>
+<p><strong>现象</strong>：BIDIR 域内接收端已加入 <code>(*,G)</code>，但收不到源流。
+<strong>定位</strong>：<code>show ip mroute 239.1.1.1</code> 存在 <code>(*,G)</code> 但无 (S,G)；<code>show ip pim df</code> 显示源侧 DF 正常。
+<strong>根因</strong>：BIDIR 中 <strong>源不注册</strong>，源必须<strong>直接向 RP 地址发送组播</strong>（目的 IP 就是组地址，但路由路径指向 RP）；源侧路由配置为"到组地址的下一跳是 RP"。
+<strong>处置</strong>：源网关配置到组地址的路由指向 RPA；必要时在源侧加静态 mroute 指向 RPA。
+<strong>复盘</strong>：BIDIR 的关键前提是"源侧和收侧都把 RP 当作树根"，源必须能"直达 RP"。</p>
+<h3 id="6-4bidir-df">案例 6-4：BIDIR 的 DF 频繁切换</h3>
+<p><strong>现象</strong>：组播周期性闪断；<code>show ip pim df</code> 中 DF 反复变化。
+<strong>定位</strong>：<code>debug ip pim bidir</code> 显示 Offer/Winner 反复交换。
+<strong>根因</strong>：DF 选举参数相同（优先级、度量、地址都相同），或链路震荡；缺少 Offer/Winner/Backoff 保护。
+<strong>处置</strong>：显式配置不同 <code>ip pim df priority</code>；检查链路稳定性。
+<strong>复盘</strong>：BIDIR 的选举比较顺序与 PIM DR 相反（地址大者胜），配置时容易搞混。</p>
+<h3 id="6-5phantom-rp-df">案例 6-5：Phantom-RP 配置后 DF 选举异常</h3>
+<p><strong>现象</strong>：配置 <code>ip pim phantom-rp</code> 后，某个网段的 DF 消失。
+<strong>定位</strong>：查看 <code>show ip pim df</code>，该网段无 DF；检查 <code>ip pim rp-address ... bidir</code> 与 <code>ip pim phantom-rp</code> 是否同地址。
+<strong>根因</strong>：Phantom-RP 与 BIDIR RP 地址不一致，或 Phantom-RP 配置在非 RP 设备上。
+<strong>处置</strong>：确保 Phantom-RP 地址与 BIDIR RP 地址一致，且只在真实 RP 上配置。
+<strong>复盘</strong>：Phantom-RP 是"地址层面的复制"，配置必须与 BIDIR RP 对齐。</p>
+<h3 id="6-6ssm-asm">案例 6-6：SSM 与 ASM 混用导致组播"串流"</h3>
+<p><strong>现象</strong>：某主机本应只收源 A 的流，却收到了源 B 的流（ASM 泄漏）。
+<strong>定位</strong>：<code>show ip igmp groups</code> 显示主机以 IGMPv2 加入；<code>show ip mroute</code> 中出现 <code>(*,G)</code> 状态。
+<strong>根因</strong>：主机以 IGMPv2 加入 <code>(*,G)</code>，且未配置 SSM-Mapping → 路由器按 ASM 处理，任何源都能进来。
+<strong>处置</strong>：强制 IGMPv3 或配置 SSM-Mapping；对安全敏感的流用 ACL 限制源。
+<strong>复盘</strong>：<strong>SSM 的安全前提是接收侧真的在表达 (G,S)</strong>；未配 SSM-Mapping 的 IGMPv2 主机等于降级为 ASM。</p>
+<hr />
+<h2 id="6">6. 自测清单</h2>
+<ol>
+<li>SSM 的四大优势是什么？其中哪一个直接消除了 MSDP 的必要性？</li>
+<li>SSM-Mapping 有哪两种形式？各在什么场景使用？生效位置在哪台设备？</li>
+<li>为什么"SSM + IGMPv2 主机"不通？这个坑在现网出现频率为什么这么高？</li>
+<li>BIDIR-PIM 中为什么没有 (S,G) 状态？源如何把流量送到接收者？</li>
+<li>DF 选举的比较顺序是什么？与 PIM DR 选举的差异在哪两处？</li>
+<li>Phantom-RP 与 Anycast-RP 的三点差异？</li>
+<li>什么业务特征决定用 BIDIR 而不是 SSM？</li>
+</ol>
+<h2 id="7">7. 延伸阅读</h2>
+<ul>
+<li>Aweya Ch7（P.441–P.474）、Ch5.17–5.18（P.362–P.375）</li>
+<li>iPexpert Ch6（P.6-1–6-33）：BIDIR-PIM 排障场景</li>
+<li>Williamson Ch9（P.194–P.213）：MOSPF（历史参考）</li>
+<li>延伸：<code>RFC 4607</code>（SSM）、<code>RFC 7761 §6.3</code>（SSM-Mapping）、<code>RFC 5015</code>（BIDIR-PIM）、<code>RFC 7761 §4.7</code>（Phantom-RP）</li>
+</ul>
+  </article>
+  <footer class="page-foot">
+<a class="prev" href="ch05-pim-sm-rp.html"><span class="dir">← 上一章</span><span class="ttl">第 5 章 · PIM-SM 与 RP 发现</span></a><a class="next" href="ch07-msdp-mbgp.html"><span class="dir">下一章 →</span><span class="ttl">第 7 章 · MSDP 与 MBGP 域间组播</span></a>
+    <p class="foot-note">内容基于公开出版物整理，仅用于技术学习；命令示例请以设备实际版本手册为准。</p>
+  </footer>
+</main>
+
+<button type="button" class="to-top" id="to-top" aria-label="回到顶部" title="回到顶部">↑</button>
+
+<script>
+(function () {
+  var content = document.querySelector('.content');
+  var here = location.pathname;
+
+  /* ---------- 当前章节高亮 + 展开所属分组 ---------- */
+  var active = null;
+  document.querySelectorAll('.nav a[data-path]').forEach(function (a) {
+    if (here.indexOf('/' + a.dataset.path) !== -1 || here.indexOf(a.dataset.path) !== -1) {
+      a.classList.add('active');
+      active = a;
+    }
+  });
+  if (active) {
+    var g = active.closest('details');
+    if (g) g.open = true;
+  }
+
+  /* ---------- 生成本页目录（取 h2 / h3） ---------- */
+  var heads = content ? content.querySelectorAll('h2, h3') : [];
+  var tocList = document.getElementById('toc-list');
+  heads.forEach(function (h, i) {
+    h.id = 'sec-' + (i + 1);
+    var li = document.createElement('li');
+    li.className = h.tagName === 'H3' ? 'lvl3' : 'lvl2';
+    var a = document.createElement('a');
+    a.href = '#' + h.id;
+    a.textContent = h.textContent.trim();
+    li.appendChild(a);
+    tocList.appendChild(li);
+  });
+  if (!heads.length) {
+    var g = document.getElementById('page-toc-group');
+    if (g) g.remove();
+  }
+
+  /* ---------- 目录滚动高亮 ---------- */
+  if (heads.length) {
+    var links = tocList.querySelectorAll('a');
+    var onScroll = function () {
+      var idx = 0;
+      heads.forEach(function (h, i) {
+        if (h.getBoundingClientRect().top <= 100) idx = i;
+      });
+      links.forEach(function (a, i) { a.classList.toggle('active', i === idx); });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+
+  /* ---------- 阅读进度条 ---------- */
+  var bar = document.getElementById('progress');
+  function paintProgress() {
+    if (!bar) return;
+    var h = document.documentElement.scrollHeight - window.innerHeight;
+    var p = h > 0 ? (window.scrollY / h) * 100 : 0;
+    bar.style.width = Math.min(100, Math.max(0, p)) + '%';
+  }
+  window.addEventListener('scroll', paintProgress, { passive: true });
+  paintProgress();
+
+  /* ---------- 回到顶部 ---------- */
+  var top = document.getElementById('to-top');
+  if (top) {
+    top.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    window.addEventListener('scroll', function () {
+      top.style.opacity = window.scrollY > 400 ? '1' : '0';
+    }, { passive: true });
+  }
+
+  /* ---------- 侧栏搜索过滤 ---------- */
+  var search = document.getElementById('nav-search');
+  if (search) {
+    search.addEventListener('input', function () {
+      var q = search.value.trim().toLowerCase();
+      document.querySelectorAll('.nav .group.part').forEach(function (grp) {
+        var hit = 0;
+        grp.querySelectorAll('li').forEach(function (li) {
+          var t = (li.textContent || '').toLowerCase();
+          var ok = !q || t.indexOf(q) !== -1;
+          li.style.display = ok ? '' : 'none';
+          if (ok) hit++;
+        });
+        grp.style.display = hit ? '' : 'none';
+        if (q && hit) grp.open = true;
+      });
+    });
+  }
+
+  /* ---------- 代码块复制按钮 ---------- */
+  document.querySelectorAll('.content pre').forEach(function (pre) {
+    var btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.type = 'button';
+    btn.textContent = '复制';
+    btn.addEventListener('click', function () {
+      var code = pre.querySelector('code');
+      var text = code ? code.innerText : pre.innerText;
+      navigator.clipboard.writeText(text).then(function () {
+        btn.textContent = '已复制';
+        setTimeout(function () { btn.textContent = '复制'; }, 1500);
+      }).catch(function () { btn.textContent = '复制失败'; });
+    });
+    pre.appendChild(btn);
+  });
+
+  /* ---------- 移动端点目录后自动收起 ---------- */
+  document.querySelectorAll('.nav a[data-path]').forEach(function (a) {
+    a.addEventListener('click', function () {
+      document.getElementById('nav-toggle').checked = false;
+    });
+  });
+
+  /* ---------- 主题切换 ---------- */
+  var root = document.documentElement;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+
+  function paintButtons(theme) {
+    var dark = theme === 'dark';
+    document.querySelectorAll('[data-theme-toggle]').forEach(function (btn) {
+      btn.querySelector('.theme-icon').textContent = dark ? '☀' : '☾';
+      btn.querySelector('.theme-text').textContent = dark ? '浅色' : '深色';
+      btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+      btn.title = dark ? '切换到浅色主题' : '切换到深色主题';
+    });
+  }
+
+  function applyTheme(theme) {
+    root.setAttribute('data-theme', theme);
+    paintButtons(theme);
+  }
+
+  paintButtons(root.getAttribute('data-theme') || 'light');
+
+  document.querySelectorAll('[data-theme-toggle]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+      try { localStorage.setItem('mc-theme', next); } catch (e) {}
+    });
+  });
+
+  if (mq) {
+    var onScheme = function (e) {
+      var saved = null;
+      try { saved = localStorage.getItem('mc-theme'); } catch (err) {}
+      if (!saved) applyTheme(e.matches ? 'dark' : 'light');
+    };
+    if (mq.addEventListener) mq.addEventListener('change', onScheme);
+    else if (mq.addListener) mq.addListener(onScheme);
+  }
+})();
+</script>
+</body>
+</html>

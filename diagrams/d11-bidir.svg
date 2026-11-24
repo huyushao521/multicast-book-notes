@@ -1,0 +1,38 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='900' height='380' viewBox='0 0 900 380'>
+<rect width='900' height='380' fill='#ffffff'/>
+<text x='450.0' y='26' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='16' font-weight='bold' fill='#1f4e79' text-anchor='middle'>D11  BIDIR-PIM 双向共享树与 DF 选举</text>
+<g><circle cx='470' cy='190' r='24' fill='#fff2cc' stroke='#c00000' stroke-width='2'/>
+<text x='470' y='195' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='13' font-weight='bold' text-anchor='middle' fill='#c00000'>RP-A
+(RPA)</text></g>
+<g><rect x='75.0' y='104.0' width='90' height='32' rx='3' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<rect x='83.0' y='95.0' width='74' height='9' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<text x='120' y='124' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#222'>源 1</text></g>
+<g><rect x='75.0' y='244.0' width='90' height='32' rx='3' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<rect x='83.0' y='235.0' width='74' height='9' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<text x='120' y='264' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#222'>接收者</text></g>
+<g><circle cx='300' cy='120' r='26' fill='#dbe9f6' stroke='#1f4e79' stroke-width='1.6'/>
+<path d='M 289 113 L 311 113 M 289 120 L 311 120 M 289 127 L 311 127' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='300' y='162' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>DF-1
+(源侧)</text></g>
+<g><circle cx='300' cy='260' r='26' fill='#dbe9f6' stroke='#1f4e79' stroke-width='1.6'/>
+<path d='M 289 253 L 311 253 M 289 260 L 311 260 M 289 267 L 311 267' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='300' y='302' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>DF-2
+(接收侧)</text></g>
+<line x1='170' y1='120' x2='250' y2='120' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='210.0' y='114.0' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#1f4e79'>数据</text>
+<line x1='350' y1='120' x2='440' y2='165' stroke='#2e7d32' stroke-width='1.6' stroke-dasharray='5,4'/>
+<text x='395.0' y='136.5' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#2e7d32'>源侧 RPT</text>
+<line x1='350' y1='260' x2='440' y2='215' stroke='#2e7d32' stroke-width='1.6' stroke-dasharray='5,4'/>
+<text x='395.0' y='231.5' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#2e7d32'>接收侧 RPT</text>
+<g><rect x='755.0' y='174.0' width='90' height='32' rx='3' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<rect x='763.0' y='165.0' width='74' height='9' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<text x='800' y='194' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#222'>源 2</text></g>
+<g><circle cx='700' cy='190' r='26' fill='#dbe9f6' stroke='#1f4e79' stroke-width='1.6'/>
+<path d='M 689 183 L 711 183 M 689 190 L 711 190 M 689 197 L 711 197' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='700' y='232' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>DF-3</text></g>
+<line x1='750' y1='190' x2='520' y2='190' stroke='#2e7d32' stroke-width='1.6' stroke-dasharray='5,4'/>
+<text x='635.0' y='184.0' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#2e7d32'>源侧 RPT</text>
+<text x='30' y='340' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11.5' fill='#666666' text-anchor='start' font-weight='normal'>特点：不用 Register、无 (S,G) 状态，只有 (*,G)；适用于大量源、少量接收者的场景（如行情）</text>
+<text x='30' y='360' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11.5' fill='#666666' text-anchor='start' font-weight='normal'>DF 选举：优先级 → 接口度量 → IP 地址；可用 Offer/Winner/Backoff/Pass 报文增强可靠性</text>
+<text x='30' y='378' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11.5' fill='#666666' text-anchor='start' font-weight='normal'>Phantom-RP：用 Anycast 地址配置 Phantom RP 提升冗余</text>
+</svg>

@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 9 章 · 数据中心与云中的组播 · IP 组播学习路线</title>
+<meta name="description" content="IP 组播学习路线：四阶段十二章精读笔记，78 个生产案例，16 张 SVG 拓扑图。">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230969da'/><circle cx='16' cy='16' r='4' fill='white'/><circle cx='16' cy='6' r='2.6' fill='white'/><circle cx='25' cy='21' r='2.6' fill='white'/><circle cx='7' cy='21' r='2.6' fill='white'/><path d='M16 10.6V8.6M18.9 17.6l3.4 2M13.1 17.6l-3.4 2' stroke='white' stroke-width='1.6'/></svg>">
+<link rel="stylesheet" href="../assets/css/site.css">
+<script>
+/* 尽早写入主题，避免刷新时闪白 */
+(function () {
+  var saved = null;
+  try { saved = localStorage.getItem('mc-theme'); } catch (e) {}
+  var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.setAttribute('data-theme', saved || (dark ? 'dark' : 'light'));
+})();
+</script>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<input type="checkbox" id="nav-toggle" hidden>
+<label for="nav-toggle" class="nav-toggle-btn">☰ 目录</label>
+
+<button type="button" class="theme-toggle floating" data-theme-toggle aria-label="切换深色/浅色主题" title="切换深色/浅色主题">
+  <span class="theme-icon" aria-hidden="true">◐</span><span class="theme-text">深色</span>
+</button>
+
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-row">
+      <a href="../index.html">IP 组播学习路线<span>精读笔记 · 四阶段十二章</span></a>
+      <button type="button" class="theme-toggle" data-theme-toggle aria-label="切换深色/浅色主题" title="切换深色/浅色主题">
+        <span class="theme-icon" aria-hidden="true">◐</span><span class="theme-text">深色</span>
+      </button>
+    </div>
+    <div class="search-wrap">
+      <input type="search" id="nav-search" placeholder="搜索章节…" autocomplete="off" aria-label="搜索章节">
+    </div>
+  </div>
+
+  <nav class="nav">
+    <details class="group" id="page-toc-group" open>
+      <summary>本页目录</summary>
+      <ul class="toc" id="toc-list"></ul>
+    </details>
+
+    <details class="group" id="home-group" open>
+      <summary>首页</summary>
+      <ul><li><a href="../index.html" data-path="index.html">学习路线总览</a></li></ul>
+    </details>
+    <details class="group part" data-part="阶段一" open>
+      <summary>阶段一 · 地基</summary>
+      <ul>
+        <li><a href="chapters/ch01-basics.html" data-path="chapters/ch01-basics.html">第 1 章 · 基础模型与地址体系</a></li>
+        <li><a href="chapters/ch02-igmp-l2.html" data-path="chapters/ch02-igmp-l2.html">第 2 章 · IGMP 与二层组播</a></li>
+      </ul>
+    </details>
+    <details class="group part" data-part="阶段二" open>
+      <summary>阶段二 · 协议核心</summary>
+      <ul>
+        <li><a href="chapters/ch03-rpf-pim-basics.html" data-path="chapters/ch03-rpf-pim-basics.html">第 3 章 · RPF 与 PIM 通用机制</a></li>
+        <li><a href="chapters/ch04-pim-dm.html" data-path="chapters/ch04-pim-dm.html">第 4 章 · PIM-DM 与 PIM-SDM</a></li>
+        <li><a href="chapters/ch05-pim-sm-rp.html" data-path="chapters/ch05-pim-sm-rp.html">第 5 章 · PIM-SM 与 RP 发现</a></li>
+        <li><a href="chapters/ch06-ssm-bidir.html" data-path="chapters/ch06-ssm-bidir.html">第 6 章 · SSM 与 BIDIR-PIM</a></li>
+      </ul>
+    </details>
+    <details class="group part" data-part="阶段三" open>
+      <summary>阶段三 · 域间与规模化</summary>
+      <ul>
+        <li><a href="chapters/ch07-msdp-mbgp.html" data-path="chapters/ch07-msdp-mbgp.html">第 7 章 · MSDP 与 MBGP 域间组播</a></li>
+        <li><a href="chapters/ch08-mvpn-scale.html" data-path="chapters/ch08-mvpn-scale.html">第 8 章 · MVPN / MLDP / 组播 TE</a></li>
+      </ul>
+    </details>
+    <details class="group part" data-part="阶段四" open>
+      <summary>阶段四 · 场景实战</summary>
+      <ul>
+        <li><a href="chapters/ch09-datacenter-cloud.html" data-path="chapters/ch09-datacenter-cloud.html" active>第 9 章 · 数据中心与云中的组播</a></li>
+        <li><a href="chapters/ch10-ipv6-multicast.html" data-path="chapters/ch10-ipv6-multicast.html">第 10 章 · IPv6 组播</a></li>
+        <li><a href="chapters/ch11-security.html" data-path="chapters/ch11-security.html">第 11 章 · 组播安全与过滤</a></li>
+        <li><a href="chapters/ch12-troubleshooting.html" data-path="chapters/ch12-troubleshooting.html">第 12 章 · 排障方法论</a></li>
+      </ul>
+    </details>
+  </nav>
+</aside>
+
+<label for="nav-toggle" class="backdrop"></label>
+
+<main class="main">
+  <article class="content">
+<h1 id="ch09-vxlan-evpn-aci">ch09 数据中心与云中的组播（VXLAN / EVPN / ACI / 公有云）</h1>
+<blockquote>
+<p><strong>来源</strong>：Volume II Ch4（Multicast in Data Center Environments，P.225–P.253）、Ch5（Multicast Design Solutions，P.255–P.300）
+<strong>配图</strong>：<a href="../diagrams/d14-vxlan.svg">D14 VXLAN/EVPN 组播</a></p>
+</blockquote>
+<hr />
+<h2 id="_1">学习目标</h2>
+<ol>
+<li>说清 VXLAN 环境中组播为什么是 BUM 流量、EVPN 如何用 <strong>Ingress Replication</strong> 解决复制问题；</li>
+<li>掌握 VXLAN 组播的关键配置（EVPN route-type 3/10、Leaf 侧 IGMP/PIM、VNI 内 L2/L3 组播边界）；</li>
+<li>理解 ACI Fabric 中 L2 IGMP Snooping 与 L3 组播的实现差异；</li>
+<li>理解公有云无原生组播的替代方案（Service Reflection / 单播-组播转换）；</li>
+<li>掌握数据中心组播的验证方法与常见故障。</li>
+</ol>
+<hr />
+<h2 id="1">1. 数据中心组播的现实</h2>
+<p><strong>为什么 DC 需要组播</strong>：</p>
+<ul>
+<li>服务网格/遥测（Prometheus、OTel 指标聚合）；</li>
+<li>分布式缓存/配置分发（Nacos、Consul、etcd）；</li>
+<li>视频流分发（直播、点播转推）；</li>
+<li>金融行情/撮合系统内广播；</li>
+<li>虚拟化迁移（VMware VMTN 依赖组播）。</li>
+</ul>
+<p><strong>为什么 DC 组播比企业网更难</strong>：</p>
+<ol>
+<li><strong>Overlay 隧道</strong>：VXLAN 把二层包封装进 UDP/IP 组播（VTEP 发现用 239.1.1.1）或单播；</li>
+<li><strong>BUM 流量</strong>：组播/广播/未知单播在 Spine-Leaf 中需要<strong>复制</strong>，Spine 若不做组播复制则必须由 <strong>Leaf 做 Ingress Replication</strong>；</li>
+<li><strong>多租户隔离</strong>：同一 VNI 内不同租户是否共享组播？跨 VNI 如何处理？</li>
+<li><strong>云上无组播</strong>：公有云 VPC 不支持组播。</li>
+</ol>
+<hr />
+<h2 id="2-vxlan-evpn-volume-ii-ch4">2. VXLAN + EVPN 组播（Volume II Ch4）</h2>
+<p><img alt="VXLAN/EVPN 组播" src="../diagrams/d14-vxlan.svg" /></p>
+<h3 id="21-vxlan-flood-and-learn-vs-evpn">2.1 VXLAN Flood-and-Learn vs EVPN</h3>
+<table>
+<thead>
+<tr>
+<th>机制</th>
+<th>组播泛洪方式</th>
+<th>组播的代价</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>VXLAN Flood-and-learn</strong></td>
+<td>头端把 BUM 流量复制到<strong>所有</strong> Spine → 各 Leaf → 所有 VTEP</td>
+<td>组播被复制到整个 Fabric，浪费巨大</td>
+</tr>
+<tr>
+<td><strong>VXLAN + EVPN</strong></td>
+<td>BUM 流量通过 EVPN 路由（<strong>route-type 3：IM（Inclusive Multicast）ET</strong>）学习到"哪些 VTEP 需要该组"；数据面由 <strong>Ingress Replication</strong> 复制</td>
+<td>只复制到有成员的 VTEP</td>
+</tr>
+</tbody>
+</table>
+<p><strong>EVPN 与组播相关的 NLRI</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>Route Type</th>
+<th>名称</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>3</strong></td>
+<td>Inclusive Multicast Ethernet Tag (IMET)</td>
+<td>通告"哪些 VTEP 加入了某个广播域" → <strong>组播 BUM 的成员发现</strong></td>
+</tr>
+<tr>
+<td><strong>4</strong></td>
+<td>Ethernet Segment (ES)</td>
+<td>多归段信息</td>
+</tr>
+<tr>
+<td><strong>10</strong></td>
+<td>Multicast Ethernet Tag (MCAST ET)</td>
+<td>通告"某个 VNI 内哪些 VTEP 是某组播组的成员" → <strong>精确的组播成员分发</strong></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>route-type 10 是组播的关键</strong>：它是 EVPN 体系中唯一为"组播成员"设计的 NLRI，使得组播流不必像广播那样泛洪。</p>
+</blockquote>
+<h3 id="22-ingress-replication">2.2 Ingress Replication（入口复制）</h3>
+<ul>
+<li>复制发生在<strong>入口 Leaf</strong>（收到组播的 Leaf）；</li>
+<li>入口 Leaf 通过 EVPN 学到的成员列表，把封装后的组播复制到相关 Leaf；</li>
+<li><strong>Spine 只需承载单播</strong>（只需 BGP EVPN + 单播路由）→ <strong>核心无需组播能力</strong>。</li>
+</ul>
+<h3 id="23">2.3 关键配置要点</h3>
+<div class="codehilite"><pre><span></span><code>! Spine：只需 EVPN 控制面
+router bgp 65001
+ address-family l2vpn evpn
+  neighbor 10.0.0.2 activate
+
+! Leaf：EVPN + 组播
+router bgp 65001
+ address-family l2vpn evpn
+  neighbor 10.0.0.1 activate
+!
+vlan 10
+ vni 10010
+!
+interface nve1
+ no ip address
+ source-interface Loopback0
+ host-reachability protocol bgp
+ member vni 10010 ingress-replication
+!
+interface Vlan10
+ vrf forwarding Tenant-A
+ ip pim sparse-mode
+!
+ip igmp snooping vlan 10
+</code></pre></div>
+
+<p><strong>要点解释</strong>：</p>
+<ul>
+<li><code>member vni 10010 ingress-replication</code>：<strong>告诉 NVE 用入口复制</strong>（不依赖核心组播）；</li>
+<li>VNI 内 <strong>L2 组播</strong>（同一 VNI 内主机互访）：靠 EVPN IMET/route-type 3 + 交换机内 IGMP Snooping；</li>
+<li><strong>L3 组播</strong>（跨 VNI / 跨 VRF）：需要 <strong>PIM + EVPN 的多租户路由</strong>（Volume II Ch4 "Layer 3 Multicast Communication"）；</li>
+<li><strong>VTEP 发现</strong>：传统用 <code>239.1.1.1</code>（组播）→ 在不支持组播的核心上需改为 BGP 控制平面发现。</li>
+</ul>
+<h3 id="24-vni-volume-ii-ch4">2.4 三层组播在 VNI 内的边界（Volume II Ch4）</h3>
+<ul>
+<li>同一 VNI 内：组播被限制在 VNI 边界（相当于 VXLAN 天然形成 Admin Scope 边界）；</li>
+<li>跨 VNI：需要 L3 组播（路由 + PIM），且要确认 VRF/租户隔离策略允许；</li>
+<li><strong>跨 VNI 泄漏是常见安全问题</strong>：租户 A 的组播流不应出现在租户 B 的 VNI 中。</li>
+</ul>
+<hr />
+<h2 id="3-aciaci-fabricvolume-ii-ch4">3. ACI（ACI Fabric）中的组播（Volume II Ch4）</h2>
+<table>
+<thead>
+<tr>
+<th>层次</th>
+<th>机制</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>L2</strong></td>
+<td>Fabric 内部启用 <strong>IGMP Snooping</strong>（ACI 控制器统一下发），BD（Bridge Domain）内的组播按成员收敛</td>
+</tr>
+<tr>
+<td><strong>L3</strong></td>
+<td>ACI 在 <strong>VRF/BD 之间</strong>运行组播路由（由 APIC 统一下发 PIM），并支持 <strong>多租户组播</strong>（Ch5）</td>
+</tr>
+</tbody>
+</table>
+<p><strong>多租户组播（ACI Multitenant Multicast, Volume II Ch5）</strong>：</p>
+<ul>
+<li>每个租户在自己的 VRF 内有独立的组播空间；</li>
+<li>跨租户共享媒体流需要 <strong>"Anycast-GR" / 组播出口/入口复制</strong>等控制器特性；</li>
+<li>ACI 的优势是<strong>策略统一</strong>：由 APIC 统一下发 IGMP Snooping 与组播策略，避免手工配置漂移。</li>
+</ul>
+<blockquote>
+<p>价值判断：在 ACI 环境中，组播能力取决于 <strong>APIC 版本 + Fabric 配置模板</strong>，而不是逐台配置。做 DC 组播 POC 时必须让 ACI 团队参与。</p>
+</blockquote>
+<hr />
+<h2 id="4-volume-ii-ch2">4. 公有云与组播替代方案（Volume II Ch2）</h2>
+<p><strong>现实</strong>：公有云 VPC <strong>没有原生组播</strong>（AWS/Azure/GCP 均不提供用户可控的组播广播）。</p>
+<p><strong>替代思路（Volume II Ch2 Service Reflection 与三种转换用例）</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>用例</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Use Case 1：Multicast-to-Multicast</strong></td>
+<td>源在云内仍是组播，云厂商把组播"反射"为可控的传输（由云厂商的组播基础设施承载）</td>
+</tr>
+<tr>
+<td><strong>Use Case 2：Unicast-to-Multicast</strong></td>
+<td>源以单播进入云，云侧把它转成组播分发给订阅者</td>
+</tr>
+<tr>
+<td><strong>Use Case 3：Multicast-to-Unicast</strong></td>
+<td>云内是组播，出方向转换为单播（如点对点分发）</td>
+</tr>
+</tbody>
+</table>
+<p><strong>企业侧常见工程做法</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>方案</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>GRE/ IPsec 隧道 + 静态 mroute</strong></td>
+<td>自建隧道把组播"拉"进云；必须为源和 RP 配静态 mroute（你的笔记中已明确指出这点）</td>
+</tr>
+<tr>
+<td><strong>中继/网关设备</strong></td>
+<td>云上部署组播网关（接收单播或私有组播，转发为业务需要的形态）</td>
+</tr>
+<tr>
+<td><strong>第三方组播云</strong></td>
+<td>云厂商的组播分发服务（如 CDN/直播厂商的组播转推）</td>
+</tr>
+<tr>
+<td><strong>应用层组播</strong></td>
+<td>改用消息中间件（Kafka/NATS 等）替代网络组播</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>架构建议</strong>：不要为了"保留组播"而在云上自建复杂隧道，除非业务有硬性要求（如高频行情）。绝大多数场景应评估"应用层队列 + 单播分发"的总成本。</p>
+</blockquote>
+<hr />
+<h2 id="5-volume-ii-ch6-verifying-multicast-in-vxlan">5. 数据中心组播验证（Volume II Ch6 "Verifying Multicast in VXLAN"）</h2>
+<div class="codehilite"><pre><span></span><code>! 二层成员
+show ip igmp snooping groups vlan 10
+show ip igmp groups vlan 10
+! EVPN 侧
+show bgp l2vpn evpn route-type 3
+show bgp l2vpn evpn route-type 10
+! 三层组播
+show ip mroute vrf Tenant-A
+show ip pim vrf Tenant-A interface
+show ip pim vrf Tenant-A neighbor
+! VTEP 隧道与复制
+show nve vni 10010
+show nve peers
+show interface nve1 | include replication
+</code></pre></div>
+
+<hr />
+<h2 id="6-6">6. 生产案例（6 例）</h2>
+<h3 id="9-1vxlan-fabric">案例 9-1：VXLAN 中组播被全 Fabric 泛洪</h3>
+<p><strong>现象</strong>：任意一台主机发组播，整个 Fabric 的 Spine 出口都有流量，带宽浪费严重。
+<strong>定位</strong>：<code>show bgp l2vpn evpn route-type 10</code> 无条目；<code>show bgp l2vpn evpn route-type 3</code> 条目很多。
+<strong>根因</strong>：只配置了 EVPN route-type 3（广播域成员），未启用 <strong>route-type 10</strong>（组播成员），BUM 走泛洪路径。
+<strong>处置</strong>：确认 APIC/CLI 启用 EVPN 组播（route-type 10）；Leaf 侧 <code>member vni &lt;vni&gt; ingress-replication</code>。
+<strong>复盘</strong>：DC 组播设计的第一个决策点就是"是否启用组播专用 NLRI"，否则组播退化为广播。</p>
+<h3 id="9-2ingress-replication">案例 9-2：Ingress Replication 未配置导致组播不通</h3>
+<p><strong>现象</strong>：配置 EVPN 后组播完全不通；Spine 无组播能力。
+<strong>定位</strong>：<code>show nve vni</code> 显示 member 无 <code>ingress-replication</code>；NVE 邻居正常。
+<strong>根因</strong>：NVE 依赖核心组播复制，但核心不支持。
+<strong>处置</strong>：Leaf 配置 <code>member vni &lt;vni&gt; ingress-replication</code>。
+<strong>复盘</strong>：<strong>DC 组播复制点必须明确</strong>：要么核心组播，要么入口复制，二选一。</p>
+<h3 id="9-3-vni">案例 9-3：跨 VNI 组播泄漏（多租户安全问题）</h3>
+<p><strong>现象</strong>：租户 A 的组播流出现在租户 B 的抓包里。
+<strong>定位</strong>：在租户 B 的 VNI 上抓到租户 A 的源 MAC 与组 IP；检查 <code>show ip igmp snooping groups</code> 与 VRF 策略。
+<strong>根因</strong>：L2 组播跨 VNI 泛洪（VTEP 复制未按租户隔离），或 L3 组播在 VRF 间泄漏（Route Leaking / 缺失 filter）。
+<strong>处置</strong>：启用 EVPN route-type 10 做精确成员分发；检查 L3 侧 VRF import/export 与组播过滤。
+<strong>复盘</strong>：DC 组播的<strong>租户隔离优先级高于功能可用性</strong>；多租户环境建议默认禁止跨 VNI 组播。</p>
+<h3 id="9-4dc-pod">案例 9-4：DC 内组播跨 Pod/跨可用区不通</h3>
+<p><strong>现象</strong>：同可用区正常，跨 AZ 不通。
+<strong>定位</strong>：跨 AZ 的 Spine 路径上组播包被丢；检查 <code>show nve peers</code> 与底层 underlay MTU。
+<strong>根因</strong>：VXLAN 封装后报文超过 underlay MTU（尤其带 IPsec/overlay 加密时），组播不分片被丢。
+<strong>处置</strong>：调整 underlay MTU（9000）或降低业务 MTU；加密场景设置 DF 位降包。
+<strong>复盘</strong>：<strong>组播不能依赖分片</strong>（IP 分片对组播效率极低且易被丢），underlay MTU 必须预留。</p>
+<h3 id="9-5aci-bridge-domain">案例 9-5：ACI 中组播被 Bridge Domain 隔离策略阻断</h3>
+<p><strong>现象</strong>：BD 内主机收不到组播；APIC 无告警。
+<strong>定位</strong>：APIC 中检查 BD 的 <code>multicast</code> 策略（IGMP snooping 开关、组播路由）。
+<strong>根因</strong>：BD 模板未开启组播（IGMP Snooping 关闭），组播被泛洪或丢弃。
+<strong>处置</strong>：在 BD/VRF 模板中启用组播特性并下发。
+<strong>复盘</strong>：ACI 的组播是"模板级"能力，配置在 <strong>EPG/BD/VRF 模板</strong>上，不在单台交换机。</p>
+<h3 id="9-6p2p">案例 9-6：云上组播改造（P2P 隧道）失败</h3>
+<p><strong>现象</strong>：在云 VPC 内用 GRE 隧道把组播"拉"进来，组播不通但单播通。
+<strong>定位</strong>：云侧隧道接口 up；<code>show ip mroute</code> 为空；<code>show ip route &lt;源&gt;</code> 正常。
+<strong>根因</strong>：缺少<strong>静态 mroute</strong>（源在隧道外，RPF 查不到隧道接口），正如你笔记中"enable MC over non-MC networks（GRE、L2TPv3 – static mroute required for RP + MC source）"所述。
+<strong>处置</strong>：在云侧设备为源与 RP 配置静态 mroute 指向隧道；注意静态 mroute 的环路风险。
+<strong>复盘</strong>：跨非组播网络承载组播 = 隧道 + 静态 mroute + 环路分析，三件套一起上。</p>
+<hr />
+<h2 id="7">7. 自测清单</h2>
+<ol>
+<li>为什么 VXLAN 里的组播属于 BUM 流量？BUM 的三个字母各指什么？</li>
+<li>EVPN route-type 3 与 route-type 10 在组播中的分工？</li>
+<li>Ingress Replication 的复制点在哪里？对核心设备有什么要求？</li>
+<li>VXLAN 如何天然形成组播的 Admin Scope 边界？跨 VNI 组播意味着什么风险？</li>
+<li>ACI 中组播能力配置在哪一层（模板/设备）？</li>
+<li>公有云缺组播的三种转换用例分别是什么方向？</li>
+<li>为什么在云上用隧道承载组播必须配静态 mroute？</li>
+</ol>
+<h2 id="8">8. 延伸阅读</h2>
+<ul>
+<li>Volume II Ch4（P.225–P.253）：VPC 组播、VXLAN/VTEP、EVPN、ACI、L2/L3 组播</li>
+<li>Volume II Ch5（P.255–P.300）：医疗、无线、多租户 DC、SDN/LISP、公用事业、市场行情、SP 组播</li>
+<li>Volume II Ch6（P.340–P.344）：Verifying Multicast in VXLAN</li>
+<li>延伸：<code>RFC 7432</code>（VXLAN）、<code>RFC 7434</code>（EVPN）、<code>RFC 9012</code>（EVPN 组播扩展）</li>
+</ul>
+  </article>
+  <footer class="page-foot">
+<a class="prev" href="ch08-mvpn-scale.html"><span class="dir">← 上一章</span><span class="ttl">第 8 章 · MVPN / MLDP / 组播 TE</span></a><a class="next" href="ch10-ipv6-multicast.html"><span class="dir">下一章 →</span><span class="ttl">第 10 章 · IPv6 组播</span></a>
+    <p class="foot-note">内容基于公开出版物整理，仅用于技术学习；命令示例请以设备实际版本手册为准。</p>
+  </footer>
+</main>
+
+<button type="button" class="to-top" id="to-top" aria-label="回到顶部" title="回到顶部">↑</button>
+
+<script>
+(function () {
+  var content = document.querySelector('.content');
+  var here = location.pathname;
+
+  /* ---------- 当前章节高亮 + 展开所属分组 ---------- */
+  var active = null;
+  document.querySelectorAll('.nav a[data-path]').forEach(function (a) {
+    if (here.indexOf('/' + a.dataset.path) !== -1 || here.indexOf(a.dataset.path) !== -1) {
+      a.classList.add('active');
+      active = a;
+    }
+  });
+  if (active) {
+    var g = active.closest('details');
+    if (g) g.open = true;
+  }
+
+  /* ---------- 生成本页目录（取 h2 / h3） ---------- */
+  var heads = content ? content.querySelectorAll('h2, h3') : [];
+  var tocList = document.getElementById('toc-list');
+  heads.forEach(function (h, i) {
+    h.id = 'sec-' + (i + 1);
+    var li = document.createElement('li');
+    li.className = h.tagName === 'H3' ? 'lvl3' : 'lvl2';
+    var a = document.createElement('a');
+    a.href = '#' + h.id;
+    a.textContent = h.textContent.trim();
+    li.appendChild(a);
+    tocList.appendChild(li);
+  });
+  if (!heads.length) {
+    var g = document.getElementById('page-toc-group');
+    if (g) g.remove();
+  }
+
+  /* ---------- 目录滚动高亮 ---------- */
+  if (heads.length) {
+    var links = tocList.querySelectorAll('a');
+    var onScroll = function () {
+      var idx = 0;
+      heads.forEach(function (h, i) {
+        if (h.getBoundingClientRect().top <= 100) idx = i;
+      });
+      links.forEach(function (a, i) { a.classList.toggle('active', i === idx); });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+
+  /* ---------- 阅读进度条 ---------- */
+  var bar = document.getElementById('progress');
+  function paintProgress() {
+    if (!bar) return;
+    var h = document.documentElement.scrollHeight - window.innerHeight;
+    var p = h > 0 ? (window.scrollY / h) * 100 : 0;
+    bar.style.width = Math.min(100, Math.max(0, p)) + '%';
+  }
+  window.addEventListener('scroll', paintProgress, { passive: true });
+  paintProgress();
+
+  /* ---------- 回到顶部 ---------- */
+  var top = document.getElementById('to-top');
+  if (top) {
+    top.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    window.addEventListener('scroll', function () {
+      top.style.opacity = window.scrollY > 400 ? '1' : '0';
+    }, { passive: true });
+  }
+
+  /* ---------- 侧栏搜索过滤 ---------- */
+  var search = document.getElementById('nav-search');
+  if (search) {
+    search.addEventListener('input', function () {
+      var q = search.value.trim().toLowerCase();
+      document.querySelectorAll('.nav .group.part').forEach(function (grp) {
+        var hit = 0;
+        grp.querySelectorAll('li').forEach(function (li) {
+          var t = (li.textContent || '').toLowerCase();
+          var ok = !q || t.indexOf(q) !== -1;
+          li.style.display = ok ? '' : 'none';
+          if (ok) hit++;
+        });
+        grp.style.display = hit ? '' : 'none';
+        if (q && hit) grp.open = true;
+      });
+    });
+  }
+
+  /* ---------- 代码块复制按钮 ---------- */
+  document.querySelectorAll('.content pre').forEach(function (pre) {
+    var btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.type = 'button';
+    btn.textContent = '复制';
+    btn.addEventListener('click', function () {
+      var code = pre.querySelector('code');
+      var text = code ? code.innerText : pre.innerText;
+      navigator.clipboard.writeText(text).then(function () {
+        btn.textContent = '已复制';
+        setTimeout(function () { btn.textContent = '复制'; }, 1500);
+      }).catch(function () { btn.textContent = '复制失败'; });
+    });
+    pre.appendChild(btn);
+  });
+
+  /* ---------- 移动端点目录后自动收起 ---------- */
+  document.querySelectorAll('.nav a[data-path]').forEach(function (a) {
+    a.addEventListener('click', function () {
+      document.getElementById('nav-toggle').checked = false;
+    });
+  });
+
+  /* ---------- 主题切换 ---------- */
+  var root = document.documentElement;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+
+  function paintButtons(theme) {
+    var dark = theme === 'dark';
+    document.querySelectorAll('[data-theme-toggle]').forEach(function (btn) {
+      btn.querySelector('.theme-icon').textContent = dark ? '☀' : '☾';
+      btn.querySelector('.theme-text').textContent = dark ? '浅色' : '深色';
+      btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+      btn.title = dark ? '切换到浅色主题' : '切换到深色主题';
+    });
+  }
+
+  function applyTheme(theme) {
+    root.setAttribute('data-theme', theme);
+    paintButtons(theme);
+  }
+
+  paintButtons(root.getAttribute('data-theme') || 'light');
+
+  document.querySelectorAll('[data-theme-toggle]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+      try { localStorage.setItem('mc-theme', next); } catch (e) {}
+    });
+  });
+
+  if (mq) {
+    var onScheme = function (e) {
+      var saved = null;
+      try { saved = localStorage.getItem('mc-theme'); } catch (err) {}
+      if (!saved) applyTheme(e.matches ? 'dark' : 'light');
+    };
+    if (mq.addEventListener) mq.addEventListener('change', onScheme);
+    else if (mq.addListener) mq.addListener(onScheme);
+  }
+})();
+</script>
+</body>
+</html>

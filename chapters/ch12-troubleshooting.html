@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 12 章 · 排障方法论 · IP 组播学习路线</title>
+<meta name="description" content="IP 组播学习路线：四阶段十二章精读笔记，78 个生产案例，16 张 SVG 拓扑图。">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230969da'/><circle cx='16' cy='16' r='4' fill='white'/><circle cx='16' cy='6' r='2.6' fill='white'/><circle cx='25' cy='21' r='2.6' fill='white'/><circle cx='7' cy='21' r='2.6' fill='white'/><path d='M16 10.6V8.6M18.9 17.6l3.4 2M13.1 17.6l-3.4 2' stroke='white' stroke-width='1.6'/></svg>">
+<link rel="stylesheet" href="../assets/css/site.css">
+<script>
+/* 尽早写入主题，避免刷新时闪白 */
+(function () {
+  var saved = null;
+  try { saved = localStorage.getItem('mc-theme'); } catch (e) {}
+  var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.setAttribute('data-theme', saved || (dark ? 'dark' : 'light'));
+})();
+</script>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<input type="checkbox" id="nav-toggle" hidden>
+<label for="nav-toggle" class="nav-toggle-btn">☰ 目录</label>
+
+<button type="button" class="theme-toggle floating" data-theme-toggle aria-label="切换深色/浅色主题" title="切换深色/浅色主题">
+  <span class="theme-icon" aria-hidden="true">◐</span><span class="theme-text">深色</span>
+</button>
+
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-row">
+      <a href="../index.html">IP 组播学习路线<span>精读笔记 · 四阶段十二章</span></a>
+      <button type="button" class="theme-toggle" data-theme-toggle aria-label="切换深色/浅色主题" title="切换深色/浅色主题">
+        <span class="theme-icon" aria-hidden="true">◐</span><span class="theme-text">深色</span>
+      </button>
+    </div>
+    <div class="search-wrap">
+      <input type="search" id="nav-search" placeholder="搜索章节…" autocomplete="off" aria-label="搜索章节">
+    </div>
+  </div>
+
+  <nav class="nav">
+    <details class="group" id="page-toc-group" open>
+      <summary>本页目录</summary>
+      <ul class="toc" id="toc-list"></ul>
+    </details>
+
+    <details class="group" id="home-group" open>
+      <summary>首页</summary>
+      <ul><li><a href="../index.html" data-path="index.html">学习路线总览</a></li></ul>
+    </details>
+    <details class="group part" data-part="阶段一" open>
+      <summary>阶段一 · 地基</summary>
+      <ul>
+        <li><a href="chapters/ch01-basics.html" data-path="chapters/ch01-basics.html">第 1 章 · 基础模型与地址体系</a></li>
+        <li><a href="chapters/ch02-igmp-l2.html" data-path="chapters/ch02-igmp-l2.html">第 2 章 · IGMP 与二层组播</a></li>
+      </ul>
+    </details>
+    <details class="group part" data-part="阶段二" open>
+      <summary>阶段二 · 协议核心</summary>
+      <ul>
+        <li><a href="chapters/ch03-rpf-pim-basics.html" data-path="chapters/ch03-rpf-pim-basics.html">第 3 章 · RPF 与 PIM 通用机制</a></li>
+        <li><a href="chapters/ch04-pim-dm.html" data-path="chapters/ch04-pim-dm.html">第 4 章 · PIM-DM 与 PIM-SDM</a></li>
+        <li><a href="chapters/ch05-pim-sm-rp.html" data-path="chapters/ch05-pim-sm-rp.html">第 5 章 · PIM-SM 与 RP 发现</a></li>
+        <li><a href="chapters/ch06-ssm-bidir.html" data-path="chapters/ch06-ssm-bidir.html">第 6 章 · SSM 与 BIDIR-PIM</a></li>
+      </ul>
+    </details>
+    <details class="group part" data-part="阶段三" open>
+      <summary>阶段三 · 域间与规模化</summary>
+      <ul>
+        <li><a href="chapters/ch07-msdp-mbgp.html" data-path="chapters/ch07-msdp-mbgp.html">第 7 章 · MSDP 与 MBGP 域间组播</a></li>
+        <li><a href="chapters/ch08-mvpn-scale.html" data-path="chapters/ch08-mvpn-scale.html">第 8 章 · MVPN / MLDP / 组播 TE</a></li>
+      </ul>
+    </details>
+    <details class="group part" data-part="阶段四" open>
+      <summary>阶段四 · 场景实战</summary>
+      <ul>
+        <li><a href="chapters/ch09-datacenter-cloud.html" data-path="chapters/ch09-datacenter-cloud.html">第 9 章 · 数据中心与云中的组播</a></li>
+        <li><a href="chapters/ch10-ipv6-multicast.html" data-path="chapters/ch10-ipv6-multicast.html">第 10 章 · IPv6 组播</a></li>
+        <li><a href="chapters/ch11-security.html" data-path="chapters/ch11-security.html">第 11 章 · 组播安全与过滤</a></li>
+        <li><a href="chapters/ch12-troubleshooting.html" data-path="chapters/ch12-troubleshooting.html" active>第 12 章 · 排障方法论</a></li>
+      </ul>
+    </details>
+  </nav>
+</aside>
+
+<label for="nav-toggle" class="backdrop"></label>
+
+<main class="main">
+  <article class="content">
+<h1 id="ch12">ch12 组播排障方法论与综合案例</h1>
+<blockquote>
+<p><strong>来源</strong>：iPexpert 全书（每章的 show/debug 工具箱与 Trouble Ticket 方法论）、Volume II Ch6（Advanced Multicast Troubleshooting，P.301–P.344）
+<strong>配图</strong>：复用 <a href="../diagrams/d05-rpf.svg">D05</a>、<a href="../diagrams/d08-pim-sm.svg">D08</a>、<a href="../diagrams/d12-msdp.svg">D12</a>、<a href="../diagrams/d13-mvpn.svg">D13</a>、<a href="../diagrams/d14-vxlan.svg">D14</a></p>
+</blockquote>
+<hr />
+<h2 id="_1">学习目标</h2>
+<ol>
+<li>掌握 iPexpert 的<strong>四步排障法</strong>（控制面/数据面分离 → 症状分类 → 隔离 → 修复验证）；</li>
+<li>建立"症状 → 根因"的<strong>决策树</strong>，5 分钟内定位方向；</li>
+<li>掌握全量 show/debug 命令速查表；</li>
+<li>能独立完成一次跨域/跨 VPN 组播的端到端排障；</li>
+<li>建立个人的"组播 case 库"。</li>
+</ol>
+<hr />
+<h2 id="1-ipexpert">1. 排障总原则（iPexpert 核心思想）</h2>
+<blockquote>
+<p><strong>"在能够彻底排障之前，理解协议的运行方式是唯一的前提。组播排障的常见根因是 PIM 拓扑与逻辑/物理拓扑不一致。"</strong>
+—— iPexpert Ch1（P.1-5）</p>
+</blockquote>
+<p><strong>四条铁律</strong>：</p>
+<ol>
+<li><strong>控制面与数据面分离</strong>：先看 <code>show ip mroute</code>（控制面状态），再看数据包（数据面）。</li>
+<li><strong>PIM 拓扑必须与物理/逻辑拓扑一致</strong>：PIM 邻居必须在<strong>直连链路</strong>上建立，不能"跨三层建邻居"。</li>
+<li><strong>一个 IGP 域 + 全链路启用 PIM</strong>：多 IGP 或 PIM 未全开 = 高故障率。</li>
+<li><strong>组播不是"非开不可"</strong>：不需要组播的接口就 <code>no ip pim sparse-mode</code>，减少故障面。</li>
+</ol>
+<hr />
+<h2 id="2">2. 四步排障法</h2>
+<div class="codehilite"><pre><span></span><code>Step 1  症状分类  →  Step 2  控制面验证  →  Step 3  数据面验证  →  Step 4  定位与修复
+</code></pre></div>
+
+<h3 id="step-1">Step 1：症状分类（四类）</h3>
+<table>
+<thead>
+<tr>
+<th>症状</th>
+<th>典型描述</th>
+<th>首查方向</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A. 完全收不到</strong></td>
+<td>无任何流量</td>
+<td>IGMP 成员 → RPF → RP → PIM 邻居</td>
+</tr>
+<tr>
+<td><strong>B. 收不全</strong></td>
+<td>部分接收者收不到</td>
+<td>二层成员表 → mroute 出接口 → IGMP 版本</td>
+</tr>
+<tr>
+<td><strong>C. 时断时续</strong></td>
+<td>间歇中断、闪断</td>
+<td>链路收敛、DR 切换、RP 抖动、MTU/分片</td>
+</tr>
+<tr>
+<td><strong>D. 重复/异常</strong></td>
+<td>流量翻倍、环路、串流</td>
+<td>Assert、静态 mroute、跨域 Peer-RPF、租户泄漏</td>
+</tr>
+</tbody>
+</table>
+<h3 id="step-2-5">Step 2：控制面验证（必做 5 条命令）</h3>
+<div class="codehilite"><pre><span></span><code>show ip pim neighbor                     ! ① PIM 邻居齐全吗？DR 稳定吗？
+show ip pim rp mapping                   ! ② 学到 RP 了吗？
+show ip igmp groups                      ! ③ 有成员吗？
+show ip mroute                           ! ④ 状态建起来了吗？
+show ip mroute &lt;group&gt; detail            ! ⑤ RPF 接口与出接口对吗？
+</code></pre></div>
+
+<h3 id="step-3">Step 3：数据面验证</h3>
+<div class="codehilite"><pre><span></span><code>show ip mroute &lt;group&gt; detail            ! 出接口列表 + 标志位
+show ip igmp snooping groups             ! 二层成员口
+show ip interface &lt;if&gt; | include multicast
+debug ip mpacket &lt;src&gt; &lt;group&gt;          ! 数据包级：是否被丢、为什么
+debug ip mroute &lt;group&gt;                  ! 状态机事件
+</code></pre></div>
+
+<h3 id="step-4">Step 4：定位与修复</h3>
+<p>按"<strong>四层组件模型</strong>"定位到层（MRPE / MRTM / Unicast / MGMD），再对症下药。</p>
+<hr />
+<h2 id="3">3. 症状决策树</h2>
+<div class="codehilite"><pre><span></span><code>组播不通
+├─ 有 IGMP 成员吗？
+│   ├─ 无 → 终端侧：IGMP 版本 / 接口 ACL / VLAN / Snooping（ch02 案例 2-1/2-5）
+│   └─ 有
+│       ├─ mroute 有 (S,G) / (*,G) 吗？
+│       │   ├─ 无 → PIM 邻居？DR？RP？→ ch05（RP 发现/注册）、ch03（DR）
+│       │   └─ 有
+│       │       ├─ RPF 接口正确吗？→ show ip rpf &lt;src&gt; → ch03 案例 3-1
+│       │       ├─ 出接口列表有内容吗？→ 无 = 树上无人 / 被 prune
+│       │       └─ 有出接口但收不到
+│       │           ├─ 二层：Snooping 表里有该端口吗？→ ch02 案例 2-1
+│       │           ├─ IGMP 版本一致吗？→ ch02 案例 2-6
+│       │           └─ 数据包被丢？→ debug ip mpacket → TTL/ACL/限速
+│       └─ 只在部分区域不通 → 边界/Admin Scope → ch01 案例 1-4、ch11
+└─ 跨域不通
+    ├─ MSDP peer Up？SA 有缓存？→ ch07 案例 7-1/7-2
+    ├─ MBGP 组播地址族建立？→ ch07 案例 7-4
+    └─ MVPN：MDT 是否建立？→ ch08 案例 8-1
+</code></pre></div>
+
+<hr />
+<h2 id="4">4. 全量命令速查表（按用途分类）</h2>
+<h3 id="41">4.1 组播路由表</h3>
+<table>
+<thead>
+<tr>
+<th>命令</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>show ip mroute</code></td>
+<td>全表</td>
+</tr>
+<tr>
+<td><code>show ip mroute &lt;group&gt;</code></td>
+<td>指定组</td>
+</tr>
+<tr>
+<td><code>show ip mroute &lt;group&gt; detail</code></td>
+<td>含 RPF 邻居、出接口标志、Assert</td>
+</tr>
+<tr>
+<td><code>show ip mroute active</code></td>
+<td>活动状态</td>
+</tr>
+<tr>
+<td><code>show ip mroute count</code></td>
+<td>状态数（监控用）</td>
+</tr>
+<tr>
+<td><code>show ip mroute vrf &lt;vrf&gt;</code></td>
+<td>VPN 内</td>
+</tr>
+<tr>
+<td><code>show ip mroute static</code></td>
+<td>静态 mroute</td>
+</tr>
+</tbody>
+</table>
+<h3 id="42-pim">4.2 PIM</h3>
+<table>
+<thead>
+<tr>
+<th>命令</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>show ip pim interface</code></td>
+<td>模式、DR、邻居数、hello 参数</td>
+</tr>
+<tr>
+<td><code>show ip pim neighbor</code></td>
+<td>邻居明细（DR 选举、优先级）</td>
+</tr>
+<tr>
+<td><code>show ip pim rp mapping</code></td>
+<td>Group→RP 映射（<strong>最关键</strong>）</td>
+</tr>
+<tr>
+<td><code>show ip pim rp-address</code></td>
+<td>本机静态 RP</td>
+</tr>
+<tr>
+<td><code>show ip pim ssm range</code></td>
+<td>SSM 范围</td>
+</tr>
+<tr>
+<td><code>show ip pim df</code> / <code>show ip pim df detail</code></td>
+<td>BIDIR DF 选举</td>
+</tr>
+<tr>
+<td><code>show ip pim state-refresh</code></td>
+<td>PIM-DM 状态刷新</td>
+</tr>
+<tr>
+<td><code>show ip pim rp-candidate</code> / <code>show ip pim bsr</code></td>
+<td>RP 候选 / BSR</td>
+</tr>
+</tbody>
+</table>
+<h3 id="43-igmp-mld">4.3 IGMP / MLD</h3>
+<table>
+<thead>
+<tr>
+<th>命令</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>show ip igmp groups [group] [detail]</code></td>
+<td>组成员</td>
+</tr>
+<tr>
+<td><code>show ip igmp interface [if]</code></td>
+<td>接口 IGMP 状态与定时器</td>
+</tr>
+<tr>
+<td><code>show ip igmp query-interval</code></td>
+<td>QI/Max RT/QRY</td>
+</tr>
+<tr>
+<td><code>show ip igmp snooping groups [vlan]</code></td>
+<td>二层成员表</td>
+</tr>
+<tr>
+<td><code>show ip igmp snooping mrouter</code></td>
+<td>路由器口</td>
+</tr>
+<tr>
+<td><code>show ip igmp snooping querier</code></td>
+<td>Querier</td>
+</tr>
+<tr>
+<td><code>show ip igmp ssm-mapping</code></td>
+<td>SSM 映射</td>
+</tr>
+<tr>
+<td><code>show ipv6 mld groups</code> / <code>show ipv6 mld neighbor</code></td>
+<td>IPv6</td>
+</tr>
+</tbody>
+</table>
+<h3 id="44-msdp-mbgp-mvpn">4.4 MSDP / MBGP / MVPN</h3>
+<table>
+<thead>
+<tr>
+<th>命令</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>show ip msdp peer [detail]</code></td>
+<td>对等体 + RPF + SA 计数</td>
+</tr>
+<tr>
+<td><code>show ip msdp summary</code></td>
+<td>SA 汇总</td>
+</tr>
+<tr>
+<td><code>show ip msdp sa-cache</code></td>
+<td>SA 缓存</td>
+</tr>
+<tr>
+<td><code>show ip msdp originator</code></td>
+<td>本机 originator-id</td>
+</tr>
+<tr>
+<td><code>show bgp ipv4 multicast summary</code></td>
+<td>MBGP 组播地址族</td>
+</tr>
+<tr>
+<td><code>show bgp l2vpn evpn route-type 3 / 10</code></td>
+<td>EVPN 组播 NLRI</td>
+</tr>
+<tr>
+<td><code>show mdt data</code> / <code>show mdt default</code></td>
+<td>MVPN 隧道</td>
+</tr>
+<tr>
+<td><code>show mldp neighbor</code> / <code>show mldp fec</code></td>
+<td>MLDP</td>
+</tr>
+</tbody>
+</table>
+<h3 id="45">4.5 调试（最后手段，按范围缩小）</h3>
+<div class="codehilite"><pre><span></span><code>debug ip mpacket                        ! 数据包级：RPF 判定、丢弃原因
+debug ip mroute &lt;group&gt;                 ! 状态机事件
+debug ip pim &lt;detail&gt;                   ! PIM 状态机
+debug ip pim neighbor                   ! 邻居事件（Hello/DR 变化）
+debug ip igmp                           ! IGMP 收发
+debug ip msdp packets                   ! MSDP 报文
+debug ipv6 mld                          ! IPv6
+</code></pre></div>
+
+<blockquote>
+<p><strong>调试纪律</strong>：先窄后宽（先加组/源过滤），先在维护窗口抓取，<strong>不要在生产高峰开全量 debug</strong>。</p>
+</blockquote>
+<hr />
+<h2 id="5-6">5. 综合生产案例（6 例）</h2>
+<h3 id="12-1-rp">案例 12-1：某分公司组播全部不通（跨域 + 静态 RP）</h3>
+<p><strong>现象</strong>：总部与分公司之间行情组播不通，分公司本地组播正常。
+<strong>定位</strong>：</p>
+<div class="codehilite"><pre><span></span><code>show ip pim rp mapping          ! 分公司无映射
+show ip msdp peer               ! peer 状态
+show ip bgp ipv4 multicast summary
+show ip mroute 239.1.1.1 detail
+</code></pre></div>
+
+<p><strong>根因</strong>：MSDP peer 建立在<strong>非直连</strong>地址上（用 Loopback 但中间无单播路由），peer 状态 Down，SA 无法交换 → 分公司 RP 学不到源信息。
+<strong>处置</strong>：确保 Loopback 在 IGP/BGP 中可达；peer 必须直连或至少单播可达；建立直连 peer 优先。
+<strong>复盘</strong>：MSDP peer 的可达性是跨域组播的第一道门。</p>
+<h3 id="12-2">案例 12-2：组播时断时续（链路冗余切换后中断）</h3>
+<p><strong>现象</strong>：主链路故障切换后，组播中断约 2–3 分钟才恢复。
+<strong>定位</strong>：<code>show logging</code> 看到链路 down/up；<code>show ip mroute</code> 在切换后重新建树；对比 <code>show ip pim neighbor</code> 重建时间。
+<strong>根因</strong>：切换后 RPF 接口变化 → 组播状态需重建；PIM 邻居与 DR 重新选举期间无转发；且 <strong>没有组播 FRR</strong>（只有单播 FRR）。
+<strong>处置</strong>：部署 <strong>组播快速重路由</strong>（mLDP FRR / 特定平台组播 FRR）；缩短 Hello holdtime（谨慎）；把冗余链路收敛时间纳入测试。
+<strong>复盘</strong>：<strong>组播对链路切换的敏感度远高于单播</strong>，冗余设计必须做"组播收敛测试"。</p>
+<h3 id="12-3">案例 12-3：同一终端组播"卡"但不丢包</h3>
+<p><strong>现象</strong>：终端收到流但画面卡顿，丢包统计正常。
+<strong>定位</strong>：<code>show interfaces</code> 显示 output queue 堆积；QoS 策略命中情况；对比单播业务。
+<strong>根因</strong>：组播流量在出接口排队时延大（排队时延而非丢包）；或组播被限速。
+<strong>处置</strong>：为组播配置 QoS（EF/AF 分类 + 足够的 shaping）；检查 <code>ip multicast rate-limit</code>。
+<strong>复盘</strong>：<strong>组播的"卡"往往是排队时延，不是丢包</strong>，排查要看队列而不是只看 drop 计数。</p>
+<h3 id="12-4">案例 12-4：组播在不同批次的交换机上行为不一致</h3>
+<p><strong>现象</strong>：部分接入交换机下终端收不到组播，替换设备后正常。
+<strong>定位</strong>：<code>show ip igmp snooping groups</code> 在故障设备上无条目；对比软件版本与配置。
+<strong>根因</strong>：新到货交换机的软件版本不支持某特性（如 MLD Snooping / 显式主机跟踪 / 新的组播 NLRI），或默认配置模板不同。
+<strong>处置</strong>：统一软件版本与配置模板；在资产中记录"组播特性支持矩阵"。
+<strong>复盘</strong>：组播对<strong>版本与特性</strong>敏感，设备替换必须带"组播特性核对清单"。</p>
+<h3 id="12-5">案例 12-5：业务方报"组播丢包"，实际是源端问题</h3>
+<p><strong>现象</strong>：监控显示组播丢包 5%，网络侧无丢包。
+<strong>定位</strong>：抓包在源服务器出口即已丢包/错包；组播包在源端就已损坏。
+<strong>根因</strong>：源服务器多网卡绑定 + 组播走错误队列，或源端应用发送时未设置 IP_TTL/组播 socket 配置导致异常。
+<strong>处置</strong>：在源端抓包定位；检查 bonding 模式与组播出接口。
+<strong>复盘</strong>：<strong>"组播丢包"的第一现场常常是源主机</strong>，网络侧要先证明自己无责。</p>
+<h3 id="12-6">案例 12-6：一次变更引发大范围组播中断</h3>
+<p><strong>现象</strong>：某核心设备升级后，全域组播中断。
+<strong>定位</strong>：升级前后 <code>show ip pim neighbor</code>、<code>show ip pim rp mapping</code>、<code>show ip mroute</code> 对比。
+<strong>根因</strong>：升级后新设备默认 <code>no ip multicast routing</code> 或 PIM 邻居因 MTU/认证变化未建立，RP 映射丢失。
+<strong>处置</strong>：回滚；重新梳理升级 checklist（组播相关配置必须逐条比对）。
+<strong>复盘</strong>：<strong>组播配置的"隐性依赖"极多</strong>（IGMP 版本、TTL、querier、静态 mroute、ACL），升级前必须做配置差异审计。</p>
+<hr />
+<h2 id="6-checklist">6. 组播变更检查单（Checklist）</h2>
+<div class="codehilite"><pre><span></span><code>□ 新增/变更的接口是否需要 PIM？模式是否正确（sparse / bidir-enable / 不启用）
+□ 接口是否需要 ip multicast ttl？值是多少（AutoRP 15 / BSM 255 / 一般 255）
+□ 是否新增了静态 mroute？环路分析是否完成并登记
+□ RP 发现方式是否受影响（静态/AutoRP/BSR/Anycast/Embedded）？
+□ 组播地址段是否与既有规划冲突（SSM 段、私有段、跨域段）？
+□ QoS：组播是否需要单独 class？限速阈值是否满足？
+□ ACL：新增 ACL 是否误伤 IGMP/PIM 控制报文（224.0.0.x/224.0.1.x）？
+□ 二层：新增 VLAN/端口是否启用 Snooping？是否需要 querier？
+□ 冗余：是否影响 DR 选举？是否需要重测组播收敛？
+□ 验证：show ip pim neighbor / rp mapping / mroute / igmp groups 全部对比
+□ 回滚方案是否包含组播状态清理（clear ip mroute * / clear ip pim rp mapping）？
+</code></pre></div>
+
+<hr />
+<h2 id="7-case">7. 建立个人 Case 库的方法</h2>
+<ol>
+<li><strong>模板化</strong>：每条 case 固定记录 —— 现象 / 影响范围 / 首查命令 / 根因 / 处置 / 预防；</li>
+<li><strong>打标签</strong>：协议层（IGMP/PIM/RP/MSDP/MVPN）、症状类（收不到/不全/闪断/重复）、场景（行情/医疗/视频/云）；</li>
+<li><strong>回灌</strong>：每月把新 case 归入对应章节，3 个月后即可形成团队资产；</li>
+<li><strong>本项目已提供 76 条初始 case</strong>（ch01–ch12），可直接作为模板库使用。</li>
+</ol>
+<hr />
+<h2 id="8">8. 自测清单</h2>
+<ol>
+<li>iPexpert 的排障四步法是什么？为什么"控制面与数据面分离"很重要？</li>
+<li>四类症状（完全收不到 / 收不全 / 时断时续 / 重复异常）各自的首查方向？</li>
+<li>五条必做的控制面命令是什么？</li>
+<li>组播"卡但不丢包"最可能的根因是什么？</li>
+<li>为什么跨域组播的第一个检查点总是 MSDP peer 与 MBGP 地址族？</li>
+<li>组播变更检查单中，哪几项最容易被忽略？</li>
+</ol>
+<h2 id="9">9. 延伸阅读</h2>
+<ul>
+<li>iPexpert 全书（各章 show/debug 工具箱与 Trouble Ticket）</li>
+<li>Volume II Ch6（P.301–P.344）：Interdomain / PIM-TE / MVPN / VXLAN 高级排障</li>
+<li>Aweya Ch1.10（P.77–P.79）：组播路由体系架构（四组件模型）</li>
+<li>延伸：<code>RFC 7761</code>（PIM-SM 全文，Appendix A 为报文与状态机速查）</li>
+</ul>
+  </article>
+  <footer class="page-foot">
+<a class="prev" href="ch11-security.html"><span class="dir">← 上一章</span><span class="ttl">第 11 章 · 组播安全与过滤</span></a>
+    <p class="foot-note">内容基于公开出版物整理，仅用于技术学习；命令示例请以设备实际版本手册为准。</p>
+  </footer>
+</main>
+
+<button type="button" class="to-top" id="to-top" aria-label="回到顶部" title="回到顶部">↑</button>
+
+<script>
+(function () {
+  var content = document.querySelector('.content');
+  var here = location.pathname;
+
+  /* ---------- 当前章节高亮 + 展开所属分组 ---------- */
+  var active = null;
+  document.querySelectorAll('.nav a[data-path]').forEach(function (a) {
+    if (here.indexOf('/' + a.dataset.path) !== -1 || here.indexOf(a.dataset.path) !== -1) {
+      a.classList.add('active');
+      active = a;
+    }
+  });
+  if (active) {
+    var g = active.closest('details');
+    if (g) g.open = true;
+  }
+
+  /* ---------- 生成本页目录（取 h2 / h3） ---------- */
+  var heads = content ? content.querySelectorAll('h2, h3') : [];
+  var tocList = document.getElementById('toc-list');
+  heads.forEach(function (h, i) {
+    h.id = 'sec-' + (i + 1);
+    var li = document.createElement('li');
+    li.className = h.tagName === 'H3' ? 'lvl3' : 'lvl2';
+    var a = document.createElement('a');
+    a.href = '#' + h.id;
+    a.textContent = h.textContent.trim();
+    li.appendChild(a);
+    tocList.appendChild(li);
+  });
+  if (!heads.length) {
+    var g = document.getElementById('page-toc-group');
+    if (g) g.remove();
+  }
+
+  /* ---------- 目录滚动高亮 ---------- */
+  if (heads.length) {
+    var links = tocList.querySelectorAll('a');
+    var onScroll = function () {
+      var idx = 0;
+      heads.forEach(function (h, i) {
+        if (h.getBoundingClientRect().top <= 100) idx = i;
+      });
+      links.forEach(function (a, i) { a.classList.toggle('active', i === idx); });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+
+  /* ---------- 阅读进度条 ---------- */
+  var bar = document.getElementById('progress');
+  function paintProgress() {
+    if (!bar) return;
+    var h = document.documentElement.scrollHeight - window.innerHeight;
+    var p = h > 0 ? (window.scrollY / h) * 100 : 0;
+    bar.style.width = Math.min(100, Math.max(0, p)) + '%';
+  }
+  window.addEventListener('scroll', paintProgress, { passive: true });
+  paintProgress();
+
+  /* ---------- 回到顶部 ---------- */
+  var top = document.getElementById('to-top');
+  if (top) {
+    top.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    window.addEventListener('scroll', function () {
+      top.style.opacity = window.scrollY > 400 ? '1' : '0';
+    }, { passive: true });
+  }
+
+  /* ---------- 侧栏搜索过滤 ---------- */
+  var search = document.getElementById('nav-search');
+  if (search) {
+    search.addEventListener('input', function () {
+      var q = search.value.trim().toLowerCase();
+      document.querySelectorAll('.nav .group.part').forEach(function (grp) {
+        var hit = 0;
+        grp.querySelectorAll('li').forEach(function (li) {
+          var t = (li.textContent || '').toLowerCase();
+          var ok = !q || t.indexOf(q) !== -1;
+          li.style.display = ok ? '' : 'none';
+          if (ok) hit++;
+        });
+        grp.style.display = hit ? '' : 'none';
+        if (q && hit) grp.open = true;
+      });
+    });
+  }
+
+  /* ---------- 代码块复制按钮 ---------- */
+  document.querySelectorAll('.content pre').forEach(function (pre) {
+    var btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.type = 'button';
+    btn.textContent = '复制';
+    btn.addEventListener('click', function () {
+      var code = pre.querySelector('code');
+      var text = code ? code.innerText : pre.innerText;
+      navigator.clipboard.writeText(text).then(function () {
+        btn.textContent = '已复制';
+        setTimeout(function () { btn.textContent = '复制'; }, 1500);
+      }).catch(function () { btn.textContent = '复制失败'; });
+    });
+    pre.appendChild(btn);
+  });
+
+  /* ---------- 移动端点目录后自动收起 ---------- */
+  document.querySelectorAll('.nav a[data-path]').forEach(function (a) {
+    a.addEventListener('click', function () {
+      document.getElementById('nav-toggle').checked = false;
+    });
+  });
+
+  /* ---------- 主题切换 ---------- */
+  var root = document.documentElement;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+
+  function paintButtons(theme) {
+    var dark = theme === 'dark';
+    document.querySelectorAll('[data-theme-toggle]').forEach(function (btn) {
+      btn.querySelector('.theme-icon').textContent = dark ? '☀' : '☾';
+      btn.querySelector('.theme-text').textContent = dark ? '浅色' : '深色';
+      btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+      btn.title = dark ? '切换到浅色主题' : '切换到深色主题';
+    });
+  }
+
+  function applyTheme(theme) {
+    root.setAttribute('data-theme', theme);
+    paintButtons(theme);
+  }
+
+  paintButtons(root.getAttribute('data-theme') || 'light');
+
+  document.querySelectorAll('[data-theme-toggle]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+      try { localStorage.setItem('mc-theme', next); } catch (e) {}
+    });
+  });
+
+  if (mq) {
+    var onScheme = function (e) {
+      var saved = null;
+      try { saved = localStorage.getItem('mc-theme'); } catch (err) {}
+      if (!saved) applyTheme(e.matches ? 'dark' : 'light');
+    };
+    if (mq.addEventListener) mq.addEventListener('change', onScheme);
+    else if (mq.addListener) mq.addListener(onScheme);
+  }
+})();
+</script>
+</body>
+</html>

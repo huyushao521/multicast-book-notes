@@ -1,0 +1,69 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='900' height='420' viewBox='0 0 900 420'>
+<rect width='900' height='420' fill='#ffffff'/>
+<text x='450.0' y='26' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='16' font-weight='bold' fill='#1f4e79' text-anchor='middle'>D08  PIM-SM 三阶段：源注册 → 共享树 Join → SPT 切换</text>
+<text x='30' y='78' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' fill='#1f4e79' text-anchor='start' font-weight='bold'>① Register：DR→RP</text>
+<text x='30' y='198' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' fill='#1f4e79' text-anchor='start' font-weight='bold'>② (*,G) Join 建 RPT</text>
+<text x='30' y='318' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' fill='#1f4e79' text-anchor='start' font-weight='bold'>③ (S,G) Join 切 SPT</text>
+<g><rect x='45.0' y='104.0' width='90' height='32' rx='3' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<rect x='53.0' y='95.0' width='74' height='9' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<text x='90' y='124' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#222'>源 S</text></g>
+<g><circle cx='280' cy='120' r='26' fill='#dbe9f6' stroke='#1f4e79' stroke-width='1.6'/>
+<path d='M 269 113 L 291 113 M 269 120 L 291 120 M 269 127 L 291 127' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='280' y='162' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>DR (源侧)</text></g>
+<g><circle cx='470' cy='120' r='24' fill='#fff2cc' stroke='#c00000' stroke-width='2'/>
+<text x='470' y='125' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='13' font-weight='bold' text-anchor='middle' fill='#c00000'>RP</text></g>
+<g><circle cx='660' cy='120' r='26' fill='#dbe9f6' stroke='#1f4e79' stroke-width='1.6'/>
+<path d='M 649 113 L 671 113 M 649 120 L 671 120 M 649 127 L 671 127' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='660' y='162' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>Last-hop</text></g>
+<g><rect x='785.0' y='104.0' width='90' height='32' rx='3' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<rect x='793.0' y='95.0' width='74' height='9' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<text x='830' y='124' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#222'>接收者</text></g>
+<line x1='140' y1='120' x2='230' y2='120' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='185.0' y='114.0' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#1f4e79'>数据</text>
+<line x1='330' y1='120' x2='420' y2='120' stroke='#2e7d32' stroke-width='1.6'/>
+<text x='375.0' y='114.0' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#2e7d32'>Register</text>
+<line x1='520' y1='120' x2='610' y2='120' stroke='#2e7d32' stroke-width='1.6' stroke-dasharray='5,4'/>
+<text x='565.0' y='114.0' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#2e7d32'>(*,G) Join</text>
+<line x1='710' y1='120' x2='780' y2='120' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='745.0' y='114.0' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#1f4e79'>数据</text>
+<g><rect x='45.0' y='224.0' width='90' height='32' rx='3' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<rect x='53.0' y='215.0' width='74' height='9' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<text x='90' y='244' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#222'>源 S</text></g>
+<g><circle cx='280' cy='240' r='26' fill='#dbe9f6' stroke='#1f4e79' stroke-width='1.6'/>
+<path d='M 269 233 L 291 233 M 269 240 L 291 240 M 269 247 L 291 247' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='280' y='282' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>DR</text></g>
+<g><circle cx='470' cy='240' r='24' fill='#fff2cc' stroke='#c00000' stroke-width='2'/>
+<text x='470' y='245' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='13' font-weight='bold' text-anchor='middle' fill='#c00000'>RP</text></g>
+<g><circle cx='660' cy='240' r='26' fill='#dbe9f6' stroke='#1f4e79' stroke-width='1.6'/>
+<path d='M 649 233 L 671 233 M 649 240 L 671 240 M 649 247 L 671 247' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='660' y='282' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>Last-hop</text></g>
+<g><rect x='785.0' y='224.0' width='90' height='32' rx='3' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<rect x='793.0' y='215.0' width='74' height='9' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<text x='830' y='244' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#222'>接收者</text></g>
+<line x1='330' y1='240' x2='420' y2='240' stroke='#2e7d32' stroke-width='1.6'/>
+<text x='375.0' y='234.0' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#2e7d32'>Register</text>
+<line x1='520' y1='240' x2='610' y2='240' stroke='#2e7d32' stroke-width='1.6' stroke-dasharray='5,4'/>
+<text x='565.0' y='234.0' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#2e7d32'>(*,G) Join</text>
+<g><rect x='45.0' y='344.0' width='90' height='32' rx='3' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<rect x='53.0' y='335.0' width='74' height='9' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<text x='90' y='364' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#222'>源 S</text></g>
+<g><circle cx='280' cy='360' r='26' fill='#dbe9f6' stroke='#1f4e79' stroke-width='1.6'/>
+<path d='M 269 353 L 291 353 M 269 360 L 291 360 M 269 367 L 291 367' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='280' y='402' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>DR</text></g>
+<g><circle cx='470' cy='360' r='24' fill='#fff2cc' stroke='#c00000' stroke-width='2'/>
+<text x='470' y='365' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='13' font-weight='bold' text-anchor='middle' fill='#c00000'>RP</text></g>
+<g><circle cx='660' cy='360' r='26' fill='#dbe9f6' stroke='#1f4e79' stroke-width='1.6'/>
+<path d='M 649 353 L 671 353 M 649 360 L 671 360 M 649 367 L 671 367' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='660' y='402' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>Last-hop</text></g>
+<g><rect x='785.0' y='344.0' width='90' height='32' rx='3' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<rect x='793.0' y='335.0' width='74' height='9' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<text x='830' y='364' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#222'>接收者</text></g>
+<line x1='330' y1='360' x2='420' y2='360' stroke='#666666' stroke-width='1.6' stroke-dasharray='5,4'/>
+<text x='375.0' y='354.0' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#666666'>Register→停止</text>
+<path d='M 280 340 L 280 140' fill='none' stroke='#c00000' stroke-width='1.6' stroke-dasharray='6,4'/>
+<text x='290' y='250' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' fill='#c00000' text-anchor='start' font-weight='normal'>(S,G) Join
+SPT</text>
+<path d='M 470 250 L 470 150' fill='none' stroke='#c00000' stroke-width='1.6' stroke-dasharray='6,4'/>
+<text x='478' y='205' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' fill='#c00000' text-anchor='start' font-weight='normal'>(S,G,rpt) Prune</text>
+<text x='30' y='405' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11.5' fill='#666666' text-anchor='start' font-weight='normal'>关键状态：(*,G)（共享）、(S,G)（源树）、(S,G,rpt)（共享树上有 SPT-bit）</text>
+</svg>

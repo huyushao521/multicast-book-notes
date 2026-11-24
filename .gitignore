@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+Thumbs.db
+
+# 原书 PDF 与提取文本仅保留本机，不随仓库分发（版权原因）
+book/
+_extract/

@@ -1,0 +1,31 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='900' height='380' viewBox='0 0 900 380'>
+<rect width='900' height='380' fill='#ffffff'/>
+<text x='450.0' y='26' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='16' font-weight='bold' fill='#1f4e79' text-anchor='middle'>D07  PIM-DM 洪泛与剪枝 / PIM-SDM 边界</text>
+<g><rect x='45.0' y='154.0' width='90' height='32' rx='3' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<rect x='53.0' y='145.0' width='74' height='9' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<text x='90' y='174' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#222'>源 S</text></g>
+<g><circle cx='300' cy='170' r='26' fill='#dbe9f6' stroke='#1f4e79' stroke-width='1.6'/>
+<path d='M 289 163 L 311 163 M 289 170 L 311 170 M 289 177 L 311 177' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='300' y='212' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>R1</text></g>
+<g><circle cx='520' cy='170' r='26' fill='#dbe9f6' stroke='#1f4e79' stroke-width='1.6'/>
+<path d='M 509 163 L 531 163 M 509 170 L 531 170 M 509 177 L 531 177' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='520' y='212' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>R2</text></g>
+<g><circle cx='740' cy='170' r='26' fill='#dbe9f6' stroke='#1f4e79' stroke-width='1.6'/>
+<path d='M 729 163 L 751 163 M 729 170 L 751 170 M 729 177 L 751 177' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='740' y='212' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>R3</text></g>
+<g><rect x='815.0' y='44.0' width='90' height='32' rx='3' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<rect x='823.0' y='35.0' width='74' height='9' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<text x='860' y='64' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#222'>接收者</text></g>
+<line x1='140' y1='170' x2='250' y2='170' stroke='#c00000' stroke-width='1.6'/>
+<text x='195.0' y='164.0' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#c00000'>组播泛洪</text>
+<line x1='350' y1='170' x2='470' y2='170' stroke='#c00000' stroke-width='1.6'/>
+<text x='410.0' y='164.0' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#c00000'>泛洪</text>
+<line x1='570' y1='170' x2='690' y2='170' stroke='#c00000' stroke-width='1.6'/>
+<text x='630.0' y='164.0' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#c00000'>泛洪</text>
+<path d='M 740 145 Q 860 100, 860 70' fill='none' stroke='#2e7d32' stroke-width='1.6'/>
+<text x='790' y='100' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' fill='#2e7d32' text-anchor='start' font-weight='normal'>有接收者 → 不剪枝</text>
+<path d='M 520 195 Q 420 300, 300 195' fill='none' stroke='#666666' stroke-width='1.6' stroke-dasharray='6,4'/>
+<text x='410' y='295' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' fill='#666666' text-anchor='middle' font-weight='normal'>无接收者 → Prune 剪除</text>
+<text x='30' y='330' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11.5' fill='#666666' text-anchor='start' font-weight='normal'>PIM-DM：先泛洪后剪枝（适合密集组）；PIM-SDM：稀疏侧自动回落 PIM-DM 洪泛</text>
+<text x='30' y='352' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11.5' fill='#666666' text-anchor='start' font-weight='normal'>State-Refresh：周期刷新 (S,G) 状态，避免拓扑变化后重新泛洪</text>
+</svg>

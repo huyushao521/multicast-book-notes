@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 3 章 · RPF 与 PIM 通用机制 · IP 组播学习路线</title>
+<meta name="description" content="IP 组播学习路线：四阶段十二章精读笔记，78 个生产案例，16 张 SVG 拓扑图。">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230969da'/><circle cx='16' cy='16' r='4' fill='white'/><circle cx='16' cy='6' r='2.6' fill='white'/><circle cx='25' cy='21' r='2.6' fill='white'/><circle cx='7' cy='21' r='2.6' fill='white'/><path d='M16 10.6V8.6M18.9 17.6l3.4 2M13.1 17.6l-3.4 2' stroke='white' stroke-width='1.6'/></svg>">
+<link rel="stylesheet" href="../assets/css/site.css">
+<script>
+/* 尽早写入主题，避免刷新时闪白 */
+(function () {
+  var saved = null;
+  try { saved = localStorage.getItem('mc-theme'); } catch (e) {}
+  var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.setAttribute('data-theme', saved || (dark ? 'dark' : 'light'));
+})();
+</script>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<input type="checkbox" id="nav-toggle" hidden>
+<label for="nav-toggle" class="nav-toggle-btn">☰ 目录</label>
+
+<button type="button" class="theme-toggle floating" data-theme-toggle aria-label="切换深色/浅色主题" title="切换深色/浅色主题">
+  <span class="theme-icon" aria-hidden="true">◐</span><span class="theme-text">深色</span>
+</button>
+
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-row">
+      <a href="../index.html">IP 组播学习路线<span>精读笔记 · 四阶段十二章</span></a>
+      <button type="button" class="theme-toggle" data-theme-toggle aria-label="切换深色/浅色主题" title="切换深色/浅色主题">
+        <span class="theme-icon" aria-hidden="true">◐</span><span class="theme-text">深色</span>
+      </button>
+    </div>
+    <div class="search-wrap">
+      <input type="search" id="nav-search" placeholder="搜索章节…" autocomplete="off" aria-label="搜索章节">
+    </div>
+  </div>
+
+  <nav class="nav">
+    <details class="group" id="page-toc-group" open>
+      <summary>本页目录</summary>
+      <ul class="toc" id="toc-list"></ul>
+    </details>
+
+    <details class="group" id="home-group" open>
+      <summary>首页</summary>
+      <ul><li><a href="../index.html" data-path="index.html">学习路线总览</a></li></ul>
+    </details>
+    <details class="group part" data-part="阶段一" open>
+      <summary>阶段一 · 地基</summary>
+      <ul>
+        <li><a href="chapters/ch01-basics.html" data-path="chapters/ch01-basics.html">第 1 章 · 基础模型与地址体系</a></li>
+        <li><a href="chapters/ch02-igmp-l2.html" data-path="chapters/ch02-igmp-l2.html">第 2 章 · IGMP 与二层组播</a></li>
+      </ul>
+    </details>
+    <details class="group part" data-part="阶段二" open>
+      <summary>阶段二 · 协议核心</summary>
+      <ul>
+        <li><a href="chapters/ch03-rpf-pim-basics.html" data-path="chapters/ch03-rpf-pim-basics.html" active>第 3 章 · RPF 与 PIM 通用机制</a></li>
+        <li><a href="chapters/ch04-pim-dm.html" data-path="chapters/ch04-pim-dm.html">第 4 章 · PIM-DM 与 PIM-SDM</a></li>
+        <li><a href="chapters/ch05-pim-sm-rp.html" data-path="chapters/ch05-pim-sm-rp.html">第 5 章 · PIM-SM 与 RP 发现</a></li>
+        <li><a href="chapters/ch06-ssm-bidir.html" data-path="chapters/ch06-ssm-bidir.html">第 6 章 · SSM 与 BIDIR-PIM</a></li>
+      </ul>
+    </details>
+    <details class="group part" data-part="阶段三" open>
+      <summary>阶段三 · 域间与规模化</summary>
+      <ul>
+        <li><a href="chapters/ch07-msdp-mbgp.html" data-path="chapters/ch07-msdp-mbgp.html">第 7 章 · MSDP 与 MBGP 域间组播</a></li>
+        <li><a href="chapters/ch08-mvpn-scale.html" data-path="chapters/ch08-mvpn-scale.html">第 8 章 · MVPN / MLDP / 组播 TE</a></li>
+      </ul>
+    </details>
+    <details class="group part" data-part="阶段四" open>
+      <summary>阶段四 · 场景实战</summary>
+      <ul>
+        <li><a href="chapters/ch09-datacenter-cloud.html" data-path="chapters/ch09-datacenter-cloud.html">第 9 章 · 数据中心与云中的组播</a></li>
+        <li><a href="chapters/ch10-ipv6-multicast.html" data-path="chapters/ch10-ipv6-multicast.html">第 10 章 · IPv6 组播</a></li>
+        <li><a href="chapters/ch11-security.html" data-path="chapters/ch11-security.html">第 11 章 · 组播安全与过滤</a></li>
+        <li><a href="chapters/ch12-troubleshooting.html" data-path="chapters/ch12-troubleshooting.html">第 12 章 · 排障方法论</a></li>
+      </ul>
+    </details>
+  </nav>
+</aside>
+
+<label for="nav-toggle" class="backdrop"></label>
+
+<main class="main">
+  <article class="content">
+<h1 id="ch03-rpf-pim">ch03 RPF、分发树与 PIM 通用机制</h1>
+<blockquote>
+<p><strong>来源</strong>：Aweya Ch1.6（RPF）、Ch1.10（组播路由体系架构）、Ch3（PIM 报文格式）、Ch5.6（DR 选举）、Ch5.9（Assert）、iPexpert Ch3–Ch4
+<strong>配图</strong>：<a href="../diagrams/d05-rpf.svg">D05 RPF</a>｜<a href="../diagrams/d06-trees.svg">D06 分发树</a></p>
+</blockquote>
+<hr />
+<h2 id="_1">学习目标</h2>
+<ol>
+<li>解释 RPF 的实现方式（严格 RPF / 静态 mroute / 无 RPF）及其环路风险；</li>
+<li>说清 PIM 的通用报文族（Hello/Join-Prune/Assert/Bootstrap/Candidate-RP/Register 等）及其字段；</li>
+<li>理解组播路由表（mroute）的表项结构：<code>(S,G)</code>、<code>(*,G)</code>、<code>(S,G,rpt)</code>、RPF 接口、Outgoing List、Flags；</li>
+<li>掌握 PIM DR 选举规则与 Assert 机制；</li>
+<li>建立"组播转发三要素：状态 + RPF + 出接口列表"的排障框架。</li>
+</ol>
+<hr />
+<h2 id="1-aweya-110">1. 组播路由体系架构（Aweya 1.10）</h2>
+<p>四层组件模型，理解它就理解了"一条组播流要经过多少个模块"：</p>
+<table>
+<thead>
+<tr>
+<th>组件</th>
+<th>缩写</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Multicast Routing Protocol Engine</strong></td>
+<td>MRPE</td>
+<td>协议状态机：处理 Join/Prune/Register 等，维护协议状态</td>
+</tr>
+<tr>
+<td><strong>Multicast Routing Table Manager</strong></td>
+<td>MRTM</td>
+<td>把协议状态 + RPF 信息 → 写硬件 FIB（组播转发表）</td>
+</tr>
+<tr>
+<td><strong>Unicast Routing Protocol Components</strong></td>
+<td>—</td>
+<td>提供 RPF 所需的目标源路由信息（IBGP/静态/OSPF/ISIS）</td>
+</tr>
+<tr>
+<td><strong>Multicast Group Membership Discovery</strong></td>
+<td>MGMD</td>
+<td>IGMP/MLD，负责最后一跳成员发现</td>
+</tr>
+<tr>
+<td><strong>Multicast Source Discovery Protocol</strong></td>
+<td>MSDP</td>
+<td>跨域发现源（ASM 场景）</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>排障时的价值：判断"是协议状态没建起来（MRPE）"、"是转发表没下发（MRTM）"、"是 RPF 查不到（Unicast）"还是"是成员没加入（MGMD）"——<strong>四选一，缩小 80% 的排查范围</strong>。</p>
+</blockquote>
+<hr />
+<h2 id="2-rpf">2. RPF 详解</h2>
+<p><img alt="RPF" src="../diagrams/d05-rpf.svg" /></p>
+<h3 id="21-rpf">2.1 为什么需要 RPF</h3>
+<p>组播树是以<strong>源为根</strong>的生成树。RPF 保证：</p>
+<ol>
+<li><strong>无环路</strong>：任何组播包只能沿"离源越来越近"的方向转发，包不会绕回；</li>
+<li><strong>防伪源</strong>：伪造源地址的包没有对应 RPF 接口，直接丢弃；</li>
+<li><strong>流量对称</strong>：RPF 保证组播与单播走相同路径，避免环路与路径不一致。</li>
+</ol>
+<h3 id="22-rpf">2.2 RPF 的三种实现</h3>
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th>配置</th>
+<th>用途</th>
+<th>风险</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>严格 RPF</strong></td>
+<td>默认，基于单播路由表/FIB</td>
+<td>正常组播</td>
+<td>单播拓扑异常会导致组播不通</td>
+</tr>
+<tr>
+<td><strong>静态 mroute</strong></td>
+<td><code>ip mroute &lt;src&gt; &lt;mask&gt; &lt;interface&gt; [rpf]</code></td>
+<td>单播不可达场景（隧道、非 PIM 网络）</td>
+<td><strong>极易造成环路</strong>，必须成文设计</td>
+</tr>
+<tr>
+<td><strong>无 RPF</strong></td>
+<td><code>ip multicast-routing</code> 关闭（老设备）</td>
+<td>实验/老设备</td>
+<td>全网泛洪，慎用</td>
+</tr>
+</tbody>
+</table>
+<h3 id="23-rpf">2.3 RPF 接口的动态性</h3>
+<ul>
+<li>RPF 接口 = 单播路由表中到源的<strong>出接口</strong>（Fib path）；</li>
+<li><strong>周期性校验</strong>：若单播路由变化（如收敛、链路切换），RPF 接口随之改变；组播状态也会随之重建；</li>
+<li><strong>RPF 接口类型</strong>（Aweya 1.6.5）：</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>n</code></td>
+<td>Null —— 无路由，RPF 失败</td>
+</tr>
+<tr>
+<td><code>l</code></td>
+<td>线路（点到点）</td>
+</tr>
+<tr>
+<td><code>m</code></td>
+<td>多播（Multiaccess）</td>
+</tr>
+<tr>
+<td><code>i</code></td>
+<td>静态 mroute 指定</td>
+</tr>
+</tbody>
+</table>
+<h3 id="24">2.4 排障命令</h3>
+<div class="codehilite"><pre><span></span><code>show ip rpf 10.1.1.1                     ! RPF 接口与路由来源
+show ip rpf &lt;source&gt; detail              ! 含 RPF 表项与 FIB 细节
+show ip mroute                           ! 全部组播路由表
+show ip mroute 239.1.1.1                 ! 指定组
+show ip mroute 239.1.1.1 detail          ! 含 RPF 邻居与出接口列表
+show ip mroute active                    ! 活动状态（（S,G）/( *,G)）
+show ip mroute count                     ! 状态数统计
+</code></pre></div>
+
+<hr />
+<h2 id="3-pim-aweya-ch3">3. PIM 通用报文族（Aweya Ch3）</h2>
+<h3 id="31-pim-common-header">3.1 公共头（PIM Common Header）</h3>
+<div class="codehilite"><pre><span></span><code> 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|  Version | Type  |   Reserved    |           Checksum           |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                        Group Address                           |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                        Source Address                          |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+</code></pre></div>
+
+<ul>
+<li><code>Version</code> = 2，<code>Type</code> 区分报文类型；</li>
+<li>8 bit 保留域在 PIMv2 中被重新定义（Option Type 1–5：Join/Prune 长度、DR 优先级、Generation ID、DF 优先级/生成 ID 等）→ <strong>这是 BIDIR-PIM 能承载 DF 优先级的原因</strong>。</li>
+</ul>
+<h3 id="32">3.2 报文清单</h3>
+<table>
+<thead>
+<tr>
+<th>报文</th>
+<th>类型</th>
+<th>归属</th>
+<th>目的</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hello</td>
+<td>0</td>
+<td>全部</td>
+<td>邻居发现、DR 选举、参数协商</td>
+</tr>
+<tr>
+<td>Join/Prune</td>
+<td>1</td>
+<td>全部</td>
+<td>建/剪分发树</td>
+</tr>
+<tr>
+<td>Assert</td>
+<td>4</td>
+<td>全部</td>
+<td>多路访问网段上消除重复转发</td>
+</tr>
+<tr>
+<td>Graft / Graft-Ack</td>
+<td>5/6</td>
+<td>PIM-DM</td>
+<td>重新接入被剪掉的支路</td>
+</tr>
+<tr>
+<td>State-Refresh</td>
+<td>10</td>
+<td>PIM-DM</td>
+<td>周期刷新 (S,G) 状态</td>
+</tr>
+<tr>
+<td>Bootstrap (BSM)</td>
+<td>20</td>
+<td>PIM-SM</td>
+<td>分发 Group→RP 映射</td>
+</tr>
+<tr>
+<td>Candidate-RP-Advert</td>
+<td>19</td>
+<td>PIM-SM</td>
+<td>宣告 RP 候选</td>
+</tr>
+<tr>
+<td>Register / Register-Stop</td>
+<td>12/11</td>
+<td>PIM-SM</td>
+<td>源注册到 RP</td>
+</tr>
+<tr>
+<td>BIDIR 专用</td>
+<td>Offer/Winner/Backoff/Pass</td>
+<td>BIDIR</td>
+<td>DF 选举可靠性增强</td>
+</tr>
+</tbody>
+</table>
+<h3 id="33-hello">3.3 Hello 报文关键字段</h3>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Holdtime</strong></td>
+<td>邻居存活时间，默认 105 s</td>
+</tr>
+<tr>
+<td><strong>DR Priority</strong></td>
+<td>DR 选举优先级，数值大者优（默认 1）</td>
+</tr>
+<tr>
+<td><strong>Generation ID</strong></td>
+<td>标识路由器实例，用于 BIDIR DF 选举</td>
+</tr>
+<tr>
+<td><strong>Keepalive Timer</strong></td>
+<td>双向保活确认，默认 0（关闭）</td>
+</tr>
+<tr>
+<td><strong>DR Priority/Neighbor Loss</strong></td>
+<td>检测邻居丢失</td>
+</tr>
+<tr>
+<td><strong>Bidir-Capable</strong></td>
+<td>BIDIR-PIM 能力标志（RFC 5015）</td>
+</tr>
+</tbody>
+</table>
+<p><strong>关键定时器汇总</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>定时器</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hello Holdtime</td>
+<td>105 s</td>
+<td>3.5 × Hello interval（30 s）</td>
+</tr>
+<tr>
+<td>Assert Holdtime</td>
+<td>90 s</td>
+<td></td>
+</tr>
+<tr>
+<td>Join/Prune Holdtime</td>
+<td>210 s</td>
+<td></td>
+</tr>
+<tr>
+<td>RP Announce（AutoRP）</td>
+<td>60 s</td>
+<td>宣告周期</td>
+</tr>
+<tr>
+<td>BSR RP-Announce</td>
+<td>60 s</td>
+<td></td>
+</tr>
+<tr>
+<td>SA Advert（MSDP）</td>
+<td>60 s</td>
+<td></td>
+</tr>
+<tr>
+<td>SA Cache</td>
+<td>180 s</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-mroute">4. 组播路由表 (mroute) 结构</h2>
+<div class="codehilite"><pre><span></span><code>IP Multicast Routing Table
+Flags: D - Dense, S - Sparse, B - Bidir Group,
+       s - SSM Group, C - Connected, L - Local, P - Pruned,
+       R - RP-bit set, J - Join SPT, T - SPT-bit set,
+       E - Extranet, X - External, H - Hot standby
+(*, 239.1.1.1), 00:00:00/32, uptime 00:12:33, expires 00:03:22
+  RP 10.1.1.1
+  Flags: S
+  Incoming interface: GigabitEthernet0/1, RPF
+  Outgoing interface list:
+    GigabitEthernet0/2, Forward/Sparse, 00:01:22/00:03:20
+(10.1.2.5, 239.1.1.1), 00:00:41/00:03:22, flags: JT
+  Incoming interface: GigabitEthernet0/1, RPF
+  Outgoing interface list:
+    GigabitEthernet0/2, Forward/Sparse, 00:00:41/00:03:22
+</code></pre></div>
+
+<p><strong>必须能读懂的字段</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>排障含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Flags: JT</code></td>
+<td><strong>J</strong> = 已加入 SPT；<strong>T</strong> = SPT-bit 已置（共享树侧被剪）</td>
+</tr>
+<tr>
+<td><code>R</code></td>
+<td>RP-bit：该组已切换到 SPT（收到 <code>(S,G,rpt) Prune</code>）</td>
+</tr>
+<tr>
+<td><code>Incoming interface ... RPF</code></td>
+<td>RPF 接口是否正确（<strong>RPF 失败的第一现场</strong>）</td>
+</tr>
+<tr>
+<td><code>Outgoing interface list</code></td>
+<td>无条目 → 树上无人；接口带 <code>Pruned</code> → 被剪</td>
+</tr>
+<tr>
+<td><code>expires</code></td>
+<td>状态老化倒计时</td>
+</tr>
+<tr>
+<td><code>00:03:20</code></td>
+<td>该接口的 Join 定时器（到期未刷新则状态消失）</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong><code>show ip mroute</code> 是组播排障的第一命令</strong>（iPexpert 反复强调：把控制面与数据面分开，先看控制面）。</p>
+</blockquote>
+<hr />
+<h2 id="5-pim-dr-assert">5. PIM DR 选举与 Assert</h2>
+<h3 id="51-dr-aweya-562">5.1 DR 选举（Aweya 5.6.2）</h3>
+<p><strong>目的</strong>：多路访问网段上，<strong>每个网段只有一个 DR</strong> 负责：
+- 代表本网段向上游发送 Join/Prune；
+- 接收上游的 Join/Prune 并在本网段泛洪；
+- 源侧 DR 负责向 RP 发 <strong>Register</strong>；
+- 收侧 DR 负责执行 <strong>SPT 切换</strong>（最后一跳）。</p>
+<p><strong>选举规则（RFC 7761）</strong>：</p>
+<ol>
+<li>比较 <strong>DR Priority</strong>（Hello 中携带），<strong>数值大者胜</strong>；</li>
+<li>相同则比较 <strong>Hello 中的源 IP</strong>（接口 IP），<strong>地址小者胜</strong>；</li>
+<li>再相同则比较 <strong>Generation ID</strong>（新版）；</li>
+<li>** PIM Hello 邻居数最少者优先**（tie-breaker，避免震荡）。</li>
+</ol>
+<p><strong>DR 故障切换</strong>：Holdtime（105 s）超时后重新选举；切换期间组播中断 → 生产上需 <strong>冗余 PIM 域/双上联</strong>。</p>
+<h3 id="52-assert">5.2 Assert 机制</h3>
+<p><strong>问题</strong>：在多路访问网段（如同一台交换机下多个路由器共享一个 LAN），两台路由器都收到同一份组播包，如果都向下游转发 → <strong>重复流量</strong>，浪费带宽。</p>
+<p><strong>解决</strong>：Assert 报文携带 (S,G) 的 <strong>metric（跳数）</strong>、<strong>RPT-bit 标志</strong>、<strong>preferred flag</strong>（是否走 SPT）。</p>
+<p><strong>Assert 选举优先级</strong>（Aweya 5.9.7）：</p>
+<ol>
+<li><strong>SPT preferred 优先</strong>（走 SPT 的胜出，标志位优先）；</li>
+<li><strong>RPT-bit 未置者优先</strong>（若都已走 SPT 则此步相同）；</li>
+<li><strong>metric 小者胜</strong>（离源更近）；</li>
+<li>相同则 <strong>IP 地址小者胜</strong>。</li>
+</ol>
+<p><strong>Assert Winner</strong> 停止转发并宣告；其他路由器收到 Assert 后停止向该网段转发，并安装 Assert 状态，直到 holdtime 到期。</p>
+<blockquote>
+<p>排障要点：<code>show ip mroute &lt;group&gt; detail</code> 中出现 <code>Asserts</code> 段，说明存在重复转发路径；若业务"带宽翻倍"，优先查 Assert。</p>
+</blockquote>
+<hr />
+<h2 id="6-6">6. 生产案例（6 例）</h2>
+<h3 id="3-1rpf">案例 3-1：RPF 失败——单播通、组播不通</h3>
+<p><strong>现象</strong>：组播全不通，单播正常；<code>show ip mroute</code> 中该组无 <code>(S,G)</code> 项。
+<strong>定位</strong>：</p>
+<div class="codehilite"><pre><span></span><code>show ip rpf 10.1.2.5                 ! RPF interface: Null / 不符
+show ip route 10.1.2.5               ! 单播路由是否存在
+debug ip mpacket 10.1.2.5 239.1.1.1  ! 见 &quot;RPF failed&quot; / &quot;no route&quot;
+</code></pre></div>
+
+<p><strong>根因</strong>：路由器缺少到源的<strong>单播路由</strong>（PIM 依赖 IGP，不自带路由）。
+<strong>处置</strong>：补齐到源的路由（IGP/静态），<strong>不要</strong>用静态 mroute 掩盖问题。
+<strong>复盘</strong>：PIM 域规划必须"一个 IGP 域 + 全网启用 PIM"，这是 iPexpert 反复强调的铁律。</p>
+<h3 id="3-2-mroute">案例 3-2：静态 mroute 造成组播环路</h3>
+<p><strong>现象</strong>：同组流量在两台设备间来回转发，带宽翻倍，且 TTL 异常。
+<strong>定位</strong>：<code>show ip mroute</code> 显示 RPF 接口为静态指定（<code>i</code>）；<code>debug ip mpacket</code> 显示包在两台设备间循环。
+<strong>根因</strong>：为解决 RPF 失败而配置的静态 mroute 指向了错误方向。
+<strong>处置</strong>：删除静态 mroute，改为补齐单播路由；确需静态 mroute 时在设计文档中写明理由与环路分析。
+<strong>复盘</strong>：静态 mroute 是"最后手段"，每次使用都要有环路风险评估（与你的笔记一致）。</p>
+<h3 id="3-3dr">案例 3-3：DR 频繁切换导致组播周期性中断</h3>
+<p><strong>现象</strong>：组播每 1~2 分钟中断几秒，客户端频繁重连。
+<strong>定位</strong>：<code>show ip pim interface</code> 显示 DR 反复变化；<code>show logging | include PIM</code> 出现 <code>DR changed</code>。
+<strong>根因</strong>：两台路由器的 <strong>DR Priority 相同且接口 IP 相同</strong>（如主备设备同 IP 未规划），或 Hello 被 ACL/认证阻塞导致邻居反复重建。
+<strong>处置</strong>：显式配置不同 <code>ip pim dr-priority</code>；检查 <code>ip pim hello</code> 邻居是否稳定（<code>show ip pim neighbor</code>）。
+<strong>复盘</strong>：PIM 邻居与 DR 选举必须纳入变更检查单。</p>
+<h3 id="3-4">案例 3-4：组播重复转发，带宽占用翻倍</h3>
+<p><strong>现象</strong>：交换机上该组流量是两倍预期；客户端正常但带宽异常。
+<strong>定位</strong>：<code>show ip mroute 239.1.1.1 detail</code> 出现 <code>Asserts</code>；<code>show ip pim neighbor</code> 显示同一网段两台 DR。
+<strong>根因</strong>：多路访问网段上 Assert 未生效或配置了 <code>ip pim assert</code> 关闭/ACL 拦截 Assert。
+<strong>处置</strong>：确认 Assert 报文未被过滤；检查是否有 <code>no ip pim sparse-mode</code> 接口混入。
+<strong>复盘</strong>：多路访问网段必须验证 Assert，尤其是双归接入场景。</p>
+<h3 id="3-5mroute">案例 3-5：mroute 状态存在但数据不转发</h3>
+<p><strong>现象</strong>：<code>show ip mroute</code> 有 <code>(S,G)</code> 且 Outgoing interface list 有接口，但接收端收不到。
+<strong>定位</strong>：<code>show ip mroute 239.1.1.1 detail</code> 看 Outgoing 接口的标志（是否 <code>Pruned</code>/<code>Forward</code>）；<code>show ip igmp groups</code> 看成员；接口 <code>show ip pim interface</code>。
+<strong>根因</strong>：出接口列表中的接口处于 <strong>Pruned</strong> 状态，或该接口没有 IGMP 成员（末端主机已离开但状态未刷新）。
+<strong>处置</strong>：确认 Join/Prune 交互；检查下游接口是否 <code>ip pim sparse-mode</code>。
+<strong>复盘</strong>：mroute 有条目 ≠ 能转发，必须看 Outgoing list 的细节标志。</p>
+<h3 id="3-6-ttl">案例 3-6：组播 TTL 被逐跳改写导致边界行为异常</h3>
+<p><strong>现象</strong>：跨三层设备后组播突然消失。
+<strong>定位</strong>：<code>debug ip mpacket</code> 显示 TTL=1；<code>show ip mroute</code> 中组被 prune。
+<strong>根因</strong>：某台设备出接口未配 <code>ip multicast ttl</code>，默认 TTL=1 阻断转发；或 <code>ip multicast threshold</code> 设置过低。
+<strong>处置</strong>：出接口 <code>ip multicast ttl 255</code>；检查 threshold 与域边界设计。
+<strong>复盘</strong>：组播 TTL 是"逐跳重写"而非"递减"，配置时按"域边界"而不是"跳数"思考。</p>
+<hr />
+<h2 id="7">7. 自测清单</h2>
+<ol>
+<li>MRPE / MRTM / MGMD / MSDP 四个组件分别负责什么？排障时如何用它们定位问题层次？</li>
+<li>严格 RPF 与静态 mroute 的差别是什么？各自的环路风险？</li>
+<li><code>show ip mroute</code> 中 <code>J</code>、<code>T</code>、<code>R</code>、<code>P</code> 四个标志分别代表什么？</li>
+<li>PIM DR 选举的完整比较顺序是什么？为什么 IP 地址"小者胜"？</li>
+<li>Assert 选举的四步优先级是什么？为什么要把 "SPT preferred" 放在 metric 之前？</li>
+<li>Hello holdtime 是多少？它与 Hello interval 的比例关系是什么？为什么是 3.5？</li>
+</ol>
+<h2 id="8">8. 延伸阅读</h2>
+<ul>
+<li>Aweya Ch1.6 / Ch1.10（P.60–P.79）、Ch3（P.169–P.188 报文格式）、Ch5.6（P.262–P.269）、Ch5.9（P.285–P.292）</li>
+<li>Williamson 附录 A（P.526–P.541）：PIM 报文格式速查</li>
+<li>延伸：<code>RFC 7761</code>（PIM-SM）、<code>RFC 5015</code>（BIDIR-PIM）、<code>RFC 3974</code>（MSDP）</li>
+</ul>
+  </article>
+  <footer class="page-foot">
+<a class="prev" href="ch02-igmp-l2.html"><span class="dir">← 上一章</span><span class="ttl">第 2 章 · IGMP 与二层组播</span></a><a class="next" href="ch04-pim-dm.html"><span class="dir">下一章 →</span><span class="ttl">第 4 章 · PIM-DM 与 PIM-SDM</span></a>
+    <p class="foot-note">内容基于公开出版物整理，仅用于技术学习；命令示例请以设备实际版本手册为准。</p>
+  </footer>
+</main>
+
+<button type="button" class="to-top" id="to-top" aria-label="回到顶部" title="回到顶部">↑</button>
+
+<script>
+(function () {
+  var content = document.querySelector('.content');
+  var here = location.pathname;
+
+  /* ---------- 当前章节高亮 + 展开所属分组 ---------- */
+  var active = null;
+  document.querySelectorAll('.nav a[data-path]').forEach(function (a) {
+    if (here.indexOf('/' + a.dataset.path) !== -1 || here.indexOf(a.dataset.path) !== -1) {
+      a.classList.add('active');
+      active = a;
+    }
+  });
+  if (active) {
+    var g = active.closest('details');
+    if (g) g.open = true;
+  }
+
+  /* ---------- 生成本页目录（取 h2 / h3） ---------- */
+  var heads = content ? content.querySelectorAll('h2, h3') : [];
+  var tocList = document.getElementById('toc-list');
+  heads.forEach(function (h, i) {
+    h.id = 'sec-' + (i + 1);
+    var li = document.createElement('li');
+    li.className = h.tagName === 'H3' ? 'lvl3' : 'lvl2';
+    var a = document.createElement('a');
+    a.href = '#' + h.id;
+    a.textContent = h.textContent.trim();
+    li.appendChild(a);
+    tocList.appendChild(li);
+  });
+  if (!heads.length) {
+    var g = document.getElementById('page-toc-group');
+    if (g) g.remove();
+  }
+
+  /* ---------- 目录滚动高亮 ---------- */
+  if (heads.length) {
+    var links = tocList.querySelectorAll('a');
+    var onScroll = function () {
+      var idx = 0;
+      heads.forEach(function (h, i) {
+        if (h.getBoundingClientRect().top <= 100) idx = i;
+      });
+      links.forEach(function (a, i) { a.classList.toggle('active', i === idx); });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+
+  /* ---------- 阅读进度条 ---------- */
+  var bar = document.getElementById('progress');
+  function paintProgress() {
+    if (!bar) return;
+    var h = document.documentElement.scrollHeight - window.innerHeight;
+    var p = h > 0 ? (window.scrollY / h) * 100 : 0;
+    bar.style.width = Math.min(100, Math.max(0, p)) + '%';
+  }
+  window.addEventListener('scroll', paintProgress, { passive: true });
+  paintProgress();
+
+  /* ---------- 回到顶部 ---------- */
+  var top = document.getElementById('to-top');
+  if (top) {
+    top.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    window.addEventListener('scroll', function () {
+      top.style.opacity = window.scrollY > 400 ? '1' : '0';
+    }, { passive: true });
+  }
+
+  /* ---------- 侧栏搜索过滤 ---------- */
+  var search = document.getElementById('nav-search');
+  if (search) {
+    search.addEventListener('input', function () {
+      var q = search.value.trim().toLowerCase();
+      document.querySelectorAll('.nav .group.part').forEach(function (grp) {
+        var hit = 0;
+        grp.querySelectorAll('li').forEach(function (li) {
+          var t = (li.textContent || '').toLowerCase();
+          var ok = !q || t.indexOf(q) !== -1;
+          li.style.display = ok ? '' : 'none';
+          if (ok) hit++;
+        });
+        grp.style.display = hit ? '' : 'none';
+        if (q && hit) grp.open = true;
+      });
+    });
+  }
+
+  /* ---------- 代码块复制按钮 ---------- */
+  document.querySelectorAll('.content pre').forEach(function (pre) {
+    var btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.type = 'button';
+    btn.textContent = '复制';
+    btn.addEventListener('click', function () {
+      var code = pre.querySelector('code');
+      var text = code ? code.innerText : pre.innerText;
+      navigator.clipboard.writeText(text).then(function () {
+        btn.textContent = '已复制';
+        setTimeout(function () { btn.textContent = '复制'; }, 1500);
+      }).catch(function () { btn.textContent = '复制失败'; });
+    });
+    pre.appendChild(btn);
+  });
+
+  /* ---------- 移动端点目录后自动收起 ---------- */
+  document.querySelectorAll('.nav a[data-path]').forEach(function (a) {
+    a.addEventListener('click', function () {
+      document.getElementById('nav-toggle').checked = false;
+    });
+  });
+
+  /* ---------- 主题切换 ---------- */
+  var root = document.documentElement;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+
+  function paintButtons(theme) {
+    var dark = theme === 'dark';
+    document.querySelectorAll('[data-theme-toggle]').forEach(function (btn) {
+      btn.querySelector('.theme-icon').textContent = dark ? '☀' : '☾';
+      btn.querySelector('.theme-text').textContent = dark ? '浅色' : '深色';
+      btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+      btn.title = dark ? '切换到浅色主题' : '切换到深色主题';
+    });
+  }
+
+  function applyTheme(theme) {
+    root.setAttribute('data-theme', theme);
+    paintButtons(theme);
+  }
+
+  paintButtons(root.getAttribute('data-theme') || 'light');
+
+  document.querySelectorAll('[data-theme-toggle]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+      try { localStorage.setItem('mc-theme', next); } catch (e) {}
+    });
+  });
+
+  if (mq) {
+    var onScheme = function (e) {
+      var saved = null;
+      try { saved = localStorage.getItem('mc-theme'); } catch (err) {}
+      if (!saved) applyTheme(e.matches ? 'dark' : 'light');
+    };
+    if (mq.addEventListener) mq.addEventListener('change', onScheme);
+    else if (mq.addListener) mq.addListener(onScheme);
+  }
+})();
+</script>
+</body>
+</html>

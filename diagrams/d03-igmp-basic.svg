@@ -1,0 +1,32 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='900' height='340' viewBox='0 0 900 340'>
+<rect width='900' height='340' fill='#ffffff'/>
+<text x='450.0' y='26' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='16' font-weight='bold' fill='#1f4e79' text-anchor='middle'>D03  IGMP 成员管理与 Querier 交互</text>
+<g><rect x='45.0' y='94.0' width='90' height='32' rx='3' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<rect x='53.0' y='85.0' width='74' height='9' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<text x='90' y='114' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#222'>Host A
+(接收 239.1.1.1)</text></g>
+<g><rect x='45.0' y='214.0' width='90' height='32' rx='3' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<rect x='53.0' y='205.0' width='74' height='9' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<text x='90' y='234' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#222'>Host B
+(接收 239.1.1.1)</text></g>
+<g><rect x='245.0' y='153.0' width='110' height='34' rx='6' fill='#eaf3e0' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='300' y='174' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>L2 交换机
+(IGMP Snooping)</text></g>
+<g><circle cx='560' cy='170' r='26' fill='#dbe9f6' stroke='#1f4e79' stroke-width='1.6'/>
+<path d='M 549 163 L 571 163 M 549 170 L 571 170 M 549 177 L 571 177' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='560' y='212' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='12' text-anchor='middle' fill='#222'>R1
+(Queryer / DR)</text></g>
+<g><rect x='755.0' y='154.0' width='90' height='32' rx='3' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<rect x='763.0' y='145.0' width='74' height='9' fill='#fde9d9' stroke='#1f4e79' stroke-width='1.4'/>
+<text x='800' y='174' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#222'>RP / 上游</text></g>
+<line x1='140' y1='110' x2='245' y2='155' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='192.5' y='126.5' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#1f4e79'>IGMPv3 Report</text>
+<line x1='140' y1='230' x2='245' y2='190' stroke='#1f4e79' stroke-width='1.6'/>
+<text x='192.5' y='204.0' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#1f4e79'>IGMPv2 Report</text>
+<line x1='355' y1='170' x2='505' y2='170' stroke='#2e7d32' stroke-width='1.6' stroke-dasharray='5,4'/>
+<text x='430' y='160' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#2e7d32'>Query</text>
+<line x1='505' y1='170' x2='355' y2='170' stroke='#666666' stroke-width='1.6' stroke-dasharray='5,4'/>
+<text x='430' y='195' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11' text-anchor='middle' fill='#666666'>Report</text>
+<text x='30' y='300' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11.5' fill='#666666' text-anchor='start' font-weight='normal'>Querier：发送 General/Group-Specific Query；由 PIM DR 承担（RP 无需 IGMP）</text>
+<text x='30' y='322' font-family='Segoe UI,Microsoft YaHei,sans-serif' font-size='11.5' fill='#666666' text-anchor='start' font-weight='normal'>v3 支持 (G,S) 精确订阅 → 源过滤、防伪源注入；v2 为 ( *,G) 共享树</text>
+</svg>
