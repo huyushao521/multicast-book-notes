@@ -88,376 +88,404 @@
 
 <main class="main">
   <article class="content">
-<h1 id="ch12">ch12 组播排障方法论与综合案例</h1>
+<h1 id="12">第 12 章 排障方法论：四步法与变更检查单</h1>
 <blockquote>
-<p><strong>来源</strong>：iPexpert 全书（每章的 show/debug 工具箱与 Trouble Ticket 方法论）、Volume II Ch6（Advanced Multicast Troubleshooting，P.301–P.344）
-<strong>配图</strong>：复用 <a href="../diagrams/d05-rpf.svg">D05</a>、<a href="../diagrams/d08-pim-sm.svg">D08</a>、<a href="../diagrams/d12-msdp.svg">D12</a>、<a href="../diagrams/d13-mvpn.svg">D13</a>、<a href="../diagrams/d14-vxlan.svg">D14</a></p>
+<p>精读来源：<strong>Aweya p.40–42（RPF 四级回退链）、p.272（三套下游状态）、§5.7（Register 状态）、p.381–385（SA 过滤与缓存）</strong>、<strong>Volume II p.9 / p.60（<code>show ip mroute</code> 标志位释义）、p.118（RPF 接口是 tunnel 场景的唯一考虑）</strong>
+本章解决的问题：前 11 章讲每块"应该怎么工作"，本章讲<strong>出问题时按什么顺序看</strong>——组播排障的最大浪费是"从 mroute 开始猜"，正确起点是<strong>RP 映射表</strong>。</p>
 </blockquote>
-<hr />
 <h2 id="_1">学习目标</h2>
 <ol>
-<li>掌握 iPexpert 的<strong>四步排障法</strong>（控制面/数据面分离 → 症状分类 → 隔离 → 修复验证）；</li>
-<li>建立"症状 → 根因"的<strong>决策树</strong>，5 分钟内定位方向；</li>
-<li>掌握全量 show/debug 命令速查表；</li>
-<li>能独立完成一次跨域/跨 VPN 组播的端到端排障；</li>
-<li>建立个人的"组播 case 库"。</li>
+<li>记住四步法的顺序与每步的"否决条件"；</li>
+<li>把 <code>show ip mroute</code> 的 7 个标志位与具体故障一一对应；</li>
+<li>用"是否 <code>(S,G)</code> 存在"作为分叉点，把故障分成两大类；</li>
+<li>区分"真故障"与"设计如此"的 12 种现象；</li>
+<li>用变更检查单避免"改完一半"（这是组播事故的第一大来源）；</li>
+<li>知道每类故障在哪个设备上取证最省时间。</li>
 </ol>
 <hr />
-<h2 id="1-ipexpert">1. 排障总原则（iPexpert 核心思想）</h2>
-<blockquote>
-<p><strong>"在能够彻底排障之前，理解协议的运行方式是唯一的前提。组播排障的常见根因是 PIM 拓扑与逻辑/物理拓扑不一致。"</strong>
-—— iPexpert Ch1（P.1-5）</p>
-</blockquote>
-<p><strong>四条铁律</strong>：</p>
-<ol>
-<li><strong>控制面与数据面分离</strong>：先看 <code>show ip mroute</code>（控制面状态），再看数据包（数据面）。</li>
-<li><strong>PIM 拓扑必须与物理/逻辑拓扑一致</strong>：PIM 邻居必须在<strong>直连链路</strong>上建立，不能"跨三层建邻居"。</li>
-<li><strong>一个 IGP 域 + 全链路启用 PIM</strong>：多 IGP 或 PIM 未全开 = 高故障率。</li>
-<li><strong>组播不是"非开不可"</strong>：不需要组播的接口就 <code>no ip pim sparse-mode</code>，减少故障面。</li>
-</ol>
-<hr />
-<h2 id="2">2. 四步排障法</h2>
-<div class="codehilite"><pre><span></span><code>Step 1  症状分类  →  Step 2  控制面验证  →  Step 3  数据面验证  →  Step 4  定位与修复
+<h2 id="1">1. 四步法</h2>
+<div class="codehilite"><pre><span></span><code>① RP 映射表  →  ② (*,G)  →  ③ (S,G)  →  ④ 数据面
+   show ip pim rp mapping   show ip mroute   show ip rpf   接口计数/抓包
 </code></pre></div>
 
-<h3 id="step-1">Step 1：症状分类（四类）</h3>
+<p>每一步只回答一个问题，<strong>不通过就停，不要跳步</strong>。</p>
 <table>
 <thead>
 <tr>
-<th>症状</th>
-<th>典型描述</th>
-<th>首查方向</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>A. 完全收不到</strong></td>
-<td>无任何流量</td>
-<td>IGMP 成员 → RPF → RP → PIM 邻居</td>
-</tr>
-<tr>
-<td><strong>B. 收不全</strong></td>
-<td>部分接收者收不到</td>
-<td>二层成员表 → mroute 出接口 → IGMP 版本</td>
-</tr>
-<tr>
-<td><strong>C. 时断时续</strong></td>
-<td>间歇中断、闪断</td>
-<td>链路收敛、DR 切换、RP 抖动、MTU/分片</td>
-</tr>
-<tr>
-<td><strong>D. 重复/异常</strong></td>
-<td>流量翻倍、环路、串流</td>
-<td>Assert、静态 mroute、跨域 Peer-RPF、租户泄漏</td>
-</tr>
-</tbody>
-</table>
-<h3 id="step-2-5">Step 2：控制面验证（必做 5 条命令）</h3>
-<div class="codehilite"><pre><span></span><code>show ip pim neighbor                     ! ① PIM 邻居齐全吗？DR 稳定吗？
-show ip pim rp mapping                   ! ② 学到 RP 了吗？
-show ip igmp groups                      ! ③ 有成员吗？
-show ip mroute                           ! ④ 状态建起来了吗？
-show ip mroute &lt;group&gt; detail            ! ⑤ RPF 接口与出接口对吗？
-</code></pre></div>
-
-<h3 id="step-3">Step 3：数据面验证</h3>
-<div class="codehilite"><pre><span></span><code>show ip mroute &lt;group&gt; detail            ! 出接口列表 + 标志位
-show ip igmp snooping groups             ! 二层成员口
-show ip interface &lt;if&gt; | include multicast
-debug ip mpacket &lt;src&gt; &lt;group&gt;          ! 数据包级：是否被丢、为什么
-debug ip mroute &lt;group&gt;                  ! 状态机事件
-</code></pre></div>
-
-<h3 id="step-4">Step 4：定位与修复</h3>
-<p>按"<strong>四层组件模型</strong>"定位到层（MRPE / MRTM / Unicast / MGMD），再对症下药。</p>
-<hr />
-<h2 id="3">3. 症状决策树</h2>
-<div class="codehilite"><pre><span></span><code>组播不通
-├─ 有 IGMP 成员吗？
-│   ├─ 无 → 终端侧：IGMP 版本 / 接口 ACL / VLAN / Snooping（ch02 案例 2-1/2-5）
-│   └─ 有
-│       ├─ mroute 有 (S,G) / (*,G) 吗？
-│       │   ├─ 无 → PIM 邻居？DR？RP？→ ch05（RP 发现/注册）、ch03（DR）
-│       │   └─ 有
-│       │       ├─ RPF 接口正确吗？→ show ip rpf &lt;src&gt; → ch03 案例 3-1
-│       │       ├─ 出接口列表有内容吗？→ 无 = 树上无人 / 被 prune
-│       │       └─ 有出接口但收不到
-│       │           ├─ 二层：Snooping 表里有该端口吗？→ ch02 案例 2-1
-│       │           ├─ IGMP 版本一致吗？→ ch02 案例 2-6
-│       │           └─ 数据包被丢？→ debug ip mpacket → TTL/ACL/限速
-│       └─ 只在部分区域不通 → 边界/Admin Scope → ch01 案例 1-4、ch11
-└─ 跨域不通
-    ├─ MSDP peer Up？SA 有缓存？→ ch07 案例 7-1/7-2
-    ├─ MBGP 组播地址族建立？→ ch07 案例 7-4
-    └─ MVPN：MDT 是否建立？→ ch08 案例 8-1
-</code></pre></div>
-
-<hr />
-<h2 id="4">4. 全量命令速查表（按用途分类）</h2>
-<h3 id="41">4.1 组播路由表</h3>
-<table>
-<thead>
-<tr>
+<th>步</th>
 <th>命令</th>
-<th>用途</th>
+<th>通过条件</th>
+<th>不通过说明</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>show ip mroute</code></td>
-<td>全表</td>
-</tr>
-<tr>
-<td><code>show ip mroute &lt;group&gt;</code></td>
-<td>指定组</td>
-</tr>
-<tr>
-<td><code>show ip mroute &lt;group&gt; detail</code></td>
-<td>含 RPF 邻居、出接口标志、Assert</td>
-</tr>
-<tr>
-<td><code>show ip mroute active</code></td>
-<td>活动状态</td>
-</tr>
-<tr>
-<td><code>show ip mroute count</code></td>
-<td>状态数（监控用）</td>
-</tr>
-<tr>
-<td><code>show ip mroute vrf &lt;vrf&gt;</code></td>
-<td>VPN 内</td>
-</tr>
-<tr>
-<td><code>show ip mroute static</code></td>
-<td>静态 mroute</td>
-</tr>
-</tbody>
-</table>
-<h3 id="42-pim">4.2 PIM</h3>
-<table>
-<thead>
-<tr>
-<th>命令</th>
-<th>用途</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>show ip pim interface</code></td>
-<td>模式、DR、邻居数、hello 参数</td>
-</tr>
-<tr>
-<td><code>show ip pim neighbor</code></td>
-<td>邻居明细（DR 选举、优先级）</td>
-</tr>
-<tr>
+<td>①</td>
 <td><code>show ip pim rp mapping</code></td>
-<td>Group→RP 映射（<strong>最关键</strong>）</td>
+<td>该组有<strong>唯一且正确</strong>的 RP</td>
+<td>无 RP / 多 RP 冲突 / RP 不在本域</td>
 </tr>
 <tr>
-<td><code>show ip pim rp-address</code></td>
-<td>本机静态 RP</td>
+<td>②</td>
+<td><code>show ip mroute &lt;G&gt;</code></td>
+<td>有 <code>(*,G)</code>，Incoming interface 与 <code>show ip rpf &lt;RP&gt;</code> 一致</td>
+<td>接收者未加入 / Join 未上行 / RPF 不通</td>
 </tr>
 <tr>
-<td><code>show ip pim ssm range</code></td>
-<td>SSM 范围</td>
+<td>③</td>
+<td><code>show ip mroute &lt;G&gt;</code></td>
+<td>有 <code>(S,G)</code>，flags 含 <code>J</code>（已切 SPT）</td>
+<td>源未注册 / RP 未拉源 / RPF 到源失败</td>
 </tr>
 <tr>
-<td><code>show ip pim df</code> / <code>show ip pim df detail</code></td>
-<td>BIDIR DF 选举</td>
-</tr>
-<tr>
-<td><code>show ip pim state-refresh</code></td>
-<td>PIM-DM 状态刷新</td>
-</tr>
-<tr>
-<td><code>show ip pim rp-candidate</code> / <code>show ip pim bsr</code></td>
-<td>RP 候选 / BSR</td>
+<td>④</td>
+<td>接口计数、<code>tcpdump</code></td>
+<td>出接口有流量、下游有包</td>
+<td>二层 snooping / ACL / MTU / 双份</td>
 </tr>
 </tbody>
 </table>
-<h3 id="43-igmp-mld">4.3 IGMP / MLD</h3>
+<p><img alt="四步法与 RPF 检查点" src="../diagrams/d05-rpf.svg" /></p>
+<p><strong>为什么起点是 RP 表</strong>：80% 的"部分组不通"来自 RP 映射错误或不一致（第 5 章案例 5、7）。从 mroute 开始看，你只能看到结果，看不到原因。</p>
+<hr />
+<h2 id="2-show-ip-mroute">2. <code>show ip mroute</code> 标志位对照表</h2>
+<p>Volume II p.9 / p.60 给了完整释义，结合各章故障对照如下：</p>
 <table>
 <thead>
 <tr>
-<th>命令</th>
-<th>用途</th>
+<th>标志</th>
+<th>含义</th>
+<th>缺/异常时的典型故障</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>show ip igmp groups [group] [detail]</code></td>
-<td>组成员</td>
+<td><code>D</code></td>
+<td>Dense（PIM-DM）</td>
+<td>出现在本应 SM 的组 → 模式划错</td>
 </tr>
 <tr>
-<td><code>show ip igmp interface [if]</code></td>
-<td>接口 IGMP 状态与定时器</td>
+<td><code>S</code></td>
+<td>Sparse（PIM-SM）</td>
+<td>—</td>
 </tr>
 <tr>
-<td><code>show ip igmp query-interval</code></td>
-<td>QI/Max RT/QRY</td>
+<td><code>B</code></td>
+<td>Bidir Group</td>
+<td>BIDIR 组没有 <code>(S,G)</code> 是正常的</td>
 </tr>
 <tr>
-<td><code>show ip igmp snooping groups [vlan]</code></td>
-<td>二层成员表</td>
+<td><code>R</code></td>
+<td>该 <code>(S,G)</code> 由 Register 建立</td>
+<td>长期存在 <code>R</code> 而无 <code>J</code> → 未切 SPT</td>
 </tr>
 <tr>
-<td><code>show ip igmp snooping mrouter</code></td>
-<td>路由器口</td>
+<td><code>J</code></td>
+<td>已加入 SPT</td>
+<td>缺失 → 最后一跳去源不可达</td>
 </tr>
 <tr>
-<td><code>show ip igmp snooping querier</code></td>
-<td>Querier</td>
+<td><code>T</code></td>
+<td>还要向 RP 发 <code>(S,G,rpt)</code> Prune</td>
+<td>缺失 → RPT 未剪，上游带宽浪费</td>
 </tr>
 <tr>
-<td><code>show ip igmp ssm-mapping</code></td>
-<td>SSM 映射</td>
+<td><code>x</code></td>
+<td>VxLAN group</td>
+<td>说明这是 DC 的 BUM 组，不是应用组</td>
 </tr>
 <tr>
-<td><code>show ipv6 mld groups</code> / <code>show ipv6 mld neighbor</code></td>
-<td>IPv6</td>
+<td><code>C</code></td>
+<td>直连接收者</td>
+<td>误判"有接收者"</td>
 </tr>
 </tbody>
 </table>
-<h3 id="44-msdp-mbgp-mvpn">4.4 MSDP / MBGP / MVPN</h3>
+<hr />
+<h2 id="3-sg">3. 分叉点：<code>(S,G)</code> 存在吗</h2>
 <table>
 <thead>
 <tr>
-<th>命令</th>
-<th>用途</th>
+<th>现象</th>
+<th>优先怀疑</th>
+<th>首个命令</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>show ip msdp peer [detail]</code></td>
-<td>对等体 + RPF + SA 计数</td>
+<td>有 <code>(*,G)</code>、无 <code>(S,G)</code></td>
+<td>源未注册（RPF/ACL）、RP 无 SA、BIDIR 组</td>
+<td>源端 <code>show ip mroute</code>；RP 上 <code>show ip pim tunnel</code></td>
 </tr>
 <tr>
-<td><code>show ip msdp summary</code></td>
-<td>SA 汇总</td>
+<td>有 <code>(S,G)</code>、无 <code>J</code></td>
+<td>最后一跳切不了 SPT（去源路由不通）</td>
+<td><code>show ip rpf &lt;S&gt;</code></td>
 </tr>
 <tr>
-<td><code>show ip msdp sa-cache</code></td>
-<td>SA 缓存</td>
+<td>有 <code>(S,G)</code>、有 <code>J</code>、无流量</td>
+<td>二层/ACL/MTU</td>
+<td>出接口计数、<code>tcpdump</code></td>
 </tr>
 <tr>
-<td><code>show ip msdp originator</code></td>
-<td>本机 originator-id</td>
-</tr>
-<tr>
-<td><code>show bgp ipv4 multicast summary</code></td>
-<td>MBGP 组播地址族</td>
-</tr>
-<tr>
-<td><code>show bgp l2vpn evpn route-type 3 / 10</code></td>
-<td>EVPN 组播 NLRI</td>
-</tr>
-<tr>
-<td><code>show mdt data</code> / <code>show mdt default</code></td>
-<td>MVPN 隧道</td>
-</tr>
-<tr>
-<td><code>show mldp neighbor</code> / <code>show mldp fec</code></td>
-<td>MLDP</td>
+<td>全都没有</td>
+<td>接收者未加入 / IGMP 被拦</td>
+<td><code>show ip igmp groups</code></td>
 </tr>
 </tbody>
 </table>
-<h3 id="45">4.5 调试（最后手段，按范围缩小）</h3>
-<div class="codehilite"><pre><span></span><code>debug ip mpacket                        ! 数据包级：RPF 判定、丢弃原因
-debug ip mroute &lt;group&gt;                 ! 状态机事件
-debug ip pim &lt;detail&gt;                   ! PIM 状态机
-debug ip pim neighbor                   ! 邻居事件（Hello/DR 变化）
-debug ip igmp                           ! IGMP 收发
-debug ip msdp packets                   ! MSDP 报文
-debug ipv6 mld                          ! IPv6
-</code></pre></div>
-
+<hr />
+<h2 id="4">4. 十二个"不是故障"的现象</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>现象</th>
+<th>真相</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>RP 上 <code>(*,G)</code> 的 OIL 为空</td>
+<td>RP 是树根，先无接收者时正常</td>
+</tr>
+<tr>
+<td>2</td>
+<td>BIDIR 组没有 <code>(S,G)</code></td>
+<td>设计如此</td>
+</tr>
+<tr>
+<td>3</td>
+<td>SSM 组没有 <code>(*,G)</code></td>
+<td>六条规则禁止</td>
+</tr>
+<tr>
+<td>4</td>
+<td>切 SPT 后 RPT 利用率低</td>
+<td>预期行为</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>show ip mroute</code> 里 <code>(S,G)</code> 的 "shared tree" 一栏有入接口</td>
+<td><code>(S,G,rpt)</code> 状态仍在，正常</td>
+</tr>
+<tr>
+<td>6</td>
+<td>组播 ping 不通但业务正常</td>
+<td>组播 echo 需要协议栈配合，不代表转发失败</td>
+</tr>
+<tr>
+<td>7</td>
+<td>VXLAN BUM 组出现在 mroute</td>
+<td>underlay 需要它</td>
+</tr>
+<tr>
+<td>8</td>
+<td>源在本机时 RPF 为 Null</td>
+<td>直连源，正常</td>
+</tr>
+<tr>
+<td>9</td>
+<td>双向树的 <code>(S,G)</code> 计数为 0</td>
+<td>BIDIR 不按 <code>(S,G)</code> 计数</td>
+</tr>
+<tr>
+<td>10</td>
+<td>组播流量只在第一次 ping 后出现</td>
+<td>首包触发建树</td>
+</tr>
+<tr>
+<td>11</td>
+<td>多路径下 <code>(S,G)</code> 随机落在一条链路</td>
+<td>ECMP 哈希，需检查是否打散同一 <code>(S,G)</code></td>
+</tr>
+<tr>
+<td>12</td>
+<td>老设备发 <code>(*,G)</code> 到 SSM 组</td>
+<td>规则 1/4 会拒绝，属预期</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="5">5. 八个跨层案例</h2>
 <blockquote>
-<p><strong>调试纪律</strong>：先窄后宽（先加组/源过滤），先在维护窗口抓取，<strong>不要在生产高峰开全量 debug</strong>。</p>
+<p>典型化场景；本章案例强调"跨层假设"，不是具体故障取证。</p>
 </blockquote>
-<hr />
-<h2 id="5-6">5. 综合生产案例（6 例）</h2>
-<h3 id="12-1-rp">案例 12-1：某分公司组播全部不通（跨域 + 静态 RP）</h3>
-<p><strong>现象</strong>：总部与分公司之间行情组播不通，分公司本地组播正常。
-<strong>定位</strong>：</p>
-<div class="codehilite"><pre><span></span><code>show ip pim rp mapping          ! 分公司无映射
-show ip msdp peer               ! peer 状态
-show ip bgp ipv4 multicast summary
-show ip mroute 239.1.1.1 detail
-</code></pre></div>
-
-<p><strong>根因</strong>：MSDP peer 建立在<strong>非直连</strong>地址上（用 Loopback 但中间无单播路由），peer 状态 Down，SA 无法交换 → 分公司 RP 学不到源信息。
-<strong>处置</strong>：确保 Loopback 在 IGP/BGP 中可达；peer 必须直连或至少单播可达；建立直连 peer 优先。
-<strong>复盘</strong>：MSDP peer 的可达性是跨域组播的第一道门。</p>
-<h3 id="12-2">案例 12-2：组播时断时续（链路冗余切换后中断）</h3>
-<p><strong>现象</strong>：主链路故障切换后，组播中断约 2–3 分钟才恢复。
-<strong>定位</strong>：<code>show logging</code> 看到链路 down/up；<code>show ip mroute</code> 在切换后重新建树；对比 <code>show ip pim neighbor</code> 重建时间。
-<strong>根因</strong>：切换后 RPF 接口变化 → 组播状态需重建；PIM 邻居与 DR 重新选举期间无转发；且 <strong>没有组播 FRR</strong>（只有单播 FRR）。
-<strong>处置</strong>：部署 <strong>组播快速重路由</strong>（mLDP FRR / 特定平台组播 FRR）；缩短 Hello holdtime（谨慎）；把冗余链路收敛时间纳入测试。
-<strong>复盘</strong>：<strong>组播对链路切换的敏感度远高于单播</strong>，冗余设计必须做"组播收敛测试"。</p>
-<h3 id="12-3">案例 12-3：同一终端组播"卡"但不丢包</h3>
-<p><strong>现象</strong>：终端收到流但画面卡顿，丢包统计正常。
-<strong>定位</strong>：<code>show interfaces</code> 显示 output queue 堆积；QoS 策略命中情况；对比单播业务。
-<strong>根因</strong>：组播流量在出接口排队时延大（排队时延而非丢包）；或组播被限速。
-<strong>处置</strong>：为组播配置 QoS（EF/AF 分类 + 足够的 shaping）；检查 <code>ip multicast rate-limit</code>。
-<strong>复盘</strong>：<strong>组播的"卡"往往是排队时延，不是丢包</strong>，排查要看队列而不是只看 drop 计数。</p>
-<h3 id="12-4">案例 12-4：组播在不同批次的交换机上行为不一致</h3>
-<p><strong>现象</strong>：部分接入交换机下终端收不到组播，替换设备后正常。
-<strong>定位</strong>：<code>show ip igmp snooping groups</code> 在故障设备上无条目；对比软件版本与配置。
-<strong>根因</strong>：新到货交换机的软件版本不支持某特性（如 MLD Snooping / 显式主机跟踪 / 新的组播 NLRI），或默认配置模板不同。
-<strong>处置</strong>：统一软件版本与配置模板；在资产中记录"组播特性支持矩阵"。
-<strong>复盘</strong>：组播对<strong>版本与特性</strong>敏感，设备替换必须带"组播特性核对清单"。</p>
-<h3 id="12-5">案例 12-5：业务方报"组播丢包"，实际是源端问题</h3>
-<p><strong>现象</strong>：监控显示组播丢包 5%，网络侧无丢包。
-<strong>定位</strong>：抓包在源服务器出口即已丢包/错包；组播包在源端就已损坏。
-<strong>根因</strong>：源服务器多网卡绑定 + 组播走错误队列，或源端应用发送时未设置 IP_TTL/组播 socket 配置导致异常。
-<strong>处置</strong>：在源端抓包定位；检查 bonding 模式与组播出接口。
-<strong>复盘</strong>：<strong>"组播丢包"的第一现场常常是源主机</strong>，网络侧要先证明自己无责。</p>
-<h3 id="12-6">案例 12-6：一次变更引发大范围组播中断</h3>
-<p><strong>现象</strong>：某核心设备升级后，全域组播中断。
-<strong>定位</strong>：升级前后 <code>show ip pim neighbor</code>、<code>show ip pim rp mapping</code>、<code>show ip mroute</code> 对比。
-<strong>根因</strong>：升级后新设备默认 <code>no ip multicast routing</code> 或 PIM 邻居因 MTU/认证变化未建立，RP 映射丢失。
-<strong>处置</strong>：回滚；重新梳理升级 checklist（组播相关配置必须逐条比对）。
-<strong>复盘</strong>：<strong>组播配置的"隐性依赖"极多</strong>（IGMP 版本、TTL、querier、静态 mroute、ACL），升级前必须做配置差异审计。</p>
-<hr />
-<h2 id="6-checklist">6. 组播变更检查单（Checklist）</h2>
-<div class="codehilite"><pre><span></span><code>□ 新增/变更的接口是否需要 PIM？模式是否正确（sparse / bidir-enable / 不启用）
-□ 接口是否需要 ip multicast ttl？值是多少（AutoRP 15 / BSM 255 / 一般 255）
-□ 是否新增了静态 mroute？环路分析是否完成并登记
-□ RP 发现方式是否受影响（静态/AutoRP/BSR/Anycast/Embedded）？
-□ 组播地址段是否与既有规划冲突（SSM 段、私有段、跨域段）？
-□ QoS：组播是否需要单独 class？限速阈值是否满足？
-□ ACL：新增 ACL 是否误伤 IGMP/PIM 控制报文（224.0.0.x/224.0.1.x）？
-□ 二层：新增 VLAN/端口是否启用 Snooping？是否需要 querier？
-□ 冗余：是否影响 DR 选举？是否需要重测组播收敛？
-□ 验证：show ip pim neighbor / rp mapping / mroute / igmp groups 全部对比
-□ 回滚方案是否包含组播状态清理（clear ip mroute * / clear ip pim rp mapping）？
-</code></pre></div>
-
-<hr />
-<h2 id="7-case">7. 建立个人 Case 库的方法</h2>
-<ol>
-<li><strong>模板化</strong>：每条 case 固定记录 —— 现象 / 影响范围 / 首查命令 / 根因 / 处置 / 预防；</li>
-<li><strong>打标签</strong>：协议层（IGMP/PIM/RP/MSDP/MVPN）、症状类（收不到/不全/闪断/重复）、场景（行情/医疗/视频/云）；</li>
-<li><strong>回灌</strong>：每月把新 case 归入对应章节，3 个月后即可形成团队资产；</li>
-<li><strong>本项目已提供 76 条初始 case</strong>（ch01–ch12），可直接作为模板库使用。</li>
-</ol>
-<hr />
-<h2 id="8">8. 自测清单</h2>
-<ol>
-<li>iPexpert 的排障四步法是什么？为什么"控制面与数据面分离"很重要？</li>
-<li>四类症状（完全收不到 / 收不全 / 时断时续 / 重复异常）各自的首查方向？</li>
-<li>五条必做的控制面命令是什么？</li>
-<li>组播"卡但不丢包"最可能的根因是什么？</li>
-<li>为什么跨域组播的第一个检查点总是 MSDP peer 与 MBGP 地址族？</li>
-<li>组播变更检查单中，哪几项最容易被忽略？</li>
-</ol>
-<h2 id="9">9. 延伸阅读</h2>
+<h3 id="1_1">案例 1：单播全通、组播全断</h3>
 <ul>
-<li>iPexpert 全书（各章 show/debug 工具箱与 Trouble Ticket）</li>
-<li>Volume II Ch6（P.301–P.344）：Interdomain / PIM-TE / MVPN / VXLAN 高级排障</li>
-<li>Aweya Ch1.10（P.77–P.79）：组播路由体系架构（四组件模型）</li>
-<li>延伸：<code>RFC 7761</code>（PIM-SM 全文，Appendix A 为报文与状态机速查）</li>
+<li><strong>定位</strong>：<code>show ip multicast-routing</code>（是否启用）、接口 <code>ip pim sparse-mode</code>。</li>
+<li><strong>根因</strong>：只配了 RP，未全局启用组播路由。</li>
+<li><strong>复盘</strong>：<strong>组播是"全局开关 + 接口开关 + RP"三件套</strong>，缺一不可。</li>
+</ul>
+<h3 id="2">案例 2：只有一部分组不通</h3>
+<ul>
+<li><strong>定位</strong>：<code>show ip pim rp mapping</code> 逐组比对；<code>show running-config | include rp-address</code>。</li>
+<li><strong>根因</strong>：静态 RP 与 BSR 覆盖范围不同，或组范围 ACL 重叠。</li>
+<li><strong>复盘</strong>：<strong>"部分组"= 映射表不一致</strong>，不是链路问题。</li>
+</ul>
+<h3 id="3">案例 3：只有一部分源不通</h3>
+<ul>
+<li><strong>定位</strong>：源所在网段的 RPF（<code>show ip rpf &lt;S&gt;</code>）、RP 上是否有该源的 SA/注册。</li>
+<li><strong>根因</strong>：源网段汇总路由导致 RPF 指向错误上游。</li>
+<li><strong>复盘</strong>：<strong>按源分段排查</strong>，别一次改全局配置。</li>
+</ul>
+<h3 id="4_1">案例 4：只有一部分接收者不通</h3>
+<ul>
+<li><strong>定位</strong>：最后一跳 <code>show ip igmp groups</code>、接入交换机 snooping 与 querier。</li>
+<li><strong>根因</strong>：接入层 snooping 缺 querier，或端口 ACL 拦 IGMP。</li>
+<li><strong>复盘</strong>：<strong>"个别楼宇不通"先看二层</strong>。</li>
+</ul>
+<h3 id="5_1">案例 5：能收但花屏/丢包</h3>
+<ul>
+<li><strong>定位</strong>：接口计数（input/output drops）、MTU、CoPP 计数。</li>
+<li><strong>根因</strong>：CoPP 限速过低（PIM/IGMP 被限）、MTU 不匹配、链路误码。</li>
+<li><strong>复盘</strong>：<strong>控制面限速会表现为"周期性抖动"</strong>（如每 210 s 一次），别当链路问题。</li>
+</ul>
+<h3 id="6">案例 6：切换后中断，回切恢复</h3>
+<ul>
+<li><strong>定位</strong>：<code>show ip rpf &lt;S&gt;</code> 在切换前后的差异、<code>show ip route</code> 收敛时间。</li>
+<li><strong>根因</strong>：IGP 收敛慢 + 组播未做优雅重启/NSF，RPF 短暂失效。</li>
+<li><strong>复盘</strong>：<strong>组播对收敛时间比单播敏感</strong>——单播重传可掩盖，组播直接表现为断流。</li>
+</ul>
+<h3 id="7">案例 7：跨域不通，域内正常</h3>
+<ul>
+<li><strong>定位</strong>：MSDP 邻居与 SA 缓存、MBGP 前缀、边界 ACL。</li>
+<li><strong>根因</strong>：SA 未传播或 RPF 走默认路由。</li>
+<li><strong>复盘</strong>：<strong>域间问题先看"源发现"，再看"路径"</strong>（第 7 章）。</li>
+</ul>
+<h3 id="8-dc">案例 8：上云/进 DC 后不通</h3>
+<ul>
+<li><strong>定位</strong>：云侧 ACL/IGMP 支持、VXLAN 复制方式、underlay PIM。</li>
+<li><strong>根因</strong>：云不提供原生组播；或 VXLAN 用组播复制但 underlay 无 PIM。</li>
+<li><strong>复盘</strong>：<strong>先确认环境是否"支持组播"，再排查配置</strong>（第 9 章）。</li>
+</ul>
+<hr />
+<h2 id="6_1">6. 变更检查单</h2>
+<p>组播变更事故的共同模式是"<strong>只改了一半</strong>"——源侧改了、接收侧没改；RP 改了、静态兜底没删。</p>
+<table>
+<thead>
+<tr>
+<th>检查项</th>
+<th>为什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RP 地址与组范围在<strong>全网</strong>一致</td>
+<td>不一致 = 部分组不通</td>
+</tr>
+<tr>
+<td>静态 RP 遗留是否清理</td>
+<td>静态优先于动态，会"赢"掉新配置</td>
+</tr>
+<tr>
+<td>新模式（SM/DM/BIDIR/SSM）范围是否互斥</td>
+<td>同一组不能两种模式</td>
+</tr>
+<tr>
+<td>SSM 范围是否排除在 RP 范围外</td>
+<td>否则 232/8 被当 ASM</td>
+</tr>
+<tr>
+<td>接口 PIM 是否在<strong>所有</strong>路径接口启用</td>
+<td>少一个 = Join 断链</td>
+</tr>
+<tr>
+<td>边界 ACL 是否放行 IGMP/MLD/PIM（协议 2 / ICMPv6 / 103）</td>
+<td>加固顺手掐死控制面</td>
+</tr>
+<tr>
+<td>组播边界（multicast boundary）是否按组范围</td>
+<td>防止跨域泄漏</td>
+</tr>
+<tr>
+<td>CoPP 限速是否覆盖 PIM/IGMP 突发</td>
+<td>过低造成周期性抖动</td>
+</tr>
+<tr>
+<td>MSDP mesh-group 成员是否齐全</td>
+<td>漏一台 = SA 打转</td>
+</tr>
+<tr>
+<td>回滚步骤是否准备（RP/范围/ACL 三项）</td>
+<td>组播回滚比单播慢</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="7_1">7. 十问自测</h2>
+<ol>
+<li>四步法的顺序与每步的否决条件？</li>
+<li>为什么从 RP 映射表开始而不是 mroute？</li>
+<li><code>R</code> 与 <code>J</code> 同时缺失说明什么？</li>
+<li><code>T</code> 缺失的后果是什么？</li>
+<li><code>x</code> 标志代表什么？为什么容易误判？</li>
+<li>有 <code>(S,G)</code> 无 <code>J</code> 时首查什么？</li>
+<li>为什么组播 ping 不通不代表业务不通？</li>
+<li>控制面 CoPP 过低的表现特征是什么？</li>
+<li>组播对 IGP 收敛为什么更敏感？</li>
+<li>变更检查单里最容易被漏掉的三项？</li>
+</ol>
+<hr />
+<h2 id="8">8. 原文精读索引</h2>
+<blockquote>
+<p>纸面页码：Aweya = PDF 页 − 21；Volume II = PDF 页 − 18。</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>知识点</th>
+<th>书/节</th>
+<th>纸面页</th>
+<th>原文可核对要点</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>RPF 四级回退链</strong></td>
+<td>Aweya §1.x</td>
+<td>p.40–42</td>
+<td>静态 mroute → MBGP → 单播 RIB → 默认路由；同前缀再比 metric</td>
+</tr>
+<tr>
+<td>三套下游状态机</td>
+<td>Aweya §5.8</td>
+<td>p.272</td>
+<td><code>(*,G)</code>、<code>(S,G,rpt)</code>、<code>(S,G)</code> 分别维护</td>
+</tr>
+<tr>
+<td>Register 状态与抑制</td>
+<td>Aweya §5.7</td>
+<td>p.249–250</td>
+<td>抑制 60 s、Probe 时间、RP 保留 3×</td>
+</tr>
+<tr>
+<td>SA 过滤与缓存</td>
+<td>Aweya §6.8 / §6.14</td>
+<td>p.384–385、413</td>
+<td>收发方向过滤；必须缓存；限速抑制风暴</td>
+</tr>
+<tr>
+<td><code>show ip mroute</code> 标志释义</td>
+<td>v2 Ch1/Ch2</td>
+<td>p.9、p.60</td>
+<td>含 <code>x - VxLAN group</code>、<code>B</code>、<code>J</code>、<code>T</code>、<code>R</code> 等</td>
+</tr>
+<tr>
+<td>tunnel 场景的唯一考虑</td>
+<td>v2 Ch2</td>
+<td>p.118</td>
+<td>点对点 GRE 下“唯一的考虑是 RPF 接口”</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="9">9. 延伸与收尾</h2>
+<ul>
+<li>练习：iPexpert 的《IPv4/6 Multicast Operation and Troubleshooting》实验册（本笔记未逐页引用，仅作为动手练习清单）</li>
+<li>标准：RFC 7761（PIM-SM）、RFC 3973（PIM-DM）、RFC 5015（BIDIR）、RFC 4607（SSM）、RFC 3618（MSDP）</li>
+<li>回到开头：<a href="ch01-basics.html">第 1 章</a> 的模型 → 本章的四步法，是同一个知识体系的两种用法：<strong>建模型，再拆模型</strong></li>
 </ul>
   </article>
   <footer class="page-foot">

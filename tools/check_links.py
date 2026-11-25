@@ -25,8 +25,12 @@ def check(srcfile, ref, basedir):
         return
     checked += 1
     target = os.path.normpath(os.path.join(basedir, path))
-    if not os.path.exists(target):
-        bad.append((srcfile, ref, target))
+    if os.path.exists(target):
+        return
+    # 源文件里可以直接写构建产物名（xxx.html 对应 xxx.md）
+    if target.endswith('.html') and os.path.exists(target[:-5] + '.md'):
+        return
+    bad.append((srcfile, ref, target))
 
 
 for f in sorted(glob.glob('chapters/*.html')) + ['index.html']:

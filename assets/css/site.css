@@ -624,6 +624,7 @@ body {
 }
 .pg-done { color: #1a7f37; background: rgba(45, 164, 78, .14); border: 1px solid rgba(45, 164, 78, .35); }
 .pg-draft { color: #9a6700; background: rgba(212, 167, 44, .16); border: 1px solid rgba(212, 167, 44, .4); }
+.pg-partial { color: #0969da; background: rgba(9, 105, 218, .12); border: 1px solid rgba(9, 105, 218, .35); }
 .content .pg-table { margin: 0 0 10px; font-size: 13px; }
 .content .pg-table th, .content .pg-table td { padding: 6px 10px; }
 .content .pg-table td.pg-note { color: var(--text-soft); font-size: 12.5px; }

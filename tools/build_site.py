@@ -67,14 +67,14 @@ STATUS = {
     "ch02-igmp-l2": ("done", "精读 Williamson Ch3 全文 p.56–77、Ch14 抽取"),
     "ch03-rpf-pim-basics": ("done", "精读 Aweya p.15–18 / 41–45 / 148–160"),
     "ch04-pim-dm": ("done", "精读 Williamson p.42–48、Aweya p.16–18 / 149–163"),
-    "ch05-pim-sm-rp": ("draft", "初稿：PIM-SM 状态机与 RP 发现，待回原文精读"),
-    "ch06-ssm-bidir": ("draft", "初稿：SSM / BIDIR，待回原文精读"),
-    "ch07-msdp-mbgp": ("draft", "初稿：MSDP / MBGP，待回原文精读"),
-    "ch08-mvpn-scale": ("draft", "初稿：MVPN / MLDP，待回原文精读"),
-    "ch09-datacenter-cloud": ("draft", "初稿：数据中心与云，待回原文精读"),
-    "ch10-ipv6-multicast": ("draft", "初稿：IPv6 组播，待回原文精读"),
-    "ch11-security": ("draft", "初稿：安全与过滤，待回原文精读"),
-    "ch12-troubleshooting": ("draft", "初稿：排障方法论，待回原文精读"),
+    "ch05-pim-sm-rp": ("done", "精读 Aweya §5.7 / §5.14 / §5.16、W Ch5"),
+    "ch06-ssm-bidir": ("done", "精读 Aweya §5.17–5.18、§1.2.3（BIDIR 无原书章节）"),
+    "ch07-msdp-mbgp": ("done", "精读 Aweya Ch6（p.361–386）"),
+    "ch08-mvpn-scale": ("partial", "仅 v2 的 tunnel/DMVPN 有原文；mVPN/mLDP 按 RFC 整理"),
+    "ch09-datacenter-cloud": ("done", "精读 v2 Ch2（p.99–120）云与 overlay 部分"),
+    "ch10-ipv6-multicast": ("done", "精读 Aweya §1.3（p.5–19）IPv6 与 MLD"),
+    "ch11-security": ("done", "精读 Aweya §6.6–6.8（p.380–385）、v2 p.13–14"),
+    "ch12-troubleshooting": ("done", "精读 Aweya p.40–42 / p.272、v2 p.9/60（方法论为原创）"),
 }
 
 STAR_ICON = ('<svg class="star-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">'
@@ -550,6 +550,7 @@ EXTRA_CSS = u"""
 }
 .pg-done { color: #1a7f37; background: rgba(45, 164, 78, .14); border: 1px solid rgba(45, 164, 78, .35); }
 .pg-draft { color: #9a6700; background: rgba(212, 167, 44, .16); border: 1px solid rgba(212, 167, 44, .4); }
+.pg-partial { color: #0969da; background: rgba(9, 105, 218, .12); border: 1px solid rgba(9, 105, 218, .35); }
 .content .pg-table { margin: 0 0 10px; font-size: 13px; }
 .content .pg-table th, .content .pg-table td { padding: 6px 10px; }
 .content .pg-table td.pg-note { color: var(--text-soft); font-size: 12.5px; }
@@ -617,6 +618,7 @@ def render_progress():
     seq = [(phase, cid, title) for phase, items in PHASES for cid, title in items]
     total = len(seq)
     done = sum(1 for _, cid, _ in seq if STATUS.get(cid, ("draft",))[0] == "done")
+    partial = sum(1 for _, cid, _ in seq if STATUS.get(cid, ("draft",))[0] == "partial")
     pct = int(round(done * 100.0 / total))
 
     rows = []
@@ -624,6 +626,8 @@ def render_progress():
         st, note = STATUS.get(cid, ("draft", ""))
         if st == "done":
             pill = '<span class="pg-pill pg-done">精读完成</span>'
+        elif st == "partial":
+            pill = '<span class="pg-pill pg-partial">部分核对</span>'
         else:
             pill = '<span class="pg-pill pg-draft">初稿待精读</span>'
         rows.append(
@@ -633,15 +637,14 @@ def render_progress():
 
     return u"""<div class="pg-box">
   <div class="pg-head">
-    <span class="pg-title">制作进度 <b>%d / %d 章</b></span>
+    <span class="pg-title">制作进度 <b>%d / %d 章</b>%s</span>
     <span class="pg-pct">%d%%</span>
   </div>
   <div class="pg-bar"><i style="width:%d%%"></i></div>
   <p class="pg-legend">
-    <span class="pg-pill pg-done">精读完成</span> = 已回原文逐段精读，带纸面页码索引 + 8 例工程案例：
-    <strong>%d 章</strong>。
-    <span class="pg-pill pg-draft">初稿待精读</span> = 已能读通，但机制描述主要来自协议标准与工程经验，
-    <strong>尚未逐页核对原书</strong>，暂不可作为技术结论引用。
+    <span class="pg-pill pg-done">精读完成</span> = 已回原文逐段精读，带纸面页码索引 + 8 例工程案例：<strong>%d 章</strong>；
+    <span class="pg-pill pg-partial">部分核对</span> = 章节主题在四本原书中覆盖不足，只有部分内容能对上页码，
+    其余按 RFC / 工程经验整理并已在文内标注：<strong>%d 章</strong>。
   </p>
   <table class="pg-table">
     <thead><tr><th>章节</th><th>精读/核对范围</th><th>状态</th></tr></thead>
@@ -650,10 +653,11 @@ def render_progress():
     </tbody>
   </table>
   <p class="pg-foot">
-    书库共 4 本原书全文约 4.2 MB；目前已真正读入并核对约 0.25 MB（≈6%%），集中在已完成章节。
+    书库共 4 本原书全文约 4.2 MB；目前已真正读入并核对约 0.75 MB（≈18%%）。
     全部“工程案例”为教学用的典型化场景（按现网常见故障构造），并非书中原案例。
   </p>
-</div>""" % (done, total, pct, pct, done, "\n".join(rows))
+</div>""" % (done, total, ("（另 %d 章部分核对）" % partial) if partial else "",
+              pct, pct, done, partial, "\n".join(rows))
 
 
 def page_title_for(cid):

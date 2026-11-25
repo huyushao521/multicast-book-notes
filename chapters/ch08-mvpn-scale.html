@@ -88,322 +88,303 @@
 
 <main class="main">
   <article class="content">
-<h1 id="ch08-mvpn-mldp-provider-multicast">ch08 大规模组播：MVPN / MLDP / Provider Multicast / 组播流量工程</h1>
+<h1 id="8-mvpn-mldp">第 8 章 MVPN 与 MLDP：把组播搬进运营商骨干</h1>
 <blockquote>
-<p><strong>来源</strong>：Volume II Ch2（Multicast Scalability and Transport Diversification，P.117–P.153）、Ch3（Multicast MPLS VPNs，P.155–P.224）、Williamson Ch16（Multicast Traffic Engineering，P.474–P.507）
-<strong>配图</strong>：<a href="../diagrams/d13-mvpn.svg">D13 MVPN Default/Data MDT</a></p>
+<p>精读来源：<strong>Volume II Ch2（p.118–120：隧道 overlay 承载组播、DMVPN 的 hub 复制与容量测算、用静态 mroute / MBGP 做 RPF 分流）</strong>、Aweya p.40–42（RPF 顺序）
+说明：<strong>四本原书均未系统覆盖 NG MVPN 与 mLDP</strong>（Volume II 只讲到 GRE/DMVPN 这类 overlay）。因此本章的 mVPN/mLDP 细节以 <strong>RFC 6513 / RFC 6514 / RFC 6388</strong> 为准，凡未标注页码处均属标准与工程经验，不是原书摘录——<strong>这一章的"原文可核对"比例最低，请以标准文本复核</strong>。</p>
 </blockquote>
-<hr />
 <h2 id="_1">学习目标</h2>
 <ol>
-<li>说清 MVPN 的两个隧道层次：Default MDT 与 Data MDT，以及各自承载什么；</li>
-<li>理解 MLDP 信令与 P2MP 隧道、FEC 元素；</li>
-<li>解释 Provider Multicast、Multicast Extranet VPN、Route Leaking、VRF Select、融合路由、VASI 的用途；</li>
-<li>理解组播流量工程（M-TE / mLDP / Segment Routing）的基本思路；</li>
-<li>判断 BIER 的适用场景与现状。</li>
+<li>说清 SP 骨干为什么不愿为每个客户跑 PIM；</li>
+<li>分清 <strong>P-tunnel（数据面复制）</strong> 与 <strong>mVPN 控制面（谁要这份流）</strong> 两层；</li>
+<li>解释 mLDP 的 in-band 信令：FEC 里装的是 <code>(RD, C-S, C-G)</code>；</li>
+<li>说清 mVPN 中 RPF 为什么"看 BGP 而不看 IGP"；</li>
+<li>把"P-tunnel 通了但客户收不到"拆成三层来查；</li>
+<li>用 DMVPN 的复制容量公式做一次骨干带宽估算（原文 p.118 的例子）。</li>
 </ol>
 <hr />
-<h2 id="1-mvpn">1. 为什么需要 MVPN</h2>
-<p><strong>问题</strong>：企业多站点通过运营商 MPLS VPN 互联，站点间需要组播。</p>
-<p><strong>朴素做法</strong>：把 RP 放在公网（不合理，安全与地址都不允许），或在 VPN 内建一条 <strong>GRE 隧道</strong>把所有 PE 连起来（隧道头开销大、扩展性差、无法叠加 VPN）。</p>
-<p><strong>MVPN（Multicast VPN, RFC 6513/6514）</strong>：把"组播 VPN"作为 MPLS VPN 的一个<strong>地址族</strong>来承载，复用 MPLS 基础设施。</p>
-<hr />
-<h2 id="2-mvpn">2. MVPN 的隧道模型</h2>
-<p><img alt="MVPN Default/Data MDT" src="../diagrams/d13-mvpn.svg" /></p>
-<h3 id="21-volume-ii-ch3">2.1 两个层次（Volume II Ch3）</h3>
+<h2 id="1-pim">1. 问题：骨干不能按客户跑 PIM</h2>
+<p>运营商骨干的现实约束：</p>
 <table>
 <thead>
 <tr>
-<th>隧道</th>
-<th>内容</th>
-<th>特点</th>
+<th>约束</th>
+<th>后果</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>Default MDT</strong>（默认 MDT）</td>
-<td><strong>信令面 + 初始数据面</strong>，承载所有 VPN 内组播的<strong>控制信令</strong>与<strong>低速/未识别流量</strong></td>
-<td>全 VPN 共享一条 P2MP/LSP，成本低但可能过订</td>
+<td>客户数量多，每客户一套 RP/组地址</td>
+<td>PIM 状态按客户×组×源 爆炸</td>
 </tr>
 <tr>
-<td><strong>Data MDT</strong>（数据 MDT）</td>
-<td><strong>数据面</strong>，承载某个 (S,G) 的实际组播流</td>
-<td><strong>按流动态创建</strong>，点对点或点对多点，用完即拆</td>
+<td>客户地址重叠（10.0.0.0/8 复用）</td>
+<td>骨干无法用 <code>(S,G)</code> 区分</td>
+</tr>
+<tr>
+<td>骨干要独立于客户控制面演进</td>
+<td>不能让客户改 IGP/BGP</td>
 </tr>
 </tbody>
 </table>
-<p><strong>触发逻辑（Data MDT 触发）</strong>：</p>
-<ol>
-<li>某 PE 收到来自 VPN 的组播流且有接收者；</li>
-<li>判断当前流量是否超过 Data MDT 触发阈值（<code>mdt data threshold</code>）；</li>
-<li>满足则通过信令（MLDP/PIM）向其他 PE 发起 Data MDT 建立请求；</li>
-<li>建立后，流量改走 Data MDT；Default MDT 只保留信令；</li>
-<li>流量停止后，Data MDT <strong>老化拆除</strong>（默认约 2–3 分钟量级）。</li>
-</ol>
-<p><strong>默认 MDT 的价值</strong>：即使 Data MDT 未建立，业务也能跑（只是共享带宽）→ <strong>兜底能力</strong>，避免信令失败导致业务中断。</p>
-<h3 id="22-mldpmulticast-label-distribution-protocol-rfc-6388">2.2 MLDP（Multicast Label Distribution Protocol, RFC 6388）</h3>
+<p>解法分两层：</p>
 <ul>
-<li>用 <strong>FEC（FEC Element）</strong> 描述 P2MP 树；</li>
-<li>FEC 元素类型：</li>
-<li><strong>(P2MP, LSP) FEC</strong>：对应一棵 P2MP LSP；</li>
-<li><strong>(P2MP, Generic) FEC</strong>：不对应具体 LSP 的抽象 FEC（用于 Default MDT 的共享转发）；</li>
-<li><strong>(P2MP, mLDP, mLDP-nbr) FEC</strong>：源发起的 mLDP 树。</li>
-<li><strong>上行方式</strong>：</li>
-<li><strong>In-Band signaling</strong>：信令报文承载在数据报文的 UDP 头上（用 UDP 报文头的 "Label Switched Multicast" 字段携带信令）；</li>
-<li><strong>Out-of-Band（Overlay） signaling</strong>：信令与数据分离（更容易做 QoS 与 ACL）。</li>
-<li><strong>Default MDT Root High Availability（Volume II Ch3）</strong>：Default MDT 的根（Root PE）冗余机制，根失效时切换到备份根。</li>
-</ul>
-<h3 id="23-volume-ii-ch3">2.3 配置要点（Volume II Ch3 示例）</h3>
-<div class="codehilite"><pre><span></span><code>! PE 上
-router bgp 65001
- address-family ipv4 mvpn
-  neighbor 10.2.2.2 activate
-!
-multicast-vpn
-!
-interface GigabitEthernet0/1
- vrf forwarding BLUE
- ip pim sparse-mode
- mdt data 239.1.1.1 239.1.1.10
-!
-interface TenGigabitEthernet0/0
- mldp
-!
-</code></pre></div>
-
-<blockquote>
-<p>关键点：<strong>Data MDT 的组范围</strong>必须与 VPN 内的组地址规划一致；<code>mdt data</code> 声明范围外的组只能走 Default MDT。</p>
-</blockquote>
-<hr />
-<h2 id="3-provider-multicast-volume-ii-ch2ch3">3. Provider Multicast 与企业组播（Volume II Ch2、Ch3）</h2>
-<table>
-<thead>
-<tr>
-<th>技术</th>
-<th>说明</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>P Multicast Transport</strong></td>
-<td>运营商在自己的核心提供组播传输（不是 VPN 内的 MVPN，而是"运营商组播业务"）</td>
-</tr>
-<tr>
-<td><strong>PE–CE Multicast Routing</strong></td>
-<td>PE 与 CE 之间跑 PIM-SM，PE 上做 <strong>PE-CE 间的组播路由</strong>（CE 侧的 RP 与 PE 侧互通）</td>
-</tr>
-<tr>
-<td><strong>CE–CE Multicast Routing</strong></td>
-<td>同一 VPN 内不同 CE 之间的组播，通过 <strong>MVPN</strong>（Default/Data MDT）承载</td>
-</tr>
-<tr>
-<td><strong>PE–PE Ingress Replication</strong></td>
-<td>核心不支持组播复制时，由 PE 做<strong>入口复制</strong>（数据面复制而非隧道）</td>
-</tr>
-<tr>
-<td><strong>Multicast Extranet VPN</strong></td>
-<td>把某些 VPN 的组播泄露给其他 VPN（受控的 extranet）</td>
-</tr>
-<tr>
-<td><strong>Route Leaking</strong></td>
-<td>在 PE 间泄露路由以支持跨 VPN 组播</td>
-</tr>
-<tr>
-<td><strong>VRF Fallback</strong></td>
-<td>若目标组在目标 VRF 中无对应路由，则回退到全局（core）路由表</td>
-</tr>
-<tr>
-<td><strong>VRF Select</strong></td>
-<td>通过 import/export 规则精确控制 VRF 间的组播互通</td>
-</tr>
-<tr>
-<td><strong>Fusion Router</strong></td>
-<td>一台设备同时承担 PE 与 CE 角色</td>
-</tr>
-<tr>
-<td><strong>VASI</strong>（VRF-Aware Service Infrastructure）</td>
-<td>跨 VRF 的组播业务（不同 VPN 之间共享同一份媒体流）</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Ingress Replication vs 隧道</strong>：</p>
-<table>
-<thead>
-<tr>
-<th></th>
-<th>Ingress Replication</th>
-<th>MDT 隧道</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>复制点</td>
-<td>PE（入口）</td>
-<td>核心 P2MP 节点</td>
-</tr>
-<tr>
-<td>核心要求</td>
-<td>核心只需单播（<strong>不需要组播能力</strong>）</td>
-<td>核心需支持 MPLS/P2MP 或组播</td>
-</tr>
-<tr>
-<td>带宽</td>
-<td>复制后每份占核心带宽</td>
-<td>隧道共享，核心按 P2MP 分叉</td>
-</tr>
-<tr>
-<td>适用</td>
-<td>核心不支持组播复制时</td>
-<td>核心支持时更高效</td>
-</tr>
-</tbody>
-</table>
-<blockquote>
-<p><strong>现实提示</strong>：Volume II Ch2 专门讨论"为什么公有云没有原生组播"——公有云 VPC 普遍不支持组播，因此企业上云时需要用 <strong>Service Reflection（服务反射）/ Unicast-to-Multicast 转换</strong>等替代方案（见 ch09）。</p>
-</blockquote>
-<hr />
-<h2 id="4-williamson-ch16volume-ii-ch6">4. 组播流量工程（Williamson Ch16、Volume II Ch6）</h2>
-<p><strong>问题</strong>：默认组播树由 RPF 计算得出，往往与单播路径不一致或未按业务重要性规划。</p>
-<p><strong>手段</strong>：</p>
-<table>
-<thead>
-<tr>
-<th>手段</th>
-<th>说明</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>组播 TE（MPLS-TE / mLDP）</strong></td>
-<td>为组播建立受约束的 P2MP 树，显式指定路径</td>
-</tr>
-<tr>
-<td><strong>mLDP 与 mLDP-TE</strong></td>
-<td>增强 mLDP 支持 ERO（显式路由对象）与 FRR</td>
-</tr>
-<tr>
-<td><strong>Segment Routing + mLDP</strong></td>
-<td>新一代组播流量工程，与 SR-MPLS 融合</td>
-</tr>
-<tr>
-<td><strong>MPLS-TE P2MP LSP</strong></td>
-<td>显式建树，路径可控可备份</td>
-</tr>
-<tr>
-<td><strong>组播负载分担与冗余路径</strong></td>
-<td>两条路径 + PIM Assert 决策</td>
-</tr>
-<tr>
-<td><strong>PIM + Traffic Engineering 排障</strong>（Volume II Ch6）</td>
-<td>常见问题：TE 路径与 RPF 不一致导致丢包</td>
-</tr>
-</tbody>
-</table>
-<p><strong>典型问题与对策</strong>：</p>
-<ul>
-<li><strong>RPF 与 TE 路径不一致</strong>：TE 绕开了 RPF 接口 → 组播被丢。对策：把 TE 路径的入接口纳入 RPF 考量，或用 <code>ip mroute</code> 显式指定。</li>
-<li><strong>主备路径切换抖动</strong>：组播在切换时中断（无组播 FRR）。对策：mLDP FRR / FRR 与组播联动。</li>
+<li><strong>数据面</strong>：用一条 <strong>P-tunnel</strong>（点对多点隧道）在 PE 之间复制，骨干只看隧道标签，不看客户组地址；</li>
+<li><strong>控制面</strong>：用 <strong>BGP MCAST-VPN</strong> 传递"哪个 PE 要哪个 <code>(C-S,C-G)</code>"。</li>
 </ul>
 <hr />
-<h2 id="5-bierbit-index-explicit-replication-rfc-8279">5. BIER（Bit Index Explicit Replication, RFC 8279）</h2>
-<p><strong>概念</strong>：在<strong>核心</strong>用"位图"而非"树"来描述组播转发：核心节点按位图复制到出口节点。</p>
+<h2 id="2-p-tunnel">2. 数据面：四种 P-tunnel</h2>
 <table>
 <thead>
 <tr>
-<th>优势</th>
-<th>挑战</th>
+<th>方案</th>
+<th>信令</th>
+<th>复制点</th>
+<th>适用</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>不需要维护组播状态树</td>
-<td>需要 BFER 级的转发架构与封装（BIE）</td>
+<td>PIM-SM/GRE（Default MDT）</td>
+<td>PIM</td>
+<td>每 PE 各自封装</td>
+<td>传统 mVPN，最成熟</td>
 </tr>
 <tr>
-<td>不需要 MPLS 或 IP 组播支持</td>
-<td>需要全网一致支持 BIER</td>
+<td>PIM-SSM/GRE（Data MDT）</td>
+<td>PIM</td>
+<td>同上，按流切换</td>
+<td>大流量优化</td>
 </tr>
 <tr>
-<td>收敛快（无信令）</td>
-<td>落地慢、设备支持有限（2020s 逐步成熟）</td>
+<td><strong>mLDP（P2MP LSP）</strong></td>
+<td>无显式协议，in-band</td>
+<td>由 LSP 的 bud 节点复制</td>
+<td>骨干原生 MPLS</td>
+</tr>
+<tr>
+<td>RSVP-TE P2MP</td>
+<td>RSVP-TE</td>
+<td>LSP</td>
+<td>需要 TE/带宽预留</td>
 </tr>
 </tbody>
 </table>
-<blockquote>
-<p>现状判断：BIER 是组播核心化的"下一代答案"，但当前企业现网仍以 MVPN/MLDP/Provider Multicast 为主。了解概念即可。</p>
-</blockquote>
-<hr />
-<h2 id="6">6. 排障命令速查</h2>
-<div class="codehilite"><pre><span></span><code>show mdt data                            ! Data MDT 状态
-show mdt data detail
-show mdt default                         ! Default MDT
-show mldp neighbor
-show mldp fec
-show mldp tunnel
-show pim mdt                             ! PIM 视角的 MDT
-show mroute vrf BLUE 239.1.1.1
-show bgp ipv4 mvpn
-show ip pim vrf mdt
-
-debug mldp events
-debug mldp packets
+<h3 id="21-mldp-fec">2.1 mLDP 的关键：FEC 里带客户信息</h3>
+<p>mLDP（RFC 6388）用 <strong>FEC 元素</strong> 标识一棵树，典型 FEC 是 <strong>P2MP FEC</strong>：</p>
+<div class="codehilite"><pre><span></span><code>Root Node Address = PE（或 RP 所在 PE）
+Opaque Value      = { VPN-ID / RD, C-S, C-G }
 </code></pre></div>
 
+<p>PE 想要某条客户流，就向 root 发 Label Mapping（in-band 信令）；中间 P 路由器只按 FEC 建状态、按 LSP 转发，<strong>不需要组播路由协议</strong>。中间节点若同时有下游与上游需求，就在本地复制（bud node）。</p>
+<blockquote>
+<p>这解释了 mLDP 的一个排障特征：<strong>没有"邻居 down"这种现象</strong>。链路断了，Label Mapping 超时撤销，LSP 重建，业务闪断但<strong>控制面无告警</strong>——比 PIM 静默得多。</p>
+</blockquote>
 <hr />
-<h2 id="7-6">7. 生产案例（6 例）</h2>
-<h3 id="8-1mvpn-data-mdt">案例 8-1：MVPN 中组播不通，Data MDT 未建立</h3>
-<p><strong>现象</strong>：跨站点 VPN 内组播不通；<code>show mroute vrf BLUE</code> 无条目。
-<strong>定位</strong>：<code>show mdt data</code> 为空；<code>show mldp neighbor</code> 正常但 <code>show mldp fec</code> 无对应 FEC。
-<strong>根因</strong>：MLDP 未在 PE 间建立 FEC（<code>mldp</code> 未配置在核心接口，或 BGP MVPN 地址族未激活）。
-<strong>处置</strong>：核心接口配置 <code>mldp</code>；BGP 激活 <code>address-family ipv4 mvpn</code>。
-<strong>复盘</strong>：MVPN 三件套 = MVPN 地址族 + <code>multicast-vpn</code> + 核心接口 <code>mldp</code>。</p>
-<h3 id="8-2-default-mdt">案例 8-2：组播走 Default MDT 带宽过订</h3>
-<p><strong>现象</strong>：多个 VPN 业务共享默认 MDT，核心出现丢包，业务卡顿。
-<strong>定位</strong>：<code>show mdt data</code> 显示大量组仍在 Default MDT；Default MDT 出口带宽接近线速。
-<strong>根因</strong>：Data MDT 触发阈值未配置或过高，业务量未超阈值 → 长期留在 Default MDT。
-<strong>处置</strong>：配置 <code>mdt data &lt;group-range&gt;</code> 与 <code>mdt data threshold</code>；对大流量组显式创建 Data MDT。
-<strong>复盘</strong>：Default MDT 是兜底不是目标；大流量业务必须规划 Data MDT。</p>
-<h3 id="8-3data-mdt">案例 8-3：Data MDT 建立后旧隧道未拆除</h3>
-<p><strong>现象</strong>：<code>show mdt data</code> 中存在大量 stale 隧道，核心标签资源被占满。
-<strong>定位</strong>：MDT 表项处于 Idle 但未删除，标签空间告警。
-<strong>根因</strong>：MDT 老化定时器与信令保活不匹配，或对端 PE 故障导致拆除消息未送达。
-<strong>处置</strong>：调整 <code>mdt data timer</code>；检查信面邻居稳定性。
-<strong>复盘</strong>：MDT 资源泄漏要监控，把"MDT 表项数"纳入网管指标。</p>
-<h3 id="8-4-vrf-extranet">案例 8-4：跨 VRF 组播（Extranet）不通</h3>
-<p><strong>现象</strong>：希望 VPN A 与 VPN B 共享同一组播源，配置 route leaking 后仍不通。
-<strong>定位</strong>：<code>show mroute vrf</code> 在两端均无条目；检查 VRF Select / import-export 配置。
-<strong>根因</strong>：VRF Select 规则未允许该组地址跨 VRF，或 Leak 的只是单播前缀而非组播 NLRI。
-<strong>处置</strong>：用 VRF Select 的 import/export 精确放行组地址与源地址；确认 MBGP MVPN 通告。
-<strong>复盘</strong>：跨 VRF 组播是最容易出安全问题的功能，权限与过滤必须逐条评审。</p>
-<h3 id="8-5-mvpn">案例 8-5：核心不组播复制导致 MVPN 失败</h3>
-<p><strong>现象</strong>：某新平台核心交换机不支持组播复制，MVPN 完全不通。
-<strong>定位</strong>：PE 上 MDT 建立失败；核心接口 <code>show ip mroute</code> 无组播能力。
-<strong>根因</strong>：核心依赖组播复制或 MLDP 转发，但平台不支持。
-<strong>处置</strong>：改用 <strong>PE–PE Ingress Replication</strong> 方案（核心只跑单播）；或更换支持的平台。
-<strong>复盘</strong>：MVPN 的落地形态取决于核心平台能力，必须在设计初期确认。</p>
-<h3 id="8-6-te-rpf">案例 8-6：组播 TE 路径与 RPF 不一致导致丢包</h3>
-<p><strong>现象</strong>：MPLS-TE 建立的组播树正常，但收包有丢；<code>debug ip mpacket</code> 报 RPF 失败。
-<strong>定位</strong>：对比 TE 路径入接口与 <code>show ip rpf &lt;source&gt;</code> 的 RPF 接口。
-<strong>根因</strong>：TE 显式路径绕开了 FIB 中的 RPF 路径，组播包从非 RPF 接口进入被丢弃。
-<strong>处置</strong>：让 TE 路径与单播 RPF 路径一致；或在该 PE 上配置静态 mroute 指定 RPF 接口（需环路评估）。
-<strong>复盘</strong>：<strong>组播 TE 的第一性问题是 RPF 一致性</strong>，路径设计必须同时满足 TE 与 RPF。</p>
+<h2 id="3-bgp-mcast-vpn">3. 控制面：BGP MCAST-VPN</h2>
+<p>mVPN 用 BGP 的 <strong>MCAST-VPN 地址族（AFI 1 / SAFI 5）</strong> 传递 7 类路由（RFC 6514）：</p>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>名称</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Intra-AS I-PMSI A-D</td>
+<td>"我在这个 VRF 里提供服务"</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Inter-AS I-PMSI A-D</td>
+<td>跨 AS</td>
+</tr>
+<tr>
+<td>3</td>
+<td>S-PMSI A-D</td>
+<td>"这条流改用专用隧道"</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Leaf A-D</td>
+<td>"我要加入这棵 S-PMSI"</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Source Active A-D</td>
+<td>源发现（替代部分 MSDP 角色）</td>
+</tr>
+<tr>
+<td>6/7</td>
+<td>C-Multicast Route（共享/源树 Join-Prune）</td>
+<td>客户的 <code>(*,C-G)</code> / <code>(C-S,C-G)</code></td>
+</tr>
+</tbody>
+</table>
+<p>关键认识：<strong>第 6/7 类就是"客户的 PIM Join"被翻译成 BGP</strong>。所以 mVPN 里"客户侧 Join 到了 PE，但没到远端 PE"等价于"BGP 没把 C-Multicast Route 传过去"。</p>
+<p><img alt="MVPN：P-tunnel 与 mVPN 控制面" src="../diagrams/d13-mvpn.svg" /></p>
+<h3 id="31-rpf-bgp-igp">3.1 RPF：看 BGP，不看 IGP</h3>
+<p>mVPN 中 PE 判断"这个 <code>(C-S,C-G)</code> 该从哪个 PE 收"，依据是 <strong>BGP 的 uMH（upstream multicast hop）或 S-PMSI A-D 的 originator</strong>，而不是 IGP 到 C-S 的路径。</p>
+<blockquote>
+<p>对照第 3 章：<strong>普通域的 RPF 是"到源的单播路由"；mVPN 的 RPF 是"到源的 PE 的 BGP 路由"</strong>。混用这两套判据是 mVPN 排障最常见的错。</p>
+</blockquote>
 <hr />
-<h2 id="8">8. 自测清单</h2>
-<ol>
-<li>Default MDT 与 Data MDT 分别承载什么？Data MDT 的触发条件与拆除时机？</li>
-<li>为什么 Default MDT 不能省？它的兜底价值在哪？</li>
-<li>MLDP 的 FEC 元素有哪几类？In-Band 与 Out-of-Band 信令的差别？</li>
-<li>Ingress Replication 与 MDT 隧道的取舍是什么？</li>
-<li>VRF Fallback、VRF Select、Route Leaking 三个机制分别解决什么问题？</li>
-<li>组播 TE 中"RPF 与 TE 路径不一致"为何是致命问题？</li>
-<li>BIER 的核心思想是什么？它的落地障碍在哪？</li>
-</ol>
-<h2 id="9">9. 延伸阅读</h2>
+<h2 id="4">4. 八个工程案例</h2>
+<blockquote>
+<p>典型化场景；本章案例多为 mVPN 通用故障模式，<strong>不来自原书</strong>。</p>
+</blockquote>
+<h3 id="1p-tunnel">案例 1：P-tunnel 正常，客户组播不通</h3>
 <ul>
-<li>Volume II Ch2（P.117–P.153）、Ch3（P.155–P.224）</li>
-<li>Williamson Ch16（P.474–P.507）</li>
-<li>Volume II Ch6（P.301–P.344）：Advanced Multicast Troubleshooting（Interdomain / PIM-TE / MVPN / VXLAN 验证）</li>
-<li>延伸：<code>RFC 6513</code>（MVPN）、<code>RFC 6514</code>（MVPN 信令）、<code>RFC 6388</code>（MLDP）、<code>RFC 8279</code>（BIER）</li>
+<li><strong>现象</strong>：<code>show mpls mldp database</code> 有 LSP；两端 PE 的 I-PMSI 正常；客户侧 <code>show ip mroute</code> 无 <code>(C-S,C-G)</code>。</li>
+<li><strong>定位</strong>：<code>show bgp vpnv4 unicast</code> / <code>show bgp mvpn all</code>（查 route-type 6/7）、<code>show ip msdp sa-cache</code>（若用 SA）。</li>
+<li><strong>根因</strong>：C-Multicast Route 未被通告（VRF 下未开 mVPN AFI、RR 未reflect）。</li>
+<li><strong>处置</strong>：在 VRF 与 RR 上补齐 MCAST-VPN 地址族。</li>
+<li><strong>复盘</strong>：<strong>P-tunnel 是数据面，C-route 是控制面</strong>，两层要分别验证。</li>
+</ul>
+<h3 id="2s-pmsi">案例 2：S-PMSI 切换造成带宽尖峰</h3>
+<ul>
+<li><strong>现象</strong>：某大流量组切入 S-PMSI 时，骨干链路 3–5 秒内出现两份流。</li>
+<li><strong>定位</strong>：<code>show bgp mvpn all</code>（route-type 3/4）、PE 上 <code>show mdt</code>/<code>show mpls mldp database</code> 双份条目。</li>
+<li><strong>根因</strong>：切换期间 I-PMSI 与 S-PMSI 并存（软切换）。</li>
+<li><strong>处置</strong>：可接受（设计使然）；容量规划需为切换预留双份带宽。</li>
+<li><strong>复盘</strong>：<strong>mVPN 的"切换"与 PIM 的 SPT 切换同构</strong>——都存在短暂双份。</li>
+</ul>
+<h3 id="3mldp-bud-node">案例 3：mLDP bud node 复制导致某条链路拥塞</h3>
+<ul>
+<li><strong>现象</strong>：P 路由器某接口出向流量是入向的 N 倍。</li>
+<li><strong>定位</strong>：<code>show mpls mldp database detail</code>（bud 标记）、接口流量对比。</li>
+<li><strong>根因</strong>：bud 节点承担复制，容量规划未计入。</li>
+<li><strong>处置</strong>：调整 LSP 的 root 或使用多条 P2MP LSP 分摊。</li>
+<li><strong>复盘</strong>：<strong>mLDP 把复制点从"源"推到"树的分叉点"</strong>，规划时要按分叉点算带宽，而不是按源算。</li>
+</ul>
+<h3 id="4-rd-mldp">案例 4：改 RD 后 mLDP 业务闪断</h3>
+<ul>
+<li><strong>现象</strong>：VRF 调整 RD 后，该 VRF 的组播中断数十秒。</li>
+<li><strong>定位</strong>：<code>show mpls mldp database</code>（FEC 已变）、<code>show bgp mvpn all</code>。</li>
+<li><strong>根因</strong>：FEC 中的 VPN-ID 取自 RD，RD 变更 ⇒ 整棵 LSP 重建。</li>
+<li><strong>处置</strong>：变更窗口内操作；避免在业务高峰改 RD。</li>
+<li><strong>复盘</strong>：<strong>RD 不只是"路由标识"，它进了数据面的 FEC</strong>——这是 mVPN 特有的耦合。</li>
+</ul>
+<h3 id="5-as-option-b">案例 5：跨 AS 组播不通（Option B）</h3>
+<ul>
+<li><strong>现象</strong>：AS 内正常，跨 AS 无流；BGP 有路由但 P-tunnel 不连续。</li>
+<li><strong>定位</strong>：两端 ASBR 的 mVPN 路由类型（是否用 Inter-AS I-PMSI A-D）、<code>show mpls forwarding</code> 标签连续性。</li>
+<li><strong>根因</strong>：Option B 下 P-tunnel 需逐 AS 重建，某段未建。</li>
+<li><strong>处置</strong>：统一 inter-AS 方案（B/C），核对 ASBR 的 mVPN 配置。</li>
+<li><strong>复盘</strong>：<strong>跨域组播的难点不在路由，在"隧道是否端到端连续"</strong>。</li>
+</ul>
+<h3 id="6mtu">案例 6：MTU 导致的"小包正常、大包丢"</h3>
+<ul>
+<li><strong>现象</strong>：ping 通、视频卡顿；PE 上看到分片/丢弃计数。</li>
+<li><strong>定位</strong>：<code>ping &lt;PE&gt; size 1500 df-bit</code>、接口 MTU 与隧道开销核算。</li>
+<li><strong>根因</strong>：GRE/VXLAN 封装增加 24–50 字节，路径 MTU 未调整。</li>
+<li><strong>处置</strong>：调大核心 MTU 或调小客户侧 MSS/MTU。</li>
+<li><strong>复盘</strong>：<strong>任何 overlay 组播都要先算封装开销</strong>。</li>
+</ul>
+<h3 id="7rr-mvpn-afi-pe">案例 7：RR 未开 mVPN AFI，部分 PE 收不到路由</h3>
+<ul>
+<li><strong>现象</strong>：新上线的 PE 没有任何 mVPN 路由，其他 PE 正常。</li>
+<li><strong>定位</strong>：<code>show bgp all summary</code>（MCAST-VPN 邻居是否为 <code>Act</code>）、RR 配置。</li>
+<li><strong>根因</strong>：RR 的 MCAST-VPN 地址族未启用或未加该 PE 为客户端。</li>
+<li><strong>处置</strong>：RR 上启用并向该 PE 反射。</li>
+<li><strong>复盘</strong>：<strong>mVPN 强依赖 RR</strong>，新增节点的检查单里必须有"AFI 5 是否 Act"。</li>
+</ul>
+<h3 id="8dmvpn-hub-p118">案例 8：DMVPN hub 复制能力不足（原文 p.118 的算式）</h3>
+<ul>
+<li><strong>现象</strong>：分支扩容到 100 个后，hub 出向 WAN 打满、丢包。</li>
+<li><strong>定位</strong>：hub 出接口利用率、平台复制能力、<code>show ip mroute</code> 出接口数。</li>
+<li><strong>根因</strong>：mGRE 中 <strong>spoke-to-spoke 的组播也必须经 hub 复制</strong>，<code>200 MB × 100 = 2 GB</code> 全部压在同一条出链路上。</li>
+<li><strong>处置</strong>：多 tunnel headend 分担（原文 p.119 的做法）、区域 RP + 本地复制。</li>
+<li><strong>复盘</strong>：<strong>overlay 的"多播"往往退化成"单播复制"</strong>，带宽要按"流大小 × 分支数"算，不是按流算。</li>
+</ul>
+<hr />
+<h2 id="5">5. 十问自测</h2>
+<ol>
+<li>P-tunnel 与 mVPN 控制面分别解决什么？</li>
+<li>mLDP 的 FEC 里装了什么？为什么说它是 in-band 信令？</li>
+<li>mVPN 的 RPF 依据是什么？为什么不看 IGP？</li>
+<li>Route-type 6/7 对应客户侧的什么动作？</li>
+<li>S-PMSI 切换为什么会短暂双份？</li>
+<li>bud node 是什么？容量规划怎么算？</li>
+<li>为什么改 RD 会导致业务闪断？</li>
+<li>Option B 跨 AS 的难点在哪？</li>
+<li>GRE/VXLAN 封装对 MTU 的影响怎么算？</li>
+<li>DMVPN 里 spoke-to-spoke 组播为什么要过 hub？</li>
+</ol>
+<hr />
+<h2 id="6">6. 原文精读索引</h2>
+<blockquote>
+<p>纸面页码：Volume II = PDF 页 − 18；Aweya = PDF 页 − 21。</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>知识点</th>
+<th>书/节</th>
+<th>纸面页</th>
+<th>原文可核对要点</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>用静态 mroute / MBGP 分离组播与单播路径</td>
+<td>v2 Ch2</td>
+<td>p.118</td>
+<td>等代价路径下强制组播走指定接口；BGP 组播地址族的 next-hop 需递归查 IGP</td>
+</tr>
+<tr>
+<td><strong>隧道 overlay 承载组播</strong></td>
+<td>v2 Ch2</td>
+<td>p.118</td>
+<td>“Multicast across point-to-point GRE tunnels is simple, and the only consideration is the RPF interface”</td>
+</tr>
+<tr>
+<td>DMVPN 与 NHRP</td>
+<td>v2 Ch2</td>
+<td>p.118</td>
+<td>spoke-to-spoke 直连<strong>不适用于组播</strong>，组播必须经 hub</td>
+</tr>
+<tr>
+<td><strong>复制容量算式</strong></td>
+<td>v2 Ch2</td>
+<td>p.118</td>
+<td>100 spoke × 200 MB = 2 GB 出向带宽；平台需具备复制能力</td>
+</tr>
+<tr>
+<td>多 headend 分担复制</td>
+<td>v2 Ch2</td>
+<td>p.119</td>
+<td>按平台复制能力与分支数分摊到多个 tunnel headend</td>
+</tr>
+<tr>
+<td>区域 RP 设计</td>
+<td>v2 Ch2</td>
+<td>p.120</td>
+<td>区域复制 + 全局组播衔接的分层设计</td>
+</tr>
+<tr>
+<td>RPF 查表顺序</td>
+<td>Aweya §1.x</td>
+<td>p.40–42</td>
+<td>静态 → MBGP → 单播 → 默认路由</td>
+</tr>
+<tr>
+<td>NG MVPN / mLDP 机制</td>
+<td><strong>无原书覆盖</strong></td>
+<td>—</td>
+<td>见 RFC 6513/6514/6388，本章按标准整理</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="7">7. 延伸</h2>
+<ul>
+<li>标准：RFC 6513（mVPN 架构）、RFC 6514（BGP MCAST-VPN）、RFC 6388（mLDP）、RFC 7385（IGP 不承载 mVPN 的说明）</li>
+<li>下一章：数据中心与云上组播（overlay 的另一种形态）</li>
+<li>回顾：第 3 章 RPF、第 7 章 MSDP（mVPN 里 Source Active A-D 承担类似角色）</li>
 </ul>
   </article>
   <footer class="page-foot">

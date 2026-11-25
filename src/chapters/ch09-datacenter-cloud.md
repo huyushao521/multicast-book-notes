@@ -1,238 +1,182 @@
-# ch09 数据中心与云中的组播（VXLAN / EVPN / ACI / 公有云）
+# 第 9 章 数据中心与云上组播
 
-> **来源**：Volume II Ch4（Multicast in Data Center Environments，P.225–P.253）、Ch5（Multicast Design Solutions，P.255–P.300）
-> **配图**：[D14 VXLAN/EVPN 组播](../../diagrams/d14-vxlan.svg)
-
----
+> 精读来源：**Volume II Ch2（p.99–100：公有云为何默认不提供原生组播、IaaS 与混合部署的定位；p.101–107：连接云的方式；p.118–120：隧道 overlay、hub 复制与区域 RP）、p.9 / p.60（`show ip mroute` 标志位含 `x - VxLAN group`）**
+> 本章解决的问题：组播在两个"非传统园区"的环境里形态完全变了——**数据中心里组播是 underlay 的传输机制（VXLAN BUM）**，**公有云里组播默认不存在**。
 
 ## 学习目标
 
-1. 说清 VXLAN 环境中组播为什么是 BUM 流量、EVPN 如何用 **Ingress Replication** 解决复制问题；
-2. 掌握 VXLAN 组播的关键配置（EVPN route-type 3/10、Leaf 侧 IGMP/PIM、VNI 内 L2/L3 组播边界）；
-3. 理解 ACI Fabric 中 L2 IGMP Snooping 与 L3 组播的实现差异；
-4. 理解公有云无原生组播的替代方案（Service Reflection / 单播-组播转换）；
-5. 掌握数据中心组播的验证方法与常见故障。
+1. 说清公有云为什么不默认开组播（不是"忘了"，是**可扩展性与多租户成本**）；
+2. 区分 VXLAN 的两种 BUM 复制方式，知道各自对 underlay 的要求；
+3. 说清 vPC/MCLAG 双活网关下 PIM DR 与网关角色的错配如何造成黑洞；
+4. 用"underlay / overlay / 应用"三层定位 DC 组播故障；
+5. 知道云上组播的三条现实路径（隧道回本地、单播化、云商托管方案）；
+6. 认识 `x - VxLAN group` 这个标志位，避免把 VXLAN 组播条目当成普通 `(S,G)`。
 
 ---
 
-## 1. 数据中心组播的现实
+## 1. 公有云：为什么默认没有组播
 
-**为什么 DC 需要组播**：
+Volume II p.99 的解释值得完整记住——**它把"限制"讲成了工程权衡**：
 
-- 服务网格/遥测（Prometheus、OTel 指标聚合）；
-- 分布式缓存/配置分发（Nacos、Consul、etcd）；
-- 视频流分发（直播、点播转推）；
-- 金融行情/撮合系统内广播；
-- 虚拟化迁移（VMware VMTN 依赖组播）。
+> 公有云环境目前不启用组播。原因是：向客户自有云段内的**每一台主机**发送组播包，会在数据面与控制面的**可扩展性**上对云 fabric 造成影响。随着客户在云上增加需要组播的资源，平台必须扩容并满足动态组播需求的其它约束；这类改动**代价高**，且**容量估算带有投机性**，会影响云消费者的体验。加入**多租户**后，变更估算更复杂：在云 fabric 内允许组播协议会影响 fabric 性能。
 
-**为什么 DC 组播比企业网更难**：
+拆成三条：
 
-1. **Overlay 隧道**：VXLAN 把二层包封装进 UDP/IP 组播（VTEP 发现用 239.1.1.1）或单播；
-2. **BUM 流量**：组播/广播/未知单播在 Spine-Leaf 中需要**复制**，Spine 若不做组播复制则必须由 **Leaf 做 Ingress Replication**；
-3. **多租户隔离**：同一 VNI 内不同租户是否共享组播？跨 VNI 如何处理？
-4. **云上无组播**：公有云 VPC 不支持组播。
+| 原因 | 含义 |
+|---|---|
+| 数据面 | BUM 流量天然泛洪，云 fabric 靠 sparse 收敛，泛洪等于打回原形 |
+| 控制面 | 组播状态随"租户 × 组 × 源"增长，云商无法为单租户预留 |
+| 商业 | 无法定价、无法隔离故障域，"一个租户的组播风暴"可能伤及其他租户 |
+
+p.100 同时给了出路：**IaaS 场景可以承载组播需求**，多数企业采用混合部署（Web 层上云、应用与数据库留在本地）。
+
+### 1.1 云上组播的三条现实路径
+
+| 路径 | 做法 | 代价 |
+|---|---|---|
+| 隧道回本地 | 云内实例与本地组播域用 GRE/IPsec 隧道打通，在本地做复制 | 云内无复制优势，回程带宽成为瓶颈 |
+| 应用层单播化 | 应用改成"每个消费者一条单播流"或消息队列 | 失去组播的带宽优势，但最可控 |
+| 云商托管组播 | 部分云商提供"托管组播/中转网关"类服务 | 绑定云商，跨云不可移植 |
+
+p.101 的连接方式（直连专线 / 云代理）决定了**组播能否借道**：直连专线常同时承载单播与组播隧道，云代理模式则多一层 NAT/安全策略，**IGMP 与 PIM 往往在第一跳就被拦**。
 
 ---
 
-## 2. VXLAN + EVPN 组播（Volume II Ch4）
+## 2. 数据中心：组播是 underlay 的"隐形基础设施"
 
-![VXLAN/EVPN 组播](../../diagrams/d14-vxlan.svg)
+### 2.1 VXLAN 的 BUM 复制
 
-### 2.1 VXLAN Flood-and-Learn vs EVPN
+| 方式 | underlay 要求 | 优点 | 缺点 |
+|---|---|---|---|
+| **组播复制**（传统 VXLAN） | underlay 必须跑 PIM-SM，有 RP | 复制由网络完成，VTEP 无状态 | 需要维护 RP/组播域；BUM 泛洪到所有 VTEP |
+| **Ingress Replication**（EVPN） | 只需单播 | 无 RP、无组播依赖 | 源端复制，头部 CPU 压力大 |
 
-| 机制 | 组播泛洪方式 | 组播的代价 |
-|---|---|---|
-| **VXLAN Flood-and-learn** | 头端把 BUM 流量复制到**所有** Spine → 各 Leaf → 所有 VTEP | 组播被复制到整个 Fabric，浪费巨大 |
-| **VXLAN + EVPN** | BUM 流量通过 EVPN 路由（**route-type 3：IM（Inclusive Multicast）ET**）学习到"哪些 VTEP 需要该组"；数据面由 **Ingress Replication** 复制 | 只复制到有成员的 VTEP |
+选型后果很直接：**"云/DC 不需要组播"这句话只对 EVPN 成立；用组播复制的 VXLAN，组播是整个 fabric 的地基**。
 
-**EVPN 与组播相关的 NLRI**：
+Volume II p.9 与 p.60 列出的 `show ip mroute` 标志位里有 **`x - VxLAN group`**——说明在 NX-OS 上，VXLAN 的 underlay 组条目会和普通 `(S,G)` 混在同一张表里。排障时若不区分，很容易把"VTEP 的 BUM 组"当成"应用的组播组"。
 
-| Route Type | 名称 | 作用 |
-|---|---|---|
-| **3** | Inclusive Multicast Ethernet Tag (IMET) | 通告"哪些 VTEP 加入了某个广播域" → **组播 BUM 的成员发现** |
-| **4** | Ethernet Segment (ES) | 多归段信息 |
-| **10** | Multicast Ethernet Tag (MCAST ET) | 通告"某个 VNI 内哪些 VTEP 是某组播组的成员" → **精确的组播成员分发** |
-
-> **route-type 10 是组播的关键**：它是 EVPN 体系中唯一为"组播成员"设计的 NLRI，使得组播流不必像广播那样泛洪。
-
-### 2.2 Ingress Replication（入口复制）
-
-- 复制发生在**入口 Leaf**（收到组播的 Leaf）；
-- 入口 Leaf 通过 EVPN 学到的成员列表，把封装后的组播复制到相关 Leaf；
-- **Spine 只需承载单播**（只需 BGP EVPN + 单播路由）→ **核心无需组播能力**。
-
-### 2.3 关键配置要点
-
-```cisco
-! Spine：只需 EVPN 控制面
-router bgp 65001
- address-family l2vpn evpn
-  neighbor 10.0.0.2 activate
-
-! Leaf：EVPN + 组播
-router bgp 65001
- address-family l2vpn evpn
-  neighbor 10.0.0.1 activate
-!
-vlan 10
- vni 10010
-!
-interface nve1
- no ip address
- source-interface Loopback0
- host-reachability protocol bgp
- member vni 10010 ingress-replication
-!
-interface Vlan10
- vrf forwarding Tenant-A
- ip pim sparse-mode
-!
-ip igmp snooping vlan 10
+```bash
+show ip mroute 239.1.1.1 | include VxLAN    # 是否 VXLAN 承载
+show nve peers                              # VTEP 邻居与复制方式
+show ip pim rp mapping                      # underlay 的 RP 是否正确
 ```
 
-**要点解释**：
+![VXLAN 与数据中心组播](../../diagrams/d14-vxlan.svg)
 
-- `member vni 10010 ingress-replication`：**告诉 NVE 用入口复制**（不依赖核心组播）；
-- VNI 内 **L2 组播**（同一 VNI 内主机互访）：靠 EVPN IMET/route-type 3 + 交换机内 IGMP Snooping；
-- **L3 组播**（跨 VNI / 跨 VRF）：需要 **PIM + EVPN 的多租户路由**（Volume II Ch4 "Layer 3 Multicast Communication"）；
-- **VTEP 发现**：传统用 `239.1.1.1`（组播）→ 在不支持组播的核心上需改为 BGP 控制平面发现。
+### 2.2 双活网关的两个经典错配
 
-### 2.4 三层组播在 VNI 内的边界（Volume II Ch4）
-
-- 同一 VNI 内：组播被限制在 VNI 边界（相当于 VXLAN 天然形成 Admin Scope 边界）；
-- 跨 VNI：需要 L3 组播（路由 + PIM），且要确认 VRF/租户隔离策略允许；
-- **跨 VNI 泄漏是常见安全问题**：租户 A 的组播流不应出现在租户 B 的 VNI 中。
-
----
-
-## 3. ACI（ACI Fabric）中的组播（Volume II Ch4）
-
-| 层次 | 机制 |
+| 错配 | 后果 |
 |---|---|
-| **L2** | Fabric 内部启用 **IGMP Snooping**（ACI 控制器统一下发），BD（Bridge Domain）内的组播按成员收敛 |
-| **L3** | ACI 在 **VRF/BD 之间**运行组播路由（由 APIC 统一下发 PIM），并支持 **多租户组播**（Ch5） |
+| vPC 两台都成为 PIM DR | 双份流（若下游交换机未做抑制） |
+| HSRP 活跃网关 ≠ PIM DR | 上游流量送到非活跃网关，**下行黑洞** |
 
-**多租户组播（ACI Multitenant Multicast, Volume II Ch5）**：
-
-- 每个租户在自己的 VRF 内有独立的组播空间；
-- 跨租户共享媒体流需要 **"Anycast-GR" / 组播出口/入口复制**等控制器特性；
-- ACI 的优势是**策略统一**：由 APIC 统一下发 IGMP Snooping 与组播策略，避免手工配置漂移。
-
-> 价值判断：在 ACI 环境中，组播能力取决于 **APIC 版本 + Fabric 配置模板**，而不是逐台配置。做 DC 组播 POC 时必须让 ACI 团队参与。
+根因是同一个：**HSRP/VRRP 的"活跃"与 PIM 的"DR"是两套独立选举**，判据不同（HSRP 看优先级与 IP，PIM DR 看 DR Priority 与 IP）。规范做法是让两者对齐——例如把 DR Priority 配在 HSRP Active 那台上，或在 vPC 场景固定 `dr-priority`。
 
 ---
 
-## 4. 公有云与组播替代方案（Volume II Ch2）
+## 3. 八个工程案例
 
-**现实**：公有云 VPC **没有原生组播**（AWS/Azure/GCP 均不提供用户可控的组播广播）。
+> 典型化场景；DC/云部分多为现网常见故障模式，非原书案例。
 
-**替代思路（Volume II Ch2 Service Reflection 与三种转换用例）**：
+### 案例 1：应用整体上云后组播不通
 
-| 用例 | 含义 |
-|---|---|
-| **Use Case 1：Multicast-to-Multicast** | 源在云内仍是组播，云厂商把组播"反射"为可控的传输（由云厂商的组播基础设施承载） |
-| **Use Case 2：Unicast-to-Multicast** | 源以单播进入云，云侧把它转成组播分发给订阅者 |
-| **Use Case 3：Multicast-to-Unicast** | 云内是组播，出方向转换为单播（如点对点分发） |
+- **现象**：迁移到公有云后，原依赖组播的服务发现失效。
+- **定位**：云内实例 `ip maddr`、云安全组/网络 ACL 规则、是否有到本地的隧道。
+- **根因**：云 fabric 不提供原生组播（v2 p.99），实例的 IGMP/组播包被丢弃。
+- **处置**：改为应用层单播/消息队列，或建隧道回本地组播域。
+- **复盘**：**上云评估里必须有"是否依赖组播"这一项**，迁移后再补成本极高。
 
-**企业侧常见工程做法**：
+### 案例 2：VXLAN 用组播复制，跨 VTEP 同子网不通但单播正常
 
-| 方案 | 说明 |
-|---|---|
-| **GRE/ IPsec 隧道 + 静态 mroute** | 自建隧道把组播"拉"进云；必须为源和 RP 配静态 mroute（你的笔记中已明确指出这点） |
-| **中继/网关设备** | 云上部署组播网关（接收单播或私有组播，转发为业务需要的形态） |
-| **第三方组播云** | 云厂商的组播分发服务（如 CDN/直播厂商的组播转推） |
-| **应用层组播** | 改用消息中间件（Kafka/NATS 等）替代网络组播 |
+- **现象**：同 VNI 不同 VTEP 的虚拟机互 ping 不通；同 VTEP 内正常。
+- **定位**：`show ip mroute`（BUM 组是否有 `(S,G)`）、`show ip pim neighbor`（VTEP 上联）、underlay RP 配置。
+- **根因**：underlay 未启用 PIM 或 RP 不通，BUM 组无法跨 VTEP 复制。
+- **处置**：补齐 underlay PIM-SM 与 RP；或改用 EVPN ingress replication。
+- **复盘**：**VXLAN 组播复制的故障，症状全在 overlay，根因全在 underlay**。
 
-> **架构建议**：不要为了"保留组播"而在云上自建复杂隧道，除非业务有硬性要求（如高频行情）。绝大多数场景应评估"应用层队列 + 单播分发"的总成本。
+### 案例 3：vPC 双活，接收端收到双份包
 
----
+- **现象**：抓包看到同一组播包两次。
+- **定位**：两台 leaf 的 `show ip pim interface`（是否都为 DR）、`show vpc`。
+- **根因**：两台都当选 DR，各自向下游转发。
+- **处置**：固定 `dr-priority`（一台高、一台 0）；下游开启 IGMP snooping 抑制。
+- **复盘**：**vPC 场景默认行为不会自动选一个 DR**，必须显式配。
 
-## 5. 数据中心组播验证（Volume II Ch6 "Verifying Multicast in VXLAN"）
+### 案例 4：HSRP 切主后组播断，单播正常
 
-```cisco
-! 二层成员
-show ip igmp snooping groups vlan 10
-show ip igmp groups vlan 10
-! EVPN 侧
-show bgp l2vpn evpn route-type 3
-show bgp l2vpn evpn route-type 10
-! 三层组播
-show ip mroute vrf Tenant-A
-show ip pim vrf Tenant-A interface
-show ip pim vrf Tenant-A neighbor
-! VTEP 隧道与复制
-show nve vni 10010
-show nve peers
-show interface nve1 | include replication
-```
+- **现象**：网关切换后，主机单播正常，组播不通。
+- **定位**：`show standby brief` 与 `show ip pim interface` 对比两台角色。
+- **根因**：HSRP Active 切到 B，但 PIM DR 仍是 A；A 没有下游接收者状态，流量到 A 被丢。
+- **处置**：让 DR 与 HSRP Active 对齐（DR Priority 或 preempt 配合）。
+- **复盘**：**"单播通、组播不通"在网关切换后出现，先比 HSRP 与 DR 的角色**。
 
----
+### 案例 5：DC 内 Anycast RP 跨 leaf 注册失败
 
-## 6. 生产案例（6 例）
+- **现象**：源挂在 leaf1、接收者在 leaf2，组不通；同 leaf 内正常。
+- **定位**：两台 RP（anycast 地址）的 `show ip pim rp mapping`、MSDP 或 RFC 4610 配置。
+- **根因**：Anycast RP 地址一致但注册信息未同步。
+- **处置**：补 MSDP 或 `ip pim anycast-rp`（RFC 4610）。
+- **复盘**：**Anycast 只解决"地址可达"，不解决"状态同步"**（同第 5 章案例 6）。
 
-### 案例 9-1：VXLAN 中组播被全 Fabric 泛洪
+### 案例 6：虚拟化主机上组播泛洪到所有虚拟机
 
-**现象**：任意一台主机发组播，整个 Fabric 的 Spine 出口都有流量，带宽浪费严重。
-**定位**：`show bgp l2vpn evpn route-type 10` 无条目；`show bgp l2vpn evpn route-type 3` 条目很多。
-**根因**：只配置了 EVPN route-type 3（广播域成员），未启用 **route-type 10**（组播成员），BUM 走泛洪路径。
-**处置**：确认 APIC/CLI 启用 EVPN 组播（route-type 10）；Leaf 侧 `member vni <vni> ingress-replication`。
-**复盘**：DC 组播设计的第一个决策点就是"是否启用组播专用 NLRI"，否则组播退化为广播。
+- **现象**：宿主机上行带宽异常，未订阅的虚拟机也收到组播包。
+- **定位**：vSwitch 的 IGMP snooping 配置、`tcpdump` 在无关 VM 上验证。
+- **根因**：vSwitch 未开 IGMP snooping，组播按广播泛洪。
+- **处置**：开启 snooping 与 querier（或依赖上游 querier）。
+- **复盘**：**组播的"免费复制"只在最后一跳有效**，最后一跳没 snooping 就等于广播。
 
-### 案例 9-2：Ingress Replication 未配置导致组播不通
+### 案例 7：跨租户/跨 VRF 组播串流风险
 
-**现象**：配置 EVPN 后组播完全不通；Spine 无组播能力。
-**定位**：`show nve vni` 显示 member 无 `ingress-replication`；NVE 邻居正常。
-**根因**：NVE 依赖核心组播复制，但核心不支持。
-**处置**：Leaf 配置 `member vni <vni> ingress-replication`。
-**复盘**：**DC 组播复制点必须明确**：要么核心组播，要么入口复制，二选一。
+- **现象**：安全审计发现 VRF-A 的组播流量出现在 VRF-B 的接口上。
+- **定位**：`show ip mroute vrf`、VRF 间是否有组播路由泄漏（`ip multicast-routing vrf` + 边界配置）。
+- **根因**：VRF 边界未做组播过滤，或共用同一 underlay 组。
+- **处置**：按租户隔离 underlay 组与 RP；边界加 ACL。
+- **复盘**：**组播的隔离比单播弱**——单播靠路由表天然隔离，组播要靠显式边界。
 
-### 案例 9-3：跨 VNI 组播泄漏（多租户安全问题）
+### 案例 8：云上安全组拦掉 IGMP/组播
 
-**现象**：租户 A 的组播流出现在租户 B 的抓包里。
-**定位**：在租户 B 的 VNI 上抓到租户 A 的源 MAC 与组 IP；检查 `show ip igmp snooping groups` 与 VRF 策略。
-**根因**：L2 组播跨 VNI 泛洪（VTEP 复制未按租户隔离），或 L3 组播在 VRF 间泄漏（Route Leaking / 缺失 filter）。
-**处置**：启用 EVPN route-type 10 做精确成员分发；检查 L3 侧 VRF import/export 与组播过滤。
-**复盘**：DC 组播的**租户隔离优先级高于功能可用性**；多租户环境建议默认禁止跨 VNI 组播。
-
-### 案例 9-4：DC 内组播跨 Pod/跨可用区不通
-
-**现象**：同可用区正常，跨 AZ 不通。
-**定位**：跨 AZ 的 Spine 路径上组播包被丢；检查 `show nve peers` 与底层 underlay MTU。
-**根因**：VXLAN 封装后报文超过 underlay MTU（尤其带 IPsec/overlay 加密时），组播不分片被丢。
-**处置**：调整 underlay MTU（9000）或降低业务 MTU；加密场景设置 DF 位降包。
-**复盘**：**组播不能依赖分片**（IP 分片对组播效率极低且易被丢），underlay MTU 必须预留。
-
-### 案例 9-5：ACI 中组播被 Bridge Domain 隔离策略阻断
-
-**现象**：BD 内主机收不到组播；APIC 无告警。
-**定位**：APIC 中检查 BD 的 `multicast` 策略（IGMP snooping 开关、组播路由）。
-**根因**：BD 模板未开启组播（IGMP Snooping 关闭），组播被泛洪或丢弃。
-**处置**：在 BD/VRF 模板中启用组播特性并下发。
-**复盘**：ACI 的组播是"模板级"能力，配置在 **EPG/BD/VRF 模板**上，不在单台交换机。
-
-### 案例 9-6：云上组播改造（P2P 隧道）失败
-
-**现象**：在云 VPC 内用 GRE 隧道把组播"拉"进来，组播不通但单播通。
-**定位**：云侧隧道接口 up；`show ip mroute` 为空；`show ip route <源>` 正常。
-**根因**：缺少**静态 mroute**（源在隧道外，RPF 查不到隧道接口），正如你笔记中"enable MC over non-MC networks（GRE、L2TPv3 – static mroute required for RP + MC source）"所述。
-**处置**：在云侧设备为源与 RP 配置静态 mroute 指向隧道；注意静态 mroute 的环路风险。
-**复盘**：跨非组播网络承载组播 = 隧道 + 静态 mroute + 环路分析，三件套一起上。
+- **现象**：隧道已建、路由正常，仍收不到组播。
+- **定位**：云侧安全组/网络 ACL（是否只放行 TCP/UDP）、实例内 `tcpdump`。
+- **根因**：云安全模型按"连接"放行，IGMP（IP 协议 2）与组播 UDP 无"连接"概念。
+- **处置**：显式放行协议号 2 与所需 UDP 端口；必要时改用单播隧道端口。
+- **复盘**：**云侧 ACL 是"五元组思维"，组播要被单独设计**。
 
 ---
 
-## 7. 自测清单
+## 4. 十问自测
 
-1. 为什么 VXLAN 里的组播属于 BUM 流量？BUM 的三个字母各指什么？
-2. EVPN route-type 3 与 route-type 10 在组播中的分工？
-3. Ingress Replication 的复制点在哪里？对核心设备有什么要求？
-4. VXLAN 如何天然形成组播的 Admin Scope 边界？跨 VNI 组播意味着什么风险？
-5. ACI 中组播能力配置在哪一层（模板/设备）？
-6. 公有云缺组播的三种转换用例分别是什么方向？
-7. 为什么在云上用隧道承载组播必须配静态 mroute？
+1. 公有云默认不开组播的三个原因？
+2. IaaS 与混合部署对组播的意义？
+3. VXLAN BUM 的两种复制方式及对 underlay 的要求？
+4. `x - VxLAN group` 标志说明什么？
+5. vPC 双活为什么会双份？
+6. HSRP Active 与 PIM DR 不一致会造成什么？
+7. Anycast RP 在 DC 内为什么还需要状态同步？
+8. vSwitch 不开 snooping 的后果？
+9. 云安全组为什么容易拦掉组播？
+10. 跨 VRF 组播隔离靠什么？
 
-## 8. 延伸阅读
+---
 
-- Volume II Ch4（P.225–P.253）：VPC 组播、VXLAN/VTEP、EVPN、ACI、L2/L3 组播
-- Volume II Ch5（P.255–P.300）：医疗、无线、多租户 DC、SDN/LISP、公用事业、市场行情、SP 组播
-- Volume II Ch6（P.340–P.344）：Verifying Multicast in VXLAN
-- 延伸：`RFC 7432`（VXLAN）、`RFC 7434`（EVPN）、`RFC 9012`（EVPN 组播扩展）
+## 5. 原文精读索引
+
+> 纸面页码：Volume II = PDF 页 − 18。
+
+| 知识点 | 书/节 | 纸面页 | 原文可核对要点 |
+|---|---|---|---|
+| **公有云不启用原生组播的原因** | v2 Ch2 | p.99 | 向客户段内每台主机发包影响 fabric 可扩展性；多租户使估算更复杂；允许组播影响 fabric 性能 |
+| IaaS 可承载组播、混合部署 | v2 Ch2 | p.100 | Web 层上云、应用与数据库留本地；多数 CSP 不支持组播 |
+| 云的连接方式 | v2 Ch2 | p.101 | 直连专线 / 云代理两类接入 |
+| 隧道 overlay 承载组播 | v2 Ch2 | p.118 | 点对点 GRE 简单，唯一考虑是 RPF 接口 |
+| hub 复制与容量 | v2 Ch2 | p.118 | 200 MB × 100 spoke = 2 GB 出向 |
+| 区域 RP 分层设计 | v2 Ch2 | p.120 | 区域复制 + 全局组播衔接 |
+| `x - VxLAN group` 标志 | v2 Ch1/Ch2 | p.9、p.60 | `show ip mroute` 标志位释义中包含 VXLAN 组 |
+
+---
+
+## 6. 延伸
+
+- 标准/文档：RFC 7348（VXLAN）、RFC 7432（EVPN）、RFC 8365（EVPN 组播）
+- 下一章：IPv6 组播（同一套 PIM，不同的地址与成员协议）
+- 回顾：第 2 章 snooping（vSwitch 同理）、第 5 章 RP 发现（underlay 也要 RP）

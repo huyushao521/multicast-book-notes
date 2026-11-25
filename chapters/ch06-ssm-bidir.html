@@ -88,292 +88,393 @@
 
 <main class="main">
   <article class="content">
-<h1 id="ch06-ssm-bidir-pim">ch06 SSM 与 BIDIR-PIM</h1>
+<h1 id="6-ssm-bidir-pim-rp">第 6 章 SSM 与 BIDIR-PIM：两个"砍掉 RP 复杂度"的方向</h1>
 <blockquote>
-<p><strong>来源</strong>：Aweya Ch5.17–5.18（P.362–P.375，SSM）、Ch7（P.441–P.474，BIDIR-PIM）、Williamson Ch9（P.194–P.213，MOSPF）、iPexpert Ch6（P.6-1–6-33）、Volume II Ch5（SSM 选型）
-<strong>配图</strong>：<a href="../diagrams/d10-anycast-rp.svg">D10 Anycast-RP</a>｜<a href="../diagrams/d11-bidir.svg">D11 BIDIR 双向树</a></p>
+<p>精读来源：<strong>Aweya §5.17–5.18（p.342–345，SSM 的六条覆盖规则与 SSM-only 路由器要求）、§1.2.3（p.20–21，BIDIR-PIM 与 PIM-SM 的五点区别）</strong>；BIDIR 的 DF 细节参考 RFC 5015
+本章解决的问题：PIM-SM 的三条开销（注册隧道、RPT 低效、SPT 状态爆炸）分别对应两个"减法方案"——<strong>SSM 砍掉 RP，BIDIR 砍掉 (S,G)</strong>。</p>
+<p>⚠️ 说明：Williamson 1999 年版成书早于 SSM 标准化，<strong>本章不引用该书</strong>；SSM 部分以 Aweya §5.17–5.18 为主，BIDIR 部分以 Aweya §1.2.3 的对比结论 + RFC 5015 为主。</p>
 </blockquote>
-<hr />
 <h2 id="_1">学习目标</h2>
 <ol>
-<li>解释 SSM 的工作方式、四大优势与三种落地路径（原生 IGMPv3 / SSM-Mapping 静态 / SSM-Mapping DNS）；</li>
-<li>描述 BIDIR-PIM 的双向共享树模型与 DF 选举；</li>
-<li>说清 Phantom-RP 与 Anycast-RP 的差异；</li>
-<li>掌握 SSM 与 BIDIR 的选型依据与共存限制；</li>
-<li>排查 SSM/BIDIR 典型故障。</li>
+<li>说清 SSM 的"六条覆盖规则"分别否决了 PIM-SM 的哪个动作；</li>
+<li>判断一台路由器在 SSM 场景下<strong>哪些状态机必须有、哪些必须没有</strong>（SSM-only 路由器的取舍清单）；</li>
+<li>解释 BIDIR-PIM 为什么"没有 <code>(S,G)</code>、没有 DR、没有 Register"，以及代价；</li>
+<li>说清 DF（Designated Forwarder）的作用：它替代 DR 解决<strong>双向共享树上的环路与重复</strong>；</li>
+<li>在现网区分"SSM 组被当成 ASM 处理"与"BIDIR 组被当成 SM 处理"两类错配；</li>
+<li>面对 <code>show ip mroute</code> 里只有 <code>(*,G)</code> 没有 <code>(S,G)</code> 时，能立即想到"这是 BIDIR 或 SSM 模式问题，不是故障"。</li>
 </ol>
 <hr />
-<h2 id="1-ssmsource-specific-multicast">1. SSM（Source-Specific Multicast）</h2>
-<h3 id="11">1.1 语义</h3>
-<p>接收者订阅的是 <strong>(G,S) 对</strong>，而不是"某个组的所有源"。</p>
-<div class="codehilite"><pre><span></span><code>IGMPv3:  Membership Report  Group=239.1.1.1, Source=10.1.2.5  → 只收 10.1.2.5 的流
-</code></pre></div>
-
-<h3 id="12">1.2 四大优势（与你的自有笔记完全一致）</h3>
+<h2 id="1-ssm">1. SSM：把"谁是源"写进请求里</h2>
+<h3 id="11">1.1 服务模型的改变</h3>
 <table>
 <thead>
 <tr>
-<th>优势</th>
-<th>说明</th>
+<th>模型</th>
+<th>接收者表达</th>
+<th>需要的控制面</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>无 RP</strong></td>
-<td>不需要 RP、不需要 Register、不需要共享树</td>
+<td>ASM（PIM-SM/DM）</td>
+<td>"我要 G"</td>
+<td>RP、RPT、注册、SPT 切换</td>
 </tr>
 <tr>
-<td><strong>无 MSDP</strong></td>
-<td>跨域天然可行（源与组的对应关系由应用层/IGMPv3 直接给出）</td>
-</tr>
-<tr>
-<td><strong>无共享树</strong></td>
-<td>只有源树 (S,G)，路径最短、无 RP 瓶颈</td>
-</tr>
-<tr>
-<td><strong>源过滤安全</strong></td>
-<td>接收者只接受指定源 → 杜绝伪源注入</td>
+<td>SSM</td>
+<td>"我要来自 S 的 G"（channel）</td>
+<td>只有 SPT，无 RP、无注册、无 <code>(*,G)</code></td>
 </tr>
 </tbody>
 </table>
-<h3 id="13">1.3 三条落地路径</h3>
-<table>
-<thead>
-<tr>
-<th>路径</th>
-<th>条件</th>
-<th>配置</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>A. 原生 IGMPv3</strong></td>
-<td>主机支持 IGMPv3，能表达 (G,S)</td>
-<td><code>ip pim ssm range 232.0.0.0/8</code></td>
-</tr>
-<tr>
-<td><strong>B. IGMPv2 + 静态 SSM-Mapping</strong></td>
-<td>主机只支持 IGMPv2，但组→源关系固定</td>
-<td><code>ip igmp ssm-mapping static 239.1.1.1 10.1.2.5</code></td>
-</tr>
-<tr>
-<td><strong>C. IGMPv2 + 动态 SSM-Mapping（DNS）</strong></td>
-<td>组→源关系可由 DNS 解析（如 <code>ssm.map.example.com</code>）</td>
-<td><code>ip igmp ssm-mapping dynamic</code></td>
-</tr>
-</tbody>
-</table>
-<p><strong>SSM-Mapping 的工作位置</strong>：在 <strong>Last-hop 路由器</strong>上，把主机发来的 <code>(*,G)</code> Report 翻译为 <code>(G,S)</code>，然后按 SSM 流程处理。</p>
-<div class="codehilite"><pre><span></span><code>! 路由器侧
-ip pim ssm range 232.0.0.0/8
-ip igmp ssm-mapping static 239.1.1.1 10.1.2.5
-ip igmp ssm-mapping static 239.1.1.1 10.1.2.6
-</code></pre></div>
-
-<blockquote>
-<p><strong>注意</strong>：SSM-Mapping 必须在<strong>每一台最后一跳路由器</strong>上配置，否则同一组在不同接入点行为不一致。</p>
-</blockquote>
-<h3 id="14-ssm-ssm">1.4 SSM 的"伪 SSM"陷阱</h3>
-<p>很多设备文档写 "SSM 支持 232/8"，但<strong>实际 232/8 组地址 + IGMPv2 主机 = 完全不通</strong>（因为主机无法表达源）。这是现网最常见的 SSM 故障。</p>
-<hr />
-<h2 id="2-bidir-pimrfc-5015">2. BIDIR-PIM（RFC 5015）</h2>
-<p><img alt="BIDIR 双向共享树" src="../diagrams/d11-bidir.svg" /></p>
-<h3 id="21">2.1 模型</h3>
+<p>SSM 地址范围（RFC 4607，Aweya p.342–343）：</p>
 <ul>
-<li>只有 *<em>(<em>,G)</em></em> 状态，<strong>没有 (S,G)</strong>；</li>
-<li><strong>没有 Register</strong>（源不需要注册到 RP）；</li>
-<li><strong>没有共享树/源树之分</strong>：RP 作为树的"中心"，源与接收者分别向 RP 建<strong>单向支路</strong>，合起来是"双向共享树"；</li>
-<li>每个与 RP 相连的网段选出一个 <strong>DF（Designated Forwarder）</strong>，负责本段与 RP 之间的转发。</li>
+<li>IPv4：<strong>232.0.0.0/8</strong></li>
+<li>IPv6：<strong>FF3x::/32</strong>（x 为 scope 标识）</li>
 </ul>
-<h3 id="22-aweya-73">2.2 术语（Aweya 7.3）</h3>
+<p>Aweya p.344 对 "channel" 的定义值得记：一个 <code>(S,G)</code> 就是一个 channel；同一组可以有多个源，也就是多个 channel——<strong>接收者订阅的是 channel，不是组</strong>。所以组播电视这类"一组一源"的业务最贴合 SSM。</p>
+<p><img alt="分发树类型：SSM 只用 SPT" src="../diagrams/d06-trees.svg" /></p>
+<h3 id="12">1.2 六条覆盖规则（原文照录）</h3>
+<p>Aweya p.342 明确：当目的地址落在 SSM 范围时，以下规则<strong>覆盖 PIM-SM 的正常行为</strong>：</p>
 <table>
 <thead>
 <tr>
-<th>术语</th>
-<th>含义</th>
+<th>#</th>
+<th>规则</th>
+<th>否决了什么</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>RPA</strong></td>
-<td>RP Address，RP 的地址</td>
+<td>1</td>
+<td><strong>不得</strong>发送 <code>(*,G)</code> Join/Prune</td>
+<td>共享树</td>
 </tr>
 <tr>
-<td><strong>DF</strong></td>
-<td>Designated Forwarder，负责在本网段与 RP 间收发</td>
+<td>2</td>
+<td><strong>不得</strong>发送 <code>(S,G,rpt)</code> Join/Prune</td>
+<td>SPT 切换的剪枝流程</td>
 </tr>
 <tr>
-<td><strong>RPT</strong></td>
-<td>由 DF 到 RP 的单向路径（Receiver-side / Source-side 两条）</td>
+<td>3</td>
+<td><strong>不得</strong>为 SSM 地址发送 Register</td>
+<td>注册隧道</td>
 </tr>
 <tr>
-<td><strong>BR</strong></td>
-<td>Bidir-capable Router，宣告 Bidir-Capable Option 的路由器</td>
+<td>4</td>
+<td><strong>不得</strong>基于 <code>(*,G)</code>/<code>(S,G,rpt)</code> 状态转发；这些状态函数对 SSM 地址为 NULL</td>
+<td>共享树转发</td>
+</tr>
+<tr>
+<td>5</td>
+<td>RP <strong>不得</strong>转发 SSM 地址的 Register，且<strong>应当</strong>回 <code>Register-Stop</code></td>
+<td>兼容老设备</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>可以</strong>不建 <code>(S,G,rpt)</code> 与 <code>(*,G)</code> 状态（优化）</td>
+<td>状态数量</td>
 </tr>
 </tbody>
 </table>
-<h3 id="23-df-aweya-78">2.3 DF 选举（Aweya 7.8）</h3>
-<p><strong>选举原则</strong>：</p>
-<ol>
-<li>先比较 <strong>DF Priority</strong>（Hello 中的 Bidir-Capable Option 携带，<strong>数值大者胜</strong>）；</li>
-<li>相同则比较 <strong>链路度量</strong>（RFC 4191）/ 接口度量（RFC 5015），<strong>小者胜</strong>；</li>
-<li>再相同则比较 <strong>Router ID / IP 地址</strong>，<strong>大者胜</strong>（与 PIM DR 的"小者胜"相反！）。</li>
-</ol>
-<p><strong>可靠性增强报文</strong>（Aweya 7.8.4）：<strong>Offer / Winner / Backoff / Pass</strong>——用于在网络震荡时避免 DF 频繁切换。</p>
-<div class="codehilite"><pre><span></span><code>ip pim bidir-enable
-ip pim rp-address 10.1.1.1 bidir
-interface Gi0/1
- ip pim sparse-mode
- ip pim bidir-enable
-</code></pre></div>
-
-<h3 id="24-phantom-rpaweya-710">2.4 Phantom-RP（Aweya 7.10）</h3>
-<p><strong>问题</strong>：BIDIR-PIM 依赖单一 RP 地址，RP 宕机即中断。</p>
-<p><strong>Phantom-RP 做法</strong>：用 <strong>Anycast 地址</strong>配置一个"虚拟 RP"，多个真实 RP 都宣告这个 Anycast 地址：</p>
-<div class="codehilite"><pre><span></span><code>ip pim rp-address 10.100.100.100 bidir
-! 每台真实 RP 上额外配置：
-ip pim phantom-rp 10.100.100.100 bidir
-</code></pre></div>
-
-<p><strong>与 Anycast-RP 的区别</strong>：</p>
-<table>
-<thead>
-<tr>
-<th></th>
-<th>Anycast-RP（PIM-SM）</th>
-<th>Phantom-RP（BIDIR-PIM）</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>是否有 Register</td>
-<td>有</td>
-<td>无</td>
-</tr>
-<tr>
-<td>是否需要 MSDP 交换源</td>
-<td>是</td>
-<td>否</td>
-</tr>
-<tr>
-<td>源侧行为</td>
-<td>源注册到最近的 RP</td>
-<td>源直接向 RP 发组播</td>
-</tr>
-<tr>
-<td>冗余粒度</td>
-<td>RP 对（源/收可能不同）</td>
-<td>任意 RP 均可服务任意源/收</td>
-</tr>
-</tbody>
-</table>
-<h3 id="25-bidir-pim">2.5 BIDIR-PIM 的适用场景（选型依据）</h3>
-<p><strong>适合</strong>：源多、接收者少，且拓扑接近"星型/对称"——典型是<strong>金融市场行情</strong>（成百上千个源网关 → 少量行情终端）。</p>
-<p><strong>不适合</strong>：</p>
-<ul>
-<li>源少接收者多（用 SSM 或 PIM-SM）；</li>
-<li>需要源过滤（SSM 的强项）；</li>
-<li>需要跨域且不想引入 MSDP（SSM 更简单）。</li>
-</ul>
+<p>规则 4–6 的用意在原文里写得很直白：<strong>用来对付"SSM-unaware 的老路由器"</strong>——它们可能仍然发 <code>(*,G)</code>、<code>(S,G,rpt)</code> 或 SSM 地址的 Register，新设备必须能容忍并纠正。</p>
 <blockquote>
-<p>与你的笔记一致："BiDir = only shared tree (only use for topology with many senders)"。</p>
+<p>这条是混合现网的关键：<strong>SSM 的健壮性不来自"大家都升级了"，而来自"新设备会拒绝老设备的错误动作"</strong>。所以排障时看到老设备在发 <code>(*,G)</code>，不是配置错，而是要被抑制的对象。</p>
 </blockquote>
-<hr />
-<h2 id="3-ssm-bidir-asm">3. SSM / BIDIR / ASM 对照配置速查</h2>
-<div class="codehilite"><pre><span></span><code>! ---- ASM（PIM-SM）----
-ip pim rp-address 10.1.1.1
-ip pim rp-address 10.2.2.2 239.1.0.0 255.255.0.0
-
-! ---- SSM ----
-ip pim ssm range 232.0.0.0/8
-ip igmp ssm-mapping static 239.1.1.1 10.1.2.5
-
-! ---- BIDIR-PIM ----
-ip pim rp-address 10.1.1.1 bidir
-ip pim bidir-enable
-interface Gi0/1
- ip pim sparse-mode
- ip pim bidir-enable
-
-! ---- 混合模式（同一设备同时 ASM+SSM）----
-ip pim rp-address 10.1.1.1
-ip pim ssm range 232.0.0.0/8
-</code></pre></div>
-
-<hr />
-<h2 id="4">4. 排障命令</h2>
-<div class="codehilite"><pre><span></span><code>show ip pim ssm range                       ! SSM 范围
-show ip igmp ssm-mapping                   ! SSM 映射表
-show ip igmp ssm-mapping group 239.1.1.1
-show ip pim rp-address bidir               ! BIDIR RP
-show ip pim df                              ! DF 选举结果
-show ip pim df detail                      ! DF 优先级/地址/状态
-show ip mroute 239.1.1.1 detail            ! BIDIR 下只有 (*,G)，无 (S,G)
-show ip pim interface                       ! 看 bidir-enable 是否生效
-debug ip pim bidir                         ! BIDIR 调试
-</code></pre></div>
-
-<hr />
-<h2 id="5-6">5. 生产案例（6 例）</h2>
-<h3 id="6-1ssm">案例 6-1：SSM 组地址完全不通（最常见）</h3>
-<p><strong>现象</strong>：业务使用 <code>232.1.1.1</code>，源正常发流，接收端完全收不到。
-<strong>定位</strong>：</p>
-<div class="codehilite"><pre><span></span><code>show ip pim ssm range                       ! 范围是否包含 232.1.1.1
-show ip igmp groups 232.1.1.1               ! 是否有成员
-show ip igmp ssm-mapping                    ! 映射是否存在
-show ip mroute 232.1.1.1                   ! 无表项
-</code></pre></div>
-
-<p><strong>根因</strong>：接收主机只跑 <strong>IGMPv2</strong>，只能发 <code>(*,G)</code> Report，无法表达 (G,S)；且未配置 SSM-Mapping。
-<strong>处置</strong>：主机升级 IGMPv3；或配置 <code>ip igmp ssm-mapping static 232.1.1.1 &lt;源IP&gt;</code>。
-<strong>复盘</strong>：SSM 三要素（IGMPv3/SSM-Mapping + <code>ip pim ssm range</code> + 正确订阅）缺一不可。</p>
-<h3 id="6-2ssm-mapping">案例 6-2：SSM-Mapping 只配了部分接入点</h3>
-<p><strong>现象</strong>：同一组播业务在 A 楼正常，B 楼不通。
-<strong>定位</strong>：<code>show ip igmp ssm-mapping</code> 在 A 楼路由器有、B 楼没有。
-<strong>根因</strong>：SSM-Mapping 是<strong>本地 Last-hop 行为</strong>，不是全域状态；配置时漏了部分接入点。
-<strong>处置</strong>：补齐所有 Last-hop 设备；用配置模板 + 审计脚本管控。
-<strong>复盘</strong>：凡是"本地生效"的特性（SSM-Mapping、Query Solicitation、Fast Leave）都要单独列清单。</p>
-<h3 id="6-3bidir-pim">案例 6-3：BIDIR-PIM 源侧无流量</h3>
-<p><strong>现象</strong>：BIDIR 域内接收端已加入 <code>(*,G)</code>，但收不到源流。
-<strong>定位</strong>：<code>show ip mroute 239.1.1.1</code> 存在 <code>(*,G)</code> 但无 (S,G)；<code>show ip pim df</code> 显示源侧 DF 正常。
-<strong>根因</strong>：BIDIR 中 <strong>源不注册</strong>，源必须<strong>直接向 RP 地址发送组播</strong>（目的 IP 就是组地址，但路由路径指向 RP）；源侧路由配置为"到组地址的下一跳是 RP"。
-<strong>处置</strong>：源网关配置到组地址的路由指向 RPA；必要时在源侧加静态 mroute 指向 RPA。
-<strong>复盘</strong>：BIDIR 的关键前提是"源侧和收侧都把 RP 当作树根"，源必须能"直达 RP"。</p>
-<h3 id="6-4bidir-df">案例 6-4：BIDIR 的 DF 频繁切换</h3>
-<p><strong>现象</strong>：组播周期性闪断；<code>show ip pim df</code> 中 DF 反复变化。
-<strong>定位</strong>：<code>debug ip pim bidir</code> 显示 Offer/Winner 反复交换。
-<strong>根因</strong>：DF 选举参数相同（优先级、度量、地址都相同），或链路震荡；缺少 Offer/Winner/Backoff 保护。
-<strong>处置</strong>：显式配置不同 <code>ip pim df priority</code>；检查链路稳定性。
-<strong>复盘</strong>：BIDIR 的选举比较顺序与 PIM DR 相反（地址大者胜），配置时容易搞混。</p>
-<h3 id="6-5phantom-rp-df">案例 6-5：Phantom-RP 配置后 DF 选举异常</h3>
-<p><strong>现象</strong>：配置 <code>ip pim phantom-rp</code> 后，某个网段的 DF 消失。
-<strong>定位</strong>：查看 <code>show ip pim df</code>，该网段无 DF；检查 <code>ip pim rp-address ... bidir</code> 与 <code>ip pim phantom-rp</code> 是否同地址。
-<strong>根因</strong>：Phantom-RP 与 BIDIR RP 地址不一致，或 Phantom-RP 配置在非 RP 设备上。
-<strong>处置</strong>：确保 Phantom-RP 地址与 BIDIR RP 地址一致，且只在真实 RP 上配置。
-<strong>复盘</strong>：Phantom-RP 是"地址层面的复制"，配置必须与 BIDIR RP 对齐。</p>
-<h3 id="6-6ssm-asm">案例 6-6：SSM 与 ASM 混用导致组播"串流"</h3>
-<p><strong>现象</strong>：某主机本应只收源 A 的流，却收到了源 B 的流（ASM 泄漏）。
-<strong>定位</strong>：<code>show ip igmp groups</code> 显示主机以 IGMPv2 加入；<code>show ip mroute</code> 中出现 <code>(*,G)</code> 状态。
-<strong>根因</strong>：主机以 IGMPv2 加入 <code>(*,G)</code>，且未配置 SSM-Mapping → 路由器按 ASM 处理，任何源都能进来。
-<strong>处置</strong>：强制 IGMPv3 或配置 SSM-Mapping；对安全敏感的流用 ACL 限制源。
-<strong>复盘</strong>：<strong>SSM 的安全前提是接收侧真的在表达 (G,S)</strong>；未配 SSM-Mapping 的 IGMPv2 主机等于降级为 ASM。</p>
-<hr />
-<h2 id="6">6. 自测清单</h2>
-<ol>
-<li>SSM 的四大优势是什么？其中哪一个直接消除了 MSDP 的必要性？</li>
-<li>SSM-Mapping 有哪两种形式？各在什么场景使用？生效位置在哪台设备？</li>
-<li>为什么"SSM + IGMPv2 主机"不通？这个坑在现网出现频率为什么这么高？</li>
-<li>BIDIR-PIM 中为什么没有 (S,G) 状态？源如何把流量送到接收者？</li>
-<li>DF 选举的比较顺序是什么？与 PIM DR 选举的差异在哪两处？</li>
-<li>Phantom-RP 与 Anycast-RP 的三点差异？</li>
-<li>什么业务特征决定用 BIDIR 而不是 SSM？</li>
-</ol>
-<h2 id="7">7. 延伸阅读</h2>
+<h3 id="13-ssm-only">1.3 SSM-only 路由器的取舍清单</h3>
+<p>Aweya p.342–343 给了两份清单，很适合当"设备能力评估表"：</p>
+<p><strong>必须有</strong></p>
 <ul>
-<li>Aweya Ch7（P.441–P.474）、Ch5.17–5.18（P.362–P.375）</li>
-<li>iPexpert Ch6（P.6-1–6-33）：BIDIR-PIM 排障场景</li>
-<li>Williamson Ch9（P.194–P.213）：MOSPF（历史参考）</li>
-<li>延伸：<code>RFC 4607</code>（SSM）、<code>RFC 7761 §6.3</code>（SSM-Mapping）、<code>RFC 5015</code>（BIDIR-PIM）、<code>RFC 7761 §4.7</code>（Phantom-RP）</li>
+<li>Hello / 邻居发现 / DR 选举</li>
+<li>下游 <code>(S,G)</code> 状态机</li>
+<li>上游 <code>(S,G)</code> 状态机</li>
+<li><code>(S,G)</code> Assert 状态机</li>
+<li>组播转发规则</li>
+</ul>
+<p><strong>可以没有</strong></p>
+<ul>
+<li>Register 状态机</li>
+<li>BSR 选举</li>
+<li><code>(*,G)</code> 与 <code>(S,G,rpt)</code> 的下游/上游状态机</li>
+<li><code>(*,G)</code> Assert 状态机</li>
+<li>Keepalive 定时器</li>
+<li>SPTbit</li>
+</ul>
+<p>原文还给了一句实现约定：SSM-only 路由器应把 <strong>Keepalive 定时器视为永远运行、SPTbit 视为永远置位</strong>。这解释了为什么在纯 SSM 网络里 <code>show ip mroute</code> 的 <code>(S,G)</code> 条目看不到 <code>T</code> 标志的翻转——<strong>没有 RPT 可剪</strong>。</p>
+<h3 id="14-igmpv3-mldv2">1.4 主机侧：为什么必须 IGMPv3 / MLDv2</h3>
+<p>Aweya p.343：IGMPv3 与 MLDv2 提供<strong>源过滤</strong>能力，这是 SSM 的前提。IGMPv1/v2 只能表达"我要 G"，无法表达"我要 S 的 G"。</p>
+<p>现网常见做法（厂商实现，非协议规定）：对 IGMPv2 主机做 <strong>SSM Mapping</strong>（静态或 DNS），把 "G" 映射成 "S 的 G"。代价是<strong>映射表就是新的单点</strong>，且无法表达多源。</p>
+<div class="codehilite"><pre><span></span><code>show<span class="w"> </span>ip<span class="w"> </span>igmp<span class="w"> </span>groups<span class="w"> </span><span class="m">232</span>.1.1.1<span class="w"> </span>detail<span class="w">     </span><span class="c1"># 看版本与源过滤</span>
+show<span class="w"> </span>ip<span class="w"> </span>igmp<span class="w"> </span>ssm-mapping<span class="w"> </span><span class="m">232</span>.1.1.1<span class="w">       </span><span class="c1"># 映射是否命中</span>
+show<span class="w"> </span>ip<span class="w"> </span>pim<span class="w"> </span>ssm<span class="w">                          </span><span class="c1"># SSM 范围定义（default / acl）</span>
+</code></pre></div>
+
+<hr />
+<h2 id="2-bidir-pim">2. BIDIR-PIM：把共享树变成双向的</h2>
+<h3 id="21-aweya-p2021">2.1 五点区别（Aweya p.20–21）</h3>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>PIM-SM</th>
+<th>BIDIR-PIM</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SPT</td>
+<td>会切换</td>
+<td><strong>不切，永不建 <code>(S,G)</code></strong></td>
+</tr>
+<tr>
+<td>段上的 DR</td>
+<td>需要</td>
+<td><strong>不需要</strong></td>
+</tr>
+<tr>
+<td>Register</td>
+<td>需要</td>
+<td><strong>不需要</strong></td>
+</tr>
+<tr>
+<td>转发规则</td>
+<td>数据驱动事件多</td>
+<td><strong>无数据驱动事件，规则更简单</strong></td>
+</tr>
+<tr>
+<td>SSM</td>
+<td>支持</td>
+<td><strong>不支持</strong></td>
+</tr>
+</tbody>
+</table>
+<p>原文对 BIDIR 的定义是：<strong>流量沿一条以 RP 为根的双向共享树流动，树上的每条分支都可以双向传输</strong>。源把流量朝 RP 方向送，接收者从 RP 方向收——两者共用同一棵树，因此不需要注册、也不需要切换。</p>
+<h3 id="22-dfbidir">2.2 DF：BIDIR 的核心机制</h3>
+<p>Aweya p.21 明确：<strong>为防止 BIDIR-PIM 的转发环路，针对每个 RP，每条链路上选举一台路由器作为该链路的 Designated Forwarder（DF）</strong>，选举通过 <strong>DF Election 报文</strong>在 RP 发现阶段完成。</p>
+<p>用一句话概括 DF 与 DR 的区别：</p>
+<ul>
+<li><strong>DR 决定"谁替这段链路发/收组播"</strong>，是<strong>每段一个</strong>，与 RP 无关；</li>
+<li><strong>DF 决定"谁在这段链路上朝 RP 转发上行的源流量"</strong>，是<strong>每 RP、每链路一个</strong>，且<strong>双向生效</strong>。</li>
+</ul>
+<p>RFC 5015 的选举依据（Aweya 未展开，此处按标准补）：比较到 RP 的 <strong>Metric Preference（管理距离）→ Metric → IP 地址（大者胜）</strong>。工程含义与 PIM 的 DR 选举、RPF 选路完全同源——<strong>路由一变，DF 就换人</strong>，所以"IGP 收敛慢"在 BIDIR 里直接表现为"流量短暂黑洞"，而不是"切换略慢"。</p>
+<div class="codehilite"><pre><span></span><code>        [RP 10.255.0.1]
+              |
+        ┌─────┴─────┐
+      R1            R2        ← 同段两台，只有一台是 DF
+        │             │
+      [SW]────────────┘
+        │
+      R3（非 DF：上行流量丢弃，只接收下行）
+</code></pre></div>
+
+<p><img alt="BIDIR-PIM 双向共享树与 DF" src="../diagrams/d11-bidir.svg" /></p>
+<h3 id="23-bidir">2.3 代价：为什么 BIDIR 不能滥用</h3>
+<p>Aweya p.21 同时给了收益与代价，这段要背：</p>
+<ul>
+<li><strong>收益</strong>：每个组有大量源时扩展性好（只有 <code>(*,G)</code>，没有 <code>(S,G)</code> 爆炸）；</li>
+<li><strong>代价</strong>：<strong>没有 SPT，流量被强制走在相对低效的共享树上</strong>（可能绕行 RP）。</li>
+</ul>
+<p>判断准则：</p>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>选择</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>一组一源、源固定</td>
+<td>SSM</td>
+</tr>
+<tr>
+<td>一组多源、源极多且动态</td>
+<td>BIDIR</td>
+</tr>
+<tr>
+<td>一组多源、但需要最优路径</td>
+<td>PIM-SM（接受状态开销）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="24">2.4 混合模式的一个硬约束</h3>
+<p>Aweya p.21 写得很清楚：三种模式可以在一个域内共存，<strong>Hello 只跑一次，信息三方共享</strong>，但——</p>
+<blockquote>
+<p><strong>同一个组不能同时工作在两种 PIM 模式</strong>。</p>
+</blockquote>
+<p>组范围必须<strong>手工划分</strong>。这就是"某几个组莫名不通"的一大来源：<strong>同一组在两台路由器上落在了不同的模式范围里</strong>。</p>
+<hr />
+<h2 id="3">3. 八个工程案例</h2>
+<blockquote>
+<p>以下为<strong>典型化场景</strong>，用于训练推理路径，不是具体故障的取证记录。</p>
+</blockquote>
+<h3 id="1-ssm-igmpv2">案例 1：应用按 SSM 设计，但主机只能发 IGMPv2</h3>
+<ul>
+<li><strong>现象</strong>：接收端加入 232.1.1.1 无流量；<code>show ip igmp groups</code> 显示 V2，且无源过滤信息。</li>
+<li><strong>定位</strong>：<code>show ip igmp groups 232.1.1.1 detail</code>、<code>show ip igmp ssm-mapping</code>、抓包看 Report 版本。</li>
+<li><strong>根因</strong>：IGMPv2 无法表达源，路由器把 <code>(S,G)</code> 请求退化成 <code>(*,G)</code>，在 SSM 范围内被规则 1 拒绝。</li>
+<li><strong>处置</strong>：升级主机/应用至 IGMPv3；或配置 SSM Mapping 兜底。</li>
+<li><strong>复盘</strong>：<strong>SSM 是端到端能力</strong>，中间设备再正确，主机不支持就是不通。</li>
+</ul>
+<h3 id="2ssm-232-g">案例 2：SSM 范围未定义，232 组出现 <code>(*,G)</code></h3>
+<ul>
+<li><strong>现象</strong>：<code>show ip mroute 232.1.1.1</code> 出现 <code>(*,G)</code>；RP 上出现该组的注册。</li>
+<li><strong>定位</strong>：<code>show ip pim ssm</code>、<code>show ip pim rp mapping</code>（是否把 232 纳入了 RP 范围）。</li>
+<li><strong>根因</strong>：未配置 <code>ip pim ssm default</code>（或有 ACL 漏掉该段），路由器按 ASM 处理 232/8。</li>
+<li><strong>处置</strong>：定义 SSM 范围；同时确认 RP 的组范围 ACL <strong>不包含</strong> SSM 段。</li>
+<li><strong>复盘</strong>：<strong>SSM 与 RP 范围的边界要显式互斥</strong>，靠默认行为很容易踩进来。</li>
+</ul>
+<h3 id="3-3">案例 3：双源热备，切换时接收端断 3 秒</h3>
+<ul>
+<li><strong>现象</strong>：主源停发后备用源接管，接收端中断约 3 秒。</li>
+<li><strong>定位</strong>：两端 <code>show ip mroute</code> 的 <code>(S,G)</code> 是否存在、<code>show ip igmp groups detail</code> 是否同时含两个源。</li>
+<li><strong>根因</strong>：接收端只 join 了主源 channel，源切换等于换 channel，需要重新 Join 建树。</li>
+<li><strong>处置</strong>：应用侧同时加入两个 channel（INCLUDE 双源）；或缩短 Keepalive 依赖。</li>
+<li><strong>复盘</strong>：<strong>SSM 的"源固定"是语义层面的</strong>——换源就是换服务，别指望路由层无缝。</li>
+</ul>
+<h3 id="4ssm-rprp">案例 4：SSM 组被老设备注册到 RP，RP 转发造成双份</h3>
+<ul>
+<li><strong>现象</strong>：SSM 组在接收端偶发重复包；RP 上能看到该组的 Register。</li>
+<li><strong>定位</strong>：RP 上 <code>show ip mroute 232.x</code>、<code>debug ip pim 232.x</code>（Register / Register-Stop）。</li>
+<li><strong>根因</strong>：SSM-unaware 的首跳 DR 仍封装注册；RP 未按规则 5 回 <code>Register-Stop</code>（或实现不合规）。</li>
+<li><strong>处置</strong>：升级首跳设备或规范 RP 行为；在 RP 上对 232/8 做过滤。</li>
+<li><strong>复盘</strong>：<strong>规则 5 是防火墙式的兼容措施</strong>，缺了它，SSM 网络会被老设备"污染"。</li>
+</ul>
+<h3 id="5bidir-pim-sm">案例 5：BIDIR 组配成了 PIM-SM</h3>
+<ul>
+<li><strong>现象</strong>：本应"多源少收"的行情组，RP 上出现海量 <code>(S,G)</code>；CPU 与内存上涨；部分源收不到。</li>
+<li><strong>定位</strong>：<code>show ip mroute</code>（是否出现 <code>(S,G)</code>）、<code>show ip pim rp mapping</code>、两台边界路由器的模式配置。</li>
+<li><strong>根因</strong>：组范围划到了 SM，每源都触发注册与状态建立。</li>
+<li><strong>处置</strong>：把该组范围划入 BIDIR；确认全网一致。</li>
+<li><strong>复盘</strong>：<strong>"源特别多的组"出现 <code>(S,G)</code> 数量爆炸，先怀疑模式划错</strong>，而不是先怀疑攻击。</li>
+</ul>
+<h3 id="6bidir-df">案例 6：BIDIR 出现双 DF，接收端收到重复包</h3>
+<ul>
+<li><strong>现象</strong>：同一段上抓包看到同一组播包出现两次；<code>show ip pim df</code> 两侧都显示自己是 Winner。</li>
+<li><strong>定位</strong>：<code>show ip pim df</code>（各 RP 的 DF 状态）、<code>show ip rpf &lt;RP&gt;</code>（两侧到 RP 的 metric）。</li>
+<li><strong>根因</strong>：两侧到 RP 的 metric 计算不一致（如静态路由与 IGP 混用），选举结果各自认为胜出。</li>
+<li><strong>处置</strong>：统一到 RP 的 metric 来源；清理静态路由。</li>
+<li><strong>复盘</strong>：<strong>DF 是"每 RP 每链路"的选举</strong>，多 RP 场景下必须逐 RP 检查，别只看一个。</li>
+</ul>
+<h3 id="7bidir">案例 7：BIDIR 组排障时找不到源，误判"源没发"</h3>
+<ul>
+<li><strong>现象</strong>：<code>show ip mroute 239.2.2.2</code> 只有 <code>(*,G)</code>，无 <code>(S,G)</code>；运维据此判断源未发送。</li>
+<li><strong>定位</strong>：<code>show ip mroute 239.2.2.2</code>（看 <code>B</code> 标志）、RP 侧计数器、源端 <code>show ip mroute</code> 发送计数。</li>
+<li><strong>根因</strong>：BIDIR 本来就不建 <code>(S,G)</code>，用 SM 的判据看 BIDIR 必然误判。</li>
+<li><strong>处置</strong>：改用 <code>show ip mroute count</code> 与接口计数器判断流量。</li>
+<li><strong>复盘</strong>：<strong>先确认组的 PIM 模式，再选判据</strong>；<code>B</code> 标志（Bidir Group）就是提示。</li>
+</ul>
+<h3 id="8">案例 8：混合模式同组跨模式，部分区域不通</h3>
+<ul>
+<li><strong>现象</strong>：同一组在 A 区正常、B 区不通；两侧配置看起来都"有"。</li>
+<li><strong>定位</strong>：比对两侧 <code>show ip pim rp mapping</code> 与组范围 ACL；<code>show running-config | include pim</code>.</li>
+<li><strong>根因</strong>：该组在 A 区落在 SM 范围、B 区落在 BIDIR 范围，两种模式无法互操作同一组。</li>
+<li><strong>处置</strong>：统一组范围划分，按业务分段（SSM / BIDIR / ASM 各占独立地址块）。</li>
+<li><strong>复盘</strong>：<strong>地址规划决定模式边界</strong>；把模式当"每台设备的偏好"是根本性误解。</li>
+</ul>
+<hr />
+<h2 id="4">4. 十问自测</h2>
+<ol>
+<li>SSM 的 IPv4 / IPv6 地址范围分别是什么？</li>
+<li>SSM 六条规则里，哪三条是用来对付老设备的？</li>
+<li>SSM-only 路由器不需要哪两个状态机？它对 Keepalive 与 SPTbit 如何处理？</li>
+<li>为什么 SSM 必须 IGMPv3 或 MLDv2？</li>
+<li>SSM Mapping 的作用与代价？</li>
+<li>BIDIR 与 SM 的五点区别？</li>
+<li>DF 与 DR 的差别是什么？选举依据是什么？</li>
+<li>BIDIR 为什么"没有数据驱动事件"？</li>
+<li>同一个组能否同时处于两种 PIM 模式？</li>
+<li>一组多源时，什么情况下该选 BIDIR 而不是 SM？</li>
+</ol>
+<hr />
+<h2 id="5">5. 原文精读索引</h2>
+<blockquote>
+<p>纸面页码：Aweya = PDF 页 − 21（经 <code>tools/srcgrep.py</code> 与页首页码实测核对）。</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>知识点</th>
+<th>书/节</th>
+<th>纸面页</th>
+<th>原文可核对要点</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BIDIR 与 SM 的五点区别</td>
+<td>Aweya §1.2.3</td>
+<td>p.20–21</td>
+<td>不切 SPT、不建 <code>(S,G)</code>、不支持 SSM；不需要 DR；不需要 Register；无数据驱动事件</td>
+</tr>
+<tr>
+<td><strong>DF 的作用与选举</strong></td>
+<td>Aweya §1.2.3</td>
+<td>p.21</td>
+<td>“for each RP, a single router on each link is elected as the DF … using the DF Election messages”</td>
+</tr>
+<tr>
+<td>BIDIR 的收益与代价</td>
+<td>Aweya §1.2.3</td>
+<td>p.21</td>
+<td>多源扩展性好；但流量被迫走共享树</td>
+</tr>
+<tr>
+<td>混合模式约束</td>
+<td>Aweya §1.2.4</td>
+<td>p.21</td>
+<td>同一组不能同时处于两种模式；Hello 只跑一次</td>
+</tr>
+<tr>
+<td>SSM 地址范围</td>
+<td>Aweya §5.17</td>
+<td>p.342</td>
+<td>232.0.0.0/8、FF3x::/32</td>
+</tr>
+<tr>
+<td><strong>SSM 六条覆盖规则</strong></td>
+<td>Aweya §5.17.1</td>
+<td>p.342</td>
+<td>不得发 <code>(*,G)</code>/<code>(S,G,rpt)</code>/Register；RP 应回 Register-Stop</td>
+</tr>
+<tr>
+<td>SSM-only 路由器清单</td>
+<td>Aweya §5.17.2</td>
+<td>p.342–343</td>
+<td>必需：Hello/DR、<code>(S,G)</code> 上下游、<code>(S,G)</code> Assert；无需：Register、BSR、<code>(*,G)</code> 状态机</td>
+</tr>
+<tr>
+<td>Keepalive 与 SPTbit 约定</td>
+<td>Aweya §5.17.2</td>
+<td>p.343</td>
+<td>视 Keepalive 常运行、SPTbit 常置位</td>
+</tr>
+<tr>
+<td>SSM 服务模型与 channel</td>
+<td>Aweya §5.18</td>
+<td>p.343–344</td>
+<td>只用 SPT；无 RP/RPT/BSR/Auto-RP/MSDP；channel = <code>(S,G)</code></td>
+</tr>
+<tr>
+<td>IGMPv3 / MLDv2 的源过滤</td>
+<td>Aweya §5.18</td>
+<td>p.343</td>
+<td>SSM 依赖源过滤能力</td>
+</tr>
+<tr>
+<td>SPT 切换阈值（对比用）</td>
+<td>Aweya §5.14</td>
+<td>p.288</td>
+<td>速率阈值（kbps）触发，默认 0 即立刻</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="6">6. 延伸</h2>
+<ul>
+<li>标准：RFC 4607（SSM）、RFC 4604（IGMPv1/2 在 SSM 中的处理）、RFC 5015（BIDIR-PIM）、RFC 3810（MLDv2）</li>
+<li>下一章：MSDP 与 MBGP——<strong>域间</strong>组播怎么把 RP 信息带过去</li>
+<li>回顾：第 4 章 PIM-DM（"源多"的另一种解法）、第 5 章 PIM-SM（状态与切换的原始模型）</li>
 </ul>
   </article>
   <footer class="page-foot">

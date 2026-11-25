@@ -1,222 +1,231 @@
-# ch11 组播安全、过滤与限速
+# 第 11 章 组播安全：把"信任假设"逐条拆掉
 
-> **来源**：iPexpert Ch13（P.13-1–13-19，Multicast Security and Advanced Features）、Volume II Ch1（P.100–P.105 边界防护）、Ch5（P.285–P.300 场景安全）、Williamson Ch14–15（L2 收敛）、Aweya Ch5.7（Register 过滤）
-> **配图**：[D16 组播安全边界](../../diagrams/d16-security.svg)
-
----
+> 精读来源：**Aweya §6.6–6.8（p.380–385：default MSDP peer 与前缀过滤、mesh-group 免除 peer-RPF、SA 缓存与限速、对 DoS 的防护）、§6.14（p.413：SA 过滤）、Volume II（p.13–14：组播的安全边界与分区要求）**
+> 本章解决的问题：单播安全模型假设"连接是双向的、可以握手鉴权"；组播**没有连接、没有握手、接收者匿名、源可伪造**。所以组播安全的本质是：**用"过滤 + 边界 + 限速"替代"认证"**。
 
 ## 学习目标
 
-1. 列出组播面临的安全威胁与对应的防护手段；
-2. 掌握三层/二层过滤（mroute ACL、IGMP ACL、组播路由限速）的配置；
-3. 说清 Register 过滤（防伪源）的工作方式与两种模式；
-4. 理解域边界的防护设计（BGR、Admin Scope、边界过滤）；
-5. 完成一份组播安全加固清单。
+1. 列出组播的五个结构性弱点（无连接、匿名接收、源可伪造、控制面无认证、状态可被放大）；
+2. 说清"组劫持"与"源伪造"的攻击面差异，以及 SSM 为什么能缓解后者；
+3. 说清 MSDP mesh-group 的**安全副作用**：成员之间不做 peer-RPF；
+4. 解释 Auto-RP / BSR 为什么"谁都能宣告自己是 RP"，以及怎么防；
+5. 区分"防护"与"可用性"：ACL 误伤 IGMP/MLD 是同一类事故；
+6. 给出一份可落地的四层过滤清单（接入 / 域内 / 域间 / 数据面）。
 
 ---
 
-## 1. 组播的安全威胁模型
+## 1. 五个结构性弱点
 
-组播是**单向广播型**协议，天生适合攻击者放大：
-
-| 威胁 | 描述 | 后果 |
+| 弱点 | 具体表现 | 与单播的差别 |
 |---|---|---|
-| **伪源注入（Source Spoofing）** | 攻击者以他人源地址向组发包 | 污染行情/劫持直播；客户端被误导 |
-| **组播反射放大** | 攻击者伪造源为受害者 IP 向组发包，流量被复制到全网 | **DDoS 放大**（IPv4 组播可达面积极大） |
-| **未授权加入** | 非法终端加入敏感组（金融行情、政府会议） | 内容泄露 |
-| **组播流量洪泛** | 大量组播占用带宽 | 正常业务受损 |
-| **二层组播泛洪** | 未开 Snooping 导致组播占满接入链路 | 同 VLAN 全部业务受损 |
-| **控制报文攻击** | 伪造 IGMP/PIM 报文操纵树结构 | 劫持组播树、黑洞业务 |
+| 无连接 | UDP + 组播，无握手 | 单播可靠 TLS/握手，组播只能靠预共享密钥 |
+| 接收者匿名 | 发者不知道谁在收 | 无法按"人"授权 |
+| 源可伪造 | 任何人可发 `(S,G)` 声称自己是 S | 单播靠 RPF 无法防伪造（RPF 只查路径） |
+| 控制面无认证 | IGMP/MLD、PIM、Auto-RP、BSR 均无内建认证 | 只能靠 ACL + 前缀过滤 |
+| 状态可放大 | 一个伪造的 `(S,G)` 可在全网建状态 | 状态是共享资源，易被耗尽 |
 
-**根本原因**：组播是"**先到先得、无连接、无认证**"，IPv4 组播甚至没有像组播 BGP 那样的控制平面验证机制。
+> 关键认知：**RPF 不是安全机制**。RPF 校验"源是否从正确方向来"，但攻击者只要在正确方向上发包就通过。安全必须另外加。
 
 ---
 
-## 2. 防护手段全景
+## 2. 组劫持：最容易被忽视的攻击
 
-![组播安全边界](../../diagrams/d16-security.svg)
+### 2.1 机制
 
-| 层次 | 手段 | 作用 |
+IGMP/MLD 的 Report/Done **没有任何认证**。任何主机都可以：
+
+1. 发 Report 加入任意组 → 交换机/路由器为该组建立转发 → **流量被拖到自己身边**；
+2. 发 Leave/Done → 把别人踢出组（造成拒绝服务）。
+
+在二层，如果开了 snooping 但没有 **IGMP profile / 端口策略**，攻击者甚至可以让某个组被"永久加入"，形成持续占用带宽。
+
+### 2.2 防护（按层）
+
+| 层 | 手段 | 说明 |
 |---|---|---|
-| **地址规划** | 239/8 私有段、SSM 段、GLOP 段分离 | 用地址本身做隔离，减少暴露面 |
-| **边界控制** | Admin Scope 边界、Admin Scope zone | 自动剪断跨域组播 |
-| **三层过滤** | `ip mroute ... in/out access-list`、`ip multicast boundary` | 在路由设备上按源/组/接口过滤 |
-| **控制面过滤** | `ip pim accept-register list` | 只允许指定源向 RP 注册 |
-| **接口过滤** | IGMP ACL、ACL 放行策略 | 限制谁能加入、谁能发控制报文 |
-| **二层收敛** | IGMP/MLD Snooping、Fast Leave、端口隔离 | 防止二层泛洪 |
-| **限速** | `ip multicast rate-limit` | 控制组播 pps/bps 上限 |
-| **加密** | IPsec/GRE 隧道承载组播 | 机密性与完整性（但组播 + IPsec 性能代价大） |
-| **源认证** | MSDP MD5 认证、MSDP originator-id | 域间对等体与源身份 |
+| 接入端口 | IGMP/MLD profile、组地址白名单 | 只允许加入业务组 |
+| 接入端口 | 每端口组数限制（`ip igmp limit`） | 防状态耗尽 |
+| 二层 | IGMP snooping + querier + 组播 MAC 过滤 | 防泛洪与被劫持 |
+| 网关 | 固定 DR Priority、关闭无关接口的 PIM | 减少状态面 |
 
 ---
 
-## 3. 三层过滤详解
+## 3. 源伪造与 SSM
 
-### 3.1 mroute 过滤
+任何主机都能发送 `239.1.1.1` 的流量并自称源 `10.1.1.1`。由于 RPF 只校验路径，**接收端无法判断"这个源是不是真的"**。
 
-```cisco
-! 静态 mroute 出方向带 ACL：只允许特定源 → 组
-ip mroute 10.1.1.0 255.255.255.0 10.2.2.2
-ip mroute 10.1.1.0 255.255.255.0 GigabitEthernet0/1 255.1.1.0 255.255.255.0
-```
+两种缓解：
 
-- 可对 **RPF 侧（入方向）** 与 **出方向** 分别过滤；
-- 出方向用 **standard/named ACL** 匹配（源地址、组地址、接口）。
+- **SSM**：接收者显式订阅 `(S,G)`，非请求源的流量在最后一跳被丢弃（不是加密，但有效）；
+- **应用层签名/加密**：真正的来源认证只能在应用层做。
 
-### 3.2 边界定义（Admin Scope）
+> 这就是第 6 章"SSM 六条规则"的安全价值：**规则 1/4 让非请求源的数据根本无法沿 `(*,G)` 注入**。
 
-```cisco
-! 在边界路由器上定义边界
-ip multicast boundary admin-scope
-ip multicast boundary 239.0.0.0/8
-```
+---
 
-- `admin-scope`：使用默认的 239/8 边界语义；
-- 显式列表：自定义哪些组不能穿越边界。
+## 4. 控制面：谁都能当 RP
 
-### 3.3 Register 过滤（防伪源，最重要的防伪源手段）
+Auto-RP 与 BSR 都没有认证机制（Auto-RP 尤其：`224.0.1.39` 的 announce 谁都能发）。后果：
 
-```cisco
-! 仅允许 10.1.1.0/24 的源向 RP 注册
-ip pim accept-register list SSM-SOURCES
-ip pim accept-register from 10.1.1.0 list SSM-SOURCES
-```
+- 攻击者在任意位置发 C-RP Announce → **MA 可能接受并全网下发**；
+- 若其 IP 更高，甚至可能赢过合法 RP（Aweya p.304 的"选最高 IP"规则）；
+- 结果是全网组播被导向攻击者（黑洞或嗅探）。
 
-**两种模式**：
+防护只能靠"边界 + 过滤"：
 
-| 模式 | 行为 |
+| 机制 | 防护点 |
 |---|---|
-| **accept-register list** | 匹配列表 → **接受**注册；不匹配 → **丢弃** |
-| **accept-register from <prefix> list <list>** | 指定"来自某来源的注册，按 list 过滤"（用于多 RP 分场景） |
-
-> **价值**：这是 ASM 环境中唯一能防止"任意主机伪造源注册到 RP"的有效手段。**每个生产环境的 RP 都必须配置**。
-
-### 3.4 MSDP 防护
-
-```cisco
-ip msdp peer 10.2.2.2 connect-source Loopback0 password <strong>
-ip msdp peer 10.2.2.2 connect-source Loopback0
-!
-ip msdp filter-list 10 permit 10
-ip msdp originator-id Loopback0
-```
-
-- **MD5 认证**防伪造对等体（现网仍有老设备只支持 password 哈希，注意强度）；
-- **filter-list** 控制哪些源可从该 peer 接收 SA；
-- **originator-id** 保证 SA 的可信归属（与 Anycast-RP 强相关）。
+| Auto-RP | 只允许合法 RP 地址的 announce 进入（ACL 过滤 224.0.1.39/40 的源）；RP 地址用 prefix-list 白名单 |
+| BSR | 过滤 BSM（224.0.1.40）的源；只信任核心区发来的 BSM |
+| 静态 RP | 无协商 = 无劫持面，但运维成本高 |
 
 ---
 
-## 4. 二层防护
+## 5. MSDP：mesh-group 的信任放大
 
-| 措施 | 配置 | 说明 |
-|---|---|---|
-| IGMP Snooping | `ip igmp snooping vlan <v>` | 二层组播收敛（最基础的防洪泛手段） |
-| MLD Snooping | `mld snooping`（部分平台） | IPv6 对应 |
-| 限制 IGMP 报文来源 | `ip igmp access-group <acl>`（部分平台/方向） | 防止主机伪造 IGMP |
-| 端口隔离 | `switchport port-isolate` / PVLAN | 防止组播横向扩散 |
-| 边缘端口不信任 | `ip igmp snooping vlan <v> mrouter interface never` | 防止终端冒充路由器 |
+Aweya p.383 有一句非常关键的话（原文可核对）：
 
----
+> 使用 MSDP mesh-group 意味着来自 mesh-group 成员的 SA 消息**总会被接受，不再需要 peer-RPF 检查**。
 
-## 5. 限速
+工程含义：**mesh-group 把"逐条校验"换成了"整组信任"**。一个成员被攻破或配置错误，它发出的任意 SA 会被全体成员无条件接受，进而让全域去建立到伪造源的树。
 
-```cisco
-ip multicast rate-limit 500            ! 每接口 pps 上限（部分平台）
-ip multicast rate-limit 100000 10       ! 桶大小
-policy-map PM-GROUP
- class class-default
-  police cir 10000000 conform-action transmit exceed-action drop
-```
+对应的防护（Aweya p.381、385、413 提供了机制）：
 
-- 设备默认对组播做 pps 限速（防攻击），但会误伤**小包高包率**业务（视频、遥测）；
-- **业务上线前必须核对限速策略**（ch01 案例 1-5 已记录该风险）。
+- **IP Prefix List**：default peer 只在指定前缀范围内被信任（p.381）；
+- **SA 过滤规则**：对接收/转发的 SA 按 `(S,G)` 过滤（p.385、p.413）；
+- **SA 缓存与限速**：p.383 —— 路由器**必须**缓存 SA；且通告节奏被限制在"不超过 SA-Adv 定时器的 2 倍、且每个周期至少一次"，用于**抑制 SA 转发风暴**；
+- **对等体 DoS 防护**：p.384 提到可用 SA 过滤保护 peer 免受 DoS。
 
----
-
-## 6. 生产案例（6 例）
-
-### 案例 11-1：行情源被伪造，业务数据被污染
-
-**现象**：某交易日出现异常报价，溯源发现源地址被冒用。
-**定位**：RP 上 `show ip pim rp-address`；检查 RP 是否配置 `ip pim accept-register list`；对比源服务器日志。
-**根因**：RP 接受任何源的 Register，攻击者从内网任意主机伪造源地址注册。
-**处置**：配置 `ip pim accept-register list ALLOWED-SOURCES`；同时在源服务器侧做 eBPF/iptables 限制可发组播的端口。
-**复盘**：**"源白名单"是行情类业务的底线**，RP 必须配置 accept-register。
-
-### 案例 11-2：组播反射放大攻击
-
-**现象**：某公网可达的组播地址被用作反射放大源，攻击流量打向受害方。
-**定位**：边界设备上 `show ip mroute` 看到来自外部的大批组播；`netstat -ano` 显示源 IP 被伪造。
-**根因**：边界未启用 Admin Scope 边界（239/8 自动剪断缺失），外部组播被引入内网再反射出去。
-**处置**：边界配置 `ip multicast boundary admin-scope`；关闭不必要的组播监听；对边界做 ACL 限速。
-**复盘**：**边界设备必须默认拒绝组播入向**，除非有明确业务需求。
-
-### 案例 11-3：非法终端成功加入敏感组
-
-**现象**：某终端未授权却收到行情流。
-**定位**：接入交换机 `show ip igmp snooping groups` 出现该 MAC；检查 VLAN 内是否所有端口都允许组播。
-**根因**：接入端口未做组播准入控制（未启用 IGMP Snooping 或未限制组范围）。
-**处置**：启用 IGMP Snooping；在接入层限制允许的组地址范围（ACL 或 VLAN 划分）；敏感业务使用独立 VLAN + 独立组段。
-**复盘**：组播的"加入"本质是二层广播行为，**接入层是唯一可靠的准入点**。
-
-### 案例 11-4：组播业务被限速导致视频卡顿
-
-**现象**：4K 直播在接入层正常，汇聚后卡顿；`show policy-map` 显示组播被 police。
-**定位**：QoS 策略中组播落入 class-default，被默认 policer 限制。
-**根因**：默认 class 的 policer 面向单播小包设计，组播小包率高导致超限。
-**处置**：为组播单独建 class 并给足带宽与 pps。
-**复盘**：QoS 设计必须显式包含组播流，默认策略往往是"隐形杀手"。
-
-### 案例 11-5：MSDP peer 被中间人劫持
-
-**现象**：SA 中出现不认识的源；MSDP peer 频繁重连。
-**定位**：抓包发现 MSDP TCP 会话被中间设备劫持（未加密 + 弱认证）。
-**根因**：MSDP 使用 password 认证（可被嗅探与暴力破解），未使用 MD5。
-**处置**：升级为 MD5 认证；对等体间启用加密保护或专线。
-**复盘**：MSDP/TCP 是跨域组播的攻击面，认证方式必须用最强可用选项。
-
-### 案例 11-6：多租户 DC 中组播跨租户泄漏
-
-**现象**：租户 A 的组播流在租户 B 的抓包中出现。
-**定位**：EVPN route-type 10 与 VNI 成员列表不一致；L3 侧检查 VRF import/export。
-**根因**：二层 BUM 泛洪路径未按租户收敛（缺 route-type 10），或 VRF Select 规则过宽。
-**处置**：启用组播专用 NLRI；收紧 VRF 过滤；对多租户环境默认禁止跨 VNI 组播。
-**复盘**：多租户组播隔离要做**两层**：L2（VNI/BD 隔离）+ L3（VRF 过滤）。
-
----
-
-## 7. 组播安全加固清单（可直接用于方案评审）
-
-```
-□ 组播地址段规划：SSM(232/8)、私有(239/8)、GLOP(233/8) 分域使用，敏感业务独立段
-□ 边界设备：ip multicast boundary admin-scope（默认拒绝跨域组播）
-□ RP：ip pim accept-register list（源白名单）
-□ RP：静态/动态 RP 发现双保险，且记录当前映射
-□ MSDP：MD5 认证 + filter-list + originator-id
-□ 接入层：全网 IGMP Snooping / MLD Snooping，配置 querier
-□ 接入层：终端 IGMP 版本统一（≥v2，建议 v3）
-□ QoS：组播单独 class，确认限速阈值满足业务 pps 需求
-□ 监控：组播流条数/带宽/组数突变告警；mroute 表项数告警
-□ 审计：静态 mroute 全部登记造册（含环路分析）
-□ 变更：新增 PIM 域/组地址必须走变更评审，检查 IGMP 版本与 TTL
+```bash
+show ip msdp sa-cache summary          # 条目总数，异常增长即预警
+show ip msdp peer                      # 收发计数
+ip msdp sa-filter in <peer> ...        # 收方向过滤
+ip msdp sa-filter out <peer> ...       # 发方向过滤
 ```
 
 ---
 
-## 8. 自测清单
+## 6. 边界：唯一真正有效的防线
 
-1. 组播反射放大攻击的原理是什么？为什么组播放大倍数特别高？
-2. `ip pim accept-register list` 防的是什么攻击？两种模式差别？
-3. Admin Scope 边界为什么能防住外部组播注入？
-4. MSDP 有哪几种认证方式？各自强度？
-5. 为什么"接入层"是组播准入控制最可靠的执行点？
-6. 组播限速的默认行为是什么？会误伤哪类业务？
-7. 多租户环境做组播隔离需要在哪两层同时下手？
+Volume II p.13–14 的观点：**跨越国际互联网收发组播必须有安全边界**；应用与安全要求常常要求更紧的域边界（安全分区）。
 
-## 9. 延伸阅读
+可落地的四层清单：
 
-- iPexpert Ch13（P.13-1–13-19）：Multicast Security and Advanced Features（Catalyst 过滤、Multicast Route Limiting、GRE 隧道承载组播）
-- Volume II Ch1（P.100–P.105）：Protecting Domain Borders and Interdomain Resources / Firewalling IP Multicast
-- Aweya Ch5.7（P.269–P.272）：Register 消息处理
-- 延伸：`RFC 2365`（Admin Scope）、`RFC 7761 §4.5.1`（accept-register）、`RFC 3974`（MSDP 认证）
+| 层 | 必做项 |
+|---|---|
+| 接入 | 组地址白名单、每端口组数限制、snooping + querier |
+| 域内 | 只允许核心设备发 PIM/BSR/Auto-RP；接入层关闭 PIM（除非是 DR） |
+| 域间 | `multicast boundary`（按 239.x 范围）、只放行 ASM 或 SSM 之一、过滤 224.0.1.39/40 的源 |
+| 数据面 | CoPP 限速 PIM/IGMP/ICMPv6、uRPF 谨慎使用、组播 ACL 落在入向 |
+
+![组播安全边界与四层过滤](../../diagrams/d16-security.svg)
+
+---
+
+## 7. 八个工程案例
+
+> 典型化场景，用于训练推理路径。
+
+### 案例 1：某办公区加入一个"测试组"，全楼视频卡顿
+
+- **现象**：某楼层带宽突增，`show ip mroute` 出现非业务组。
+- **定位**：`show ip igmp groups`（哪些端口加入）、接入交换机端口统计。
+- **根因**：主机随意加入高码率组，或恶意脚本批量加入（组劫持）。
+- **处置**：接入端口加 IGMP profile 白名单与组数限制。
+- **复盘**：**IGMP 无认证，接入侧必须假设"任何主机都可能乱发"**。
+
+### 案例 2：接收端收到"冒充源"的行情数据
+
+- **现象**：同一组内出现异常内容；源地址与合法源相同或相近。
+- **定位**：抓包比对源 MAC/源 IP、`show ip mroute` 的入接口。
+- **根因**：攻击者在另一位置伪造源地址发包，RPF 只校验路径不校验身份。
+- **处置**：迁到 SSM（显式订阅源）+ 应用签名；接入侧禁止用户口发组播。
+- **复盘**：**RPF 不等于认证**，这是组播安全的第一常识。
+
+### 案例 3：接入层组播泛洪打满上行
+
+- **现象**：交换机上行 1 Gbps 打满，未订阅的主机也收到流量。
+- **定位**：`show ip igmp snooping`、端口广播/组播速率。
+- **根因**：snooping 未开或 querier 缺失，组播按广播泛洪。
+- **处置**：开启 snooping + querier，配置 storm control。
+- **复盘**：**"组播省带宽"依赖最后一跳的 snooping**，否则等于广播。
+
+### 案例 4：mesh-group 内一台 RP 被入侵，全域建立伪造树
+
+- **现象**：多域突然出现大量 `(S,G)`，源地址陌生；`sa-cache` 条目暴涨。
+- **定位**：`show ip msdp sa-cache` 的 originator、`show ip msdp peer` 的 mesh-group 成员。
+- **根因**：mesh-group 成员间不做 peer-RPF，伪造 SA 被无条件接受（Aweya p.383）。
+- **处置**：加 SA 过滤（前缀白名单）、隔离被入侵节点、必要时拆 mesh-group。
+- **复盘**：**便利性与校验强度是反比**；mesh-group 越大，信任放大越严重。
+
+### 案例 5：有人把自己宣告成 RP，全网被黑洞
+
+- **现象**：全域组播突然中断，`show ip pim rp mapping` 显示陌生 RP。
+- **定位**：RP 映射表的来源与地址、`show ip mroute 224.0.1.39/40` 的入接口。
+- **根因**：Auto-RP announce 无认证，攻击者在接入层发送 announce，且 IP 更高获胜。
+- **处置**：边界 ACL 只允许核心 RP 地址的 announce；接入层禁用 PIM。
+- **复盘**：**Auto-RP/BSR 的"选举规则"会被攻击者利用**——IP 高者胜意味着可控性差。
+
+### 案例 6：外部注入 BSM，跨域组播走错 RP
+
+- **现象**：与某运营商互联后，部分组走错 RP；`show ip pim bsr-router` 指向外部设备。
+- **定位**：`show ip pim bsr-router`、`show ip mroute 224.0.1.40`、边界 ACL。
+- **根因**：BSM 未被边界过滤，外部 BSR 被接受。
+- **处置**：边界阻断 224.0.1.40 与 224.0.0.13 的入向；组播边界只放行业务组。
+- **复盘**：**组播控制面报文的"入向过滤"是最低成本的防线**。
+
+### 案例 7：PIM 状态耗尽导致核心设备重启
+
+- **现象**：核心 CPU/内存飙升，`show ip mroute summary` 条目数异常；随后 OSPF 邻居抖动。
+- **定位**：`show ip mroute summary`、`show proc cpu sorted`、CoPP 计数。
+- **根因**：大量伪造 `(S,G)`（或扫描器）触发状态建立，控制面被打满。
+- **处置**：CoPP 限速 PIM/IGMP、关闭非必要接口 PIM、加 SA 过滤。
+- **复盘**：**组播攻击的载体常常是"状态"，而不是带宽**。
+
+### 案例 8：加固后业务中断——ACL 拦了 IGMP/MLD
+
+- **现象**：安全加固上线后，部分楼宇组播不通；`show ip igmp groups` 为空。
+- **定位**：接口 ACL 命中计数、抓包看 IGMP/ICMPv6（v6 场景）。
+- **根因**：ACL 只放行 TCP/UDP，IGMP（协议号 2）与 ICMPv6 MLD 被丢。
+- **处置**：显式放行 IGMP 与 MLD 类型；加固清单里加入"组播控制面协议"。
+- **复盘**：**安全与可用性是同一枚硬币**——加固必须包含"业务所需的异常协议"。
+
+---
+
+## 8. 十问自测
+
+1. 组播的五个结构性弱点？
+2. 为什么说 RPF 不是安全机制？
+3. 组劫持的最小攻击面是什么？
+4. SSM 如何缓解源伪造？
+5. mesh-group 为什么"免除 peer-RPF"？风险是什么？
+6. SA 缓存的两个作用？
+7. Auto-RP 无认证时，防护靠什么？
+8. BSM 应该在哪一层过滤？
+9. CoPP 保护的是哪类资源？
+10. 加固方案要额外放行哪两个"非 TCP/UDP"协议？
+
+---
+
+## 9. 原文精读索引
+
+> 纸面页码：Aweya = PDF 页 − 21；Volume II = PDF 页 − 18。
+
+| 知识点 | 书/节 | 纸面页 | 原文可核对要点 |
+|---|---|---|---|
+| default MSDP peer 与前缀过滤 | Aweya §6.6 | p.381 | 多个 default peer 时只有主 peer 生效；配置 IP Prefix List 后可按前缀分别接受 |
+| **mesh-group 免除 peer-RPF** | Aweya §6.6 | p.383 | “Source-Active messages will always be accepted from mesh-group peers without requiring peer-RPF checks” |
+| SA 必须缓存与限速 | Aweya §6.7 | p.383 | RFC 3618 要求 MUST cache；通告周期 ≤ 2×SA-Adv 且每周期至少一次，抑制风暴 |
+| SA 缓存的内存代价 | Aweya §6.7.1 | p.383 | 缓存条目越多占用内存越大 |
+| 对 peer 的 DoS 防护 | Aweya §6.8 | p.384 | 可用过滤规则保护 peer 免受 DoS |
+| SA 过滤规则配置 | Aweya §6.8.3 | p.385 | 可对发送/接收方向的 `(S,G)` 过滤 |
+| 过滤 SA 的运维价值 | Aweya §6.14 | p.413 | 运营商可决定哪些源写入 SA |
+| 组播的安全边界与分区 | v2 Ch1 | p.13–14 | 跨互联网收发组播需安全边界；应用/安全要求需要更紧的域边界 |
+
+---
+
+## 10. 延伸
+
+- 标准：RFC 3618（MSDP，含 SA 过滤）、RFC 4607（SSM）、RFC 5796（PIM-SM 的 DoS 考量）
+- 下一章：排障方法论——把前面 10 章串成一套四步法
+- 回顾：第 2 章 IGMP、第 5 章 RP 发现（无认证的两个机制）、第 7 章 MSDP

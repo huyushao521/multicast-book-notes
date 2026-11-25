@@ -14,10 +14,10 @@ import re
 import sys
 
 BOOKS = {
-    "w": ("Developing IP Multicast Networks _Beau Williamson_ _z-librar.txt", 22),
+    "w": ("Developing IP Multicast Networks _Beau Williamson_ _z-librar.txt", 21),
     "a": ("IP Multicast Routing Protocols Concepts and Designs _James A.txt", 21),
-    "v2": ("IP Multicast_ Volume II Advanced Multicast Concepts and Larg.txt", 22),
-    "i": ("IP Multicast _iPexpert_ .txt", 0),
+    "v2": ("IP Multicast_ Volume II Advanced Multicast Concepts and Larg.txt", 18),
+    "i": ("iPexpert-ipv4-6-Multicast-Operations-and-Troubleshooting.txt", 0),
 }
 def find_extract():
     """向上回溯找到含 _extract 的目录（书籍文本存于同级的另一个项目目录）。"""
@@ -57,6 +57,8 @@ def main():
     ap.add_argument("-r", "--regex", required=True)
     ap.add_argument("-n", "--max", type=int, default=12, help="每个模式最多输出几条")
     ap.add_argument("-c", "--context", type=int, default=0, help="命中行后附加行数")
+    ap.add_argument("-f", "--from", dest="pfrom", type=int, default=0, help="起始纸面页")
+    ap.add_argument("-t", "--to", dest="pto", type=int, default=0, help="结束纸面页")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
 
@@ -73,6 +75,11 @@ def main():
             page = int(m.group(1))
             continue
         if page is None or page - off < 1:      # 跳过目录（罗马页码／未编页）
+            continue
+        paper = page - off
+        if args.pfrom and paper < args.pfrom:
+            continue
+        if args.pto and paper > args.pto:
             continue
         if not pat.search(line):
             continue

@@ -1,202 +1,205 @@
-# ch10 IPv6 组播（MLD / Embedded-RP / IPv6 MVPN）
+# 第 10 章 IPv6 组播：同一套树，另一套地址与成员协议
 
-> **来源**：iPexpert Ch14（P.14-1–14-9）、Aweya Ch1.4.5（IPv6 地址与 MAC 映射）、Volume II Ch3（IPv6 MVPN, P.220–P.219）
-> **配图**：[D15 IPv6 组播模型](../../diagrams/d15-ipv6.svg)
-
----
+> 精读来源：**Aweya §1.3（p.5：FF02::1 与 link-local 作用域的实际用法）、p.8（`11111111` 前缀与 FF00::/8、Scope 字段的六种取值）、p.9（MLD 与 IGMP 的对应关系）、p.15（`FF02::D` 作为 All-PIM-Routers）、p.19（IGMPv3/MLDv2 的源过滤）**
+> 本章解决的问题：IPv6 组播**没有引入新协议**——PIM 状态机、RPF、SPT 切换全部复用；变的是**地址结构、成员协议（MLD）、以及"组播依赖 ICMPv6"这一点**，而最后一点是现网最高频的坑。
 
 ## 学习目标
 
-1. 说出 IPv6 组播地址结构与作用域（scope）体系；
-2. 解释 MLDv1/v2 与 IGMPv1/v3 的对应关系及 MLD Snooping；
-3. 说清 Embedded-RP 的编码原理与它为什么"不需要 MSDP"；
-4. 掌握 IPv6 下的 PIM 差异与 IPv6 MVPN 的部署要点；
-5. 排查 IPv6 组播典型故障。
+1. 拆开 IPv6 组播地址的 4 个字段，说出 Scope 六种取值；
+2. 记住 5 个必背的知名组地址（含 `FF02::D`）；
+3. 说清 MLDv1/v2 与 IGMPv2/v3 的对应关系，以及 MLDv2 为什么是 SSM 的前提；
+4. 解释"MLD 走 ICMPv6"带来的 ACL 陷阱；
+5. 说清 PIM over IPv6 为什么必须用 link-local 地址做邻居；
+6. 在双栈环境下判断"v4 组播正常、v6 组播不通"该从哪开始查。
 
 ---
 
-## 1. IPv6 组播地址
+## 1. 地址结构：8 + 4 + 4 + 112
+
+Aweya p.8：IPv6 组播地址以二进制前缀 **`11111111`**（即 **`FF00::/8`**）开头，随后是：
 
 ```
-|   8    |  4    |  4    |               112 bits               |
-+--------+-------+-------+-------------------------------------+
-| 111111 | flags | scope |            Group ID                 |
-+--------+-------+-------+-------------------------------------+
+| 8 bit  | 4 bit  | 4 bit   | 112 bit        |
+|11111111| flags  | scope   | group ID       |
+   FF       0-F      1,2,5,8,E   任意
 ```
 
-- 前缀固定 `FF00::/8`；
-- **flags**：T（临时地址）、P（基于前缀）、R（预留）；
-- **scope**：
+**Scope 字段**（p.8 列出的六种）：
 
-| scope | 含义 | 跨路由器 |
+| 值 | 名称 | 含义 |
 |---|---|---|
-| 0 | 本节点 | 否 |
-| 1 | 链路本地 | 否 |
-| 2 | 链路本地 | 否 |
-| 3 | 区域域（Realm-local） | 有限 |
-| 4 | **管理域（Admin-local）** | 有限（对应 IPv4 的 Admin Scope） |
-| 5 | **站点本地（Site-local）** | 跨域但限于站点 |
-| 8 | **组织本地（Organization-local）** | 跨域 |
-| 14 | 全局 | 是 |
+| 1 | Interface-Local | 本接口（回环测试） |
+| 2 | Link-Local | 本链路（**最常用**） |
+| 5 | Site-Local | 站点内 |
+| 8 | Organization-Local | 组织内 |
+| E | Global | 全局 |
 
-**关键差异（与你的笔记一致）**：IPv6 用 **scope（作用域标识）** 划分组播域，**不再需要 IPv4 那样的边界路由器（BGR）+ Admin Scope 机制**。
+这个字段是 IPv4 完全没有的能力：**同一个组 ID 可以在不同 scope 下是"不同的组"**。所以"v6 组播不通"有一类根因是**作用域不匹配**——应用申请 `FF05::` 而路由器只转发 `FF0E::`，或者边界路由器按 scope 做了过滤。
 
-**MAC 映射**：前缀固定 `33:33`，取低 32 位 → **同样存在 32 路冲突**（Aweya 1.4.5）。
+### 1.1 五个必背地址
 
----
-
-## 2. MLD（Multicast Listener Discovery）
-
-| 版本 | 对应 IPv4 | 报文 |
-|---|---|---|
-| **MLDv1** | IGMPv2 | Listener Query（130）、Listener Report（131）、Listener Done（132） |
-| **MLDv2** | IGMPv3 | 支持 (G,S) 订阅、源过滤、Record Type |
-
-- MLD 是 **ICMPv6 的一个子协议**（类型 130–132）；
-- **MLD Snooping**：二层交换机监听 MLD 报文收敛组播，等价于 IGMP Snooping；
-- 路由器上 MLD 与 PIM 配合：**MLD 负责成员发现，PIM 负责转发**。
-
-> **关键对应关系（记忆点）**：MLDv1 ↔ IGMPv2（都有 Leave/Done）；MLDv2 ↔ IGMPv3（都有 (G,S) 与源过滤）。
-
----
-
-## 3. Embedded-RP（RFC 4607）
-
-![IPv6 组播模型](../../diagrams/d15-ipv6.svg)
-
-### 3.1 问题
-
-IPv4 的 ASM 跨域需要 **MSDP**（交换 SA）来让远端的 RP 知道源的地址。IPv6 不想这么复杂。
-
-### 3.2 解法：把 RP 地址"编码"进组地址
-
-- 约定一组 IPv6 组播地址（如 `FF7x:...::/96`）专门用于 Embedded-RP；
-- **组地址的低 32 bit** 编码为 `FF02::FFxx:xxxx`，其中 `xx:xxxx` 就是 **RP 地址的低 32 位**（RPA）；
-- 接收端收到组播包时，直接从组地址推导出 RP 地址，**不需要任何信令**。
-
-**前提**：接收端能通过**单播路由**解析该 RPA 地址（因此 RP 必须是全局可达或至少在单播域内可达）。
-
-### 3.3 收益
-
-| 收益 | 说明 |
+| 地址 | 用途 |
 |---|---|
-| **不需要 MSDP** | IPv6 域间组播不用部署 MSDP + MBGP 组合 |
-| **不需要 BSR** | 无需 RP 发现机制 |
-| **单一全球 RP 即可** | 与你的笔记一致："single RP within globally shared MC domains (eliminates need for MSDP)" |
+| `FF02::1` | All-Nodes（所有节点） |
+| `FF02::2` | All-Routers |
+| `FF02::5` / `FF02::A` | OSPFv3 / EIGRPv6 |
+| **`FF02::D`** | **All-PIM-Routers**（对应 IPv4 的 224.0.0.13，Aweya p.15） |
+| `FF02::1:FFxx:xxxx` | Solicited-Node（ND 用，非"应用组播"） |
 
-### 3.4 SSM 段
+Aweya p.5 有个细节值得记：**`FF02::1` 虽然存在，但目前没有 IPv6 协议真的向它发包**——节点各自加入所需的 link-local 组（如 NTP 用 `FF02::101`）。所以"抓到 FF02::1 就以为有协议在用"是误判。
 
-- IPv6 的 **FF3x::/32** 为 SSM 段，天然无需 RP；
-- 配合 **MLDv2** 使用。
-
----
-
-## 4. IPv6 下的 PIM
-
-- **PIMv2 for IPv6**（RFC 7761）：协议框架与 IPv4 相同，地址族不同；
-- **地址类型变化**：PIM 报文中的 Group/Source 地址从 32 位变为 128 位；
-- **Bootstrap Router**：IPv6 也用 BSR 分发 Group→RP 映射（组播路由组 `FF02::2:66`）；
-- **IPv6 Embedded RP** 与 BSR 可共存。
+![IPv6 组播地址格式与 MLD](../../diagrams/d15-ipv6.svg)
 
 ---
 
-## 5. IPv6 MVPN（Volume II Ch3）
+## 2. MLD：IGMP 的 IPv6 版本
 
-- MVPN 的 IPv6 版本（RFC 6513 扩展 / Draft）支持 IPv6 组播；
-- 关键点：
-  - PE 间用 **MLDP** 建 Default MDT / Data MDT；
-  - VPNv6 地址族与 IPv4 MVPN 并列配置；
-  - IPv6 组播同样受"同 VNI/同 VRF 边界"约束；
-  - 大规模 IPv6 域间组播通常用 **SSM（FF3x::/32）** 以规避 MSDP 复杂度。
+Aweya p.9 明确：**MLD（RFC 2710 / RFC 3810）与 IGMP 在组播成员管理上是对应关系**；p.19 进一步：IGMPv3 对应 IPv4、**MLDv2 对应 IPv6**，两者都提供"订阅 channel `(S,G)`"的能力。
 
----
+| IPv4 | IPv6 | 能力 |
+|---|---|---|
+| IGMPv1 | — | 无 leave |
+| IGMPv2 | MLDv1 | 有 leave（MLD Report/Done） |
+| **IGMPv3** | **MLDv2** | **源过滤（SSM 前提）** |
 
-## 6. 排障命令
+### 2.1 最大的坑：MLD 跑在 ICMPv6 上
 
-```cisco
-show ipv6 mroute
-show ipv6 mroute <group> detail
-show ipv6 mld groups
-show ipv6 mld groups <group>
-show ipv6 mld interface
-show ipv6 mld neighbor
-show ipv6 igmp? (不存在，IPv6 用 mld)
-show ipv6 pim neighbor
-show ipv6 pim interface
-show ipv6 pim rp mapping
-show ip igmp snooping groups vlan 10   ! 若设备支持 IPv6 MLD snooping 用 show ipv6 mld snooping
-show ipv6 mroute vrf <vrf>
-debug ipv6 mld
-debug ipv6 pim
+MLD 报文不是独立的传输层协议，而是 **ICMPv6 报文类型 130（Query）/ 131（Report）/ 132（Done）**。含义很直接：
+
+> **任何"只放行 TCP/UDP"的 ACL，都会顺手掐死 MLD**；而 MLD 死了，组播成员关系就建不起来。
+
+这条与第 2 章"接口 ACL 只放行 UDP 却拦了 IGMP"是同一类错误，但在 IPv6 里更隐蔽——因为很多人不知道 MLD 属于 ICMPv6。
+
+```bash
+show ipv6 mld groups                 # 成员表
+show ipv6 mld interface              # querier 状态
+show ipv6 mroute                     # (S,G) 与 (*,G)
+show ipv6 pim neighbor               # PIM 邻居（link-local）
 ```
 
 ---
 
-## 7. 生产案例（6 例）
+## 3. PIM over IPv6：复用状态机，换掉地址
 
-### 案例 10-1：IPv6 组播源收不到 MLD Report
+- **邻居与报文**：PIM Hello 发往 `FF02::D`（Aweya p.15），逐跳用 **link-local 地址**做下一跳；
+- **状态机完全一致**：`(*,G)`、`(S,G)`、`(S,G,rpt)`、Assert、Register、SPT 切换，一条不少；
+- **RP 发现**：静态 / BSR / Anycast 均可用；嵌入式 RP（RFC 3956）在 v6 里用 `FF7x::/16` 编码 RP 地址，部署比 v4 常见；
+- **SSM**：`FF3x::/32`（见第 6 章）。
 
-**现象**：IPv6 组播不通，源发流正常；`show ipv6 mld groups` 为空。
-**定位**：`show ipv6 mld interface` 显示接口未启用 MLD；`debug ipv6 mld` 无报文。
-**根因**：接口未配置 `ipv6 pim sparse-mode`（PIM 启用后才启用 MLD 监听）。
-**处置**：接口配置 `ipv6 pim sparse-mode`；确认主机已加入 IPv6 组（`ip maddr`）。
-**复盘**：IPv6 的成员管理与 PIM 绑定，不像 IPv4 有独立开关，容易漏配。
+> 工程含义：**IPv6 组播排障 ≠ 学一套新协议**，`show ipv6 mroute` 的 flags 读法与 v4 完全一样（`J`/`T`/`R`/`B`）。真正的新增只有两处：**地址 Scope 与 MLD（ICMPv6）**。
 
-### 案例 10-2：Embedded-RP 组不通
+### 3.1 link-local 邻居的必要性
 
-**现象**：使用 `FF7E::...` 组播地址，接收端加入后无流量；`show ipv6 pim rp mapping` 为空。
-**定位**：确认组地址属于 Embedded-RP 段；检查接收端能否**单播** ping 通推导出的 RPA。
-**根因**：接收端**单播不可达** RPA（推导出的 RP 地址无法解析），或组地址不在 Embedded-RP 规划段内。
-**处置**：保证 RPA 的单播可达性（IGP 通告）；确认地址段规划正确。
-**复盘**：Embedded-RP 的隐含前提是"单播可达"，做方案时必须把单播可达性当作显式检查项。
+IPv6 的 PIM 邻居用 link-local 地址标识（`FE80::/10`）。这带来两个差异：
 
-### 案例 10-3：IPv6 组播跨 AS 不通（仍想用 MSDP）
-
-**现象**：IPv6 跨 AS 组播不通，团队按 IPv4 经验部署 MSDP。
-**定位**：IPv6 场景下 MSDP 不适用；`show ipv6 pim rp mapping` 无学习结果。
-**根因**：IPv6 用 Embedded-RP / SSM 替代 MSDP，部署 MSDP 是"用 IPv4 的思路解决 IPv6 的问题"。
-**处置**：改用 Embedded-RP 或 SSM（FF3x::/32）；删除多余的 MSDP 配置。
-**复盘**：IPv6 组播的核心简化是"去 MSDP、去 BGR"，设计时优先用 SSM。
-
-### 案例 10-4：MLD Snooping 未启用导致二层泛洪
-
-**现象**：IPv6 组播在接入层泛洪到所有端口，带宽浪费；`show ipv6 mld snooping groups` 无内容。
-**定位**：交换机上 MLD Snooping 全局关闭。
-**根因**：交换机默认对 IPv6 组播做泛洪处理。
-**处置**：全局 + per-VLAN 启用 MLD Snooping，并配置 querier。
-**复盘**：新建网络同时规划 IGMP Snooping 与 MLD Snooping，二者机制对称。
-
-### 案例 10-5：IPv6 组播 scope 越界
-
-**现象**：站点本地 scope（FF05::）的组播流跑到了组织本地甚至全局。
-**定位**：检查路由/接口上的 scope 过滤配置；`show ipv6 mroute` 中 scope 异常。
-**根因**：scope 依赖网络规划与设备策略，IPv6 不像 IPv4 有强制的 Admin Scope 边界，必须靠配置约束。
-**处置**：在边界使用 ACL/PBR 限制组地址前缀范围。
-**复盘**：IPv6 的 scope 是"约定 + 策略"，不是"协议强制"，需要在设计中明确每个 scope 的边界执行点。
-
-### 案例 10-6：IPv6 MVPN 中组播跨 VRF 不通
-
-**现象**：VPNv6 站点间组播不通；`show ipv6 mroute vrf` 无条目。
-**定位**：检查 BGP `address-family ipv6 mvpn` 是否配置并对等体激活；核心接口 `mldp` 是否启用。
-**根因**：MVPN 的 IPv6 地址族未激活，或 MLDP 未建立 FEC。
-**处置**：补齐 IPv6 MVPN 地址族与 MLDP；确认 Default MDT 建立。
-**复盘**：IPv6 MVPN 与 IPv4 MVPN 是两套并行配置，容易只做一半。
+1. **配置 RPF/邻居时不能用全局地址"猜"**——一条链路上每台都可能是 `FE80::1`，必须绑定接口（`show ipv6 pim neighbor` 会带接口名）；
+2. **ECMP 下 link-local 邻居无法唯一定位**，因此 v6 组播的多路径排障比 v4 更容易"看不出来"。
 
 ---
 
-## 8. 自测清单
+## 4. 八个工程案例
 
-1. IPv6 组播地址的 flags 与 scope 各占几位？scope=2/5/8 分别是什么域？
-2. MLDv1/MLDv2 分别对应 IPv4 的哪个版本？依据是什么？
-3. IPv6 用什么机制替代了 IPv4 的 Admin Scope 边界？
-4. Embedded-RP 如何把 RP 地址编码进组地址？对接收端的前置要求是什么？
-5. 为什么 IPv6 跨域组播不需要 MSDP？
-6. IPv6 的 SSM 段是哪个？配合什么版本的主机协议？
-7. IPv6 MVPN 需要同时配置哪三样东西？
+> 典型化场景，用于训练推理路径。
 
-## 9. 延伸阅读
+### 案例 1：v4 组播正常，v6 组播完全不通
 
-- iPexpert Ch14（P.14-1–14-9）
-- Aweya Ch1.4.5（P.53–P.54）
-- Volume II Ch3（P.220–P.219）：IPv6 MVPN
-- 延伸：`RFC 3810`（MLD）、`RFC 4607`（Embedded-RP）、`RFC 7761`（PIMv2 IPv6）、`RFC 6513`（MVPN）
+- **现象**：同一套 PIM 配置，`show ip mroute` 有状态，`show ipv6 mroute` 为空。
+- **定位**：`show ipv6 pim neighbor`、`show ipv6 mld interface`、接口是否启用 `ipv6 pim`。
+- **根因**：只开了 `ip multicast-routing`，未开 `ipv6 multicast-routing`；或接口漏配 `ipv6 pim`。
+- **处置**：补齐 v6 组播路由与接口 PIM。
+- **复盘**：**双栈不是"开一个就都有"**，v4/v6 的组播是两套独立进程。
+
+### 案例 2：ACL 放行了 UDP，但 MLD 被拦
+
+- **现象**：主机加入组失败；`show ipv6 mld groups` 无条目。
+- **定位**：接口 ACL 命中计数、抓包看 ICMPv6 类型 130/131/132。
+- **根因**：ACL 只放行 TCP/UDP，MLD（ICMPv6）被丢。
+- **处置**：放行 ICMPv6 MLD 类型（含 ND 所需类型）。
+- **复盘**：**IPv6 里"组播"和"ICMPv6"是绑在一起的**，安全策略要成组考虑。
+
+### 案例 3：应用使用 FF05::，跨域不通
+
+- **现象**：站点内正常，跨站点不通。
+- **定位**：抓包看目的地址 scope、边界路由器的组播边界 ACL。
+- **根因**：`FF05::`（Site-Local）被边界策略按 scope 丢弃，应用本应使用 `FF0E::`。
+- **处置**：统一应用的 scope 规划；边界显式放行所需 scope。
+- **复盘**：**scope 是"隐式 ACL"**，不写在配置里，但会被实现与策略当真。
+
+### 案例 4：MLDv1 主机访问 SSM 频道
+
+- **现象**：主机加入 `FF3E::1` 无流量。
+- **定位**：`show ipv6 mld groups detail`（版本）、抓包看 Report 版本。
+- **根因**：MLDv1 无法表达源过滤，路由器回退为任意源，SSM 规则拒绝。
+- **处置**：升级主机栈至 MLDv2；或用 SSM mapping。
+- **复盘**：与第 6 章案例 1 同构——**SSM 是端到端能力**。
+
+### 案例 5：PIM 邻居用全局地址配置，起不来
+
+- **现象**：`show ipv6 pim neighbor` 为空；接口 up。
+- **定位**：接口 link-local 地址是否存在（`show ipv6 interface brief`）、是否被 `ipv6 enable` 抑制。
+- **根因**：接口未生成/未启用 link-local（少见但存在），PIM 无可用下一跳。
+- **处置**：确保接口启用 IPv6 并具备 link-local。
+- **复盘**：**v6 组播的邻居关系挂在 link-local 上**，不是全局地址。
+
+### 案例 6：嵌入式 RP 未配置，v6 域内无 RP
+
+- **现象**：`show ipv6 pim rp mapping` 为空；`(*,G)` 建不起来。
+- **定位**：`show ipv6 pim bsr-router`、静态 RP 配置、嵌入式 RP 配置。
+- **根因**：既没有 BSR、也没有静态 RP；应用却按"有 RP"的 ASM 模式工作。
+- **处置**：配置 BSR 或静态 RP；若使用嵌入式 RP，确认组地址格式正确。
+- **复盘**：**v6 没有 Auto-RP**（Cisco 私有，仅 v4），只能在 BSR / 静态 / 嵌入式之间选。
+
+### 案例 7：Anycast RP 在 v6 下 MSDP 不可用
+
+- **现象**：v4 用 MSDP 做 Anycast-RP 正常，v6 同样思路配不通。
+- **定位**：MSDP 是否支持 IPv6（多数实现不支持 v6 传输）；`show ipv6 pim` 相关命令。
+- **根因**：MSDP 在 v6 场景支持有限，需改用 RFC 4610 的 PIM Anycast-RP。
+- **处置**：改用 `ipv6 pim anycast-rp`。
+- **复盘**：**v6 的 Anycast-RP 更依赖 PIM 自身机制**（呼应第 5 章 p.331–332）。
+
+### 案例 8：组播流量被视为异常，被 uRPF 丢弃
+
+- **现象**：v6 组播在边界被丢；单播正常。
+- **定位**：接口 `ipv6 verify unicast source`（uRPF）配置与计数。
+- **根因**：严格 uRPF 对组播源地址（常在非对称路径上）误判。
+- **处置**：组播域内关闭严格 uRPF，或改 loose 模式。
+- **复盘**：**uRPF 是组播的隐形杀手**，v4/v6 都一样，只是 v6 的排障工具更少、更容易漏。
+
+---
+
+## 5. 十问自测
+
+1. IPv6 组播地址的四个字段分别是什么？
+2. Scope 的六种取值及含义？
+3. `FF02::D` 对应 IPv4 的哪个地址？
+4. 为什么说 `FF02::1` 实际很少被使用？
+5. MLDv1/v2 分别对应 IGMP 的哪个版本？
+6. MLD 承载在什么协议上？报文的三个类型号？
+7. PIM over IPv6 的邻居为什么用 link-local？
+8. v6 为什么没有 Auto-RP？
+9. 嵌入式 RP 的地址前缀是什么？
+10. 双栈环境下 v4 通、v6 不通，最先查哪三条命令？
+
+---
+
+## 6. 原文精读索引
+
+> 纸面页码：Aweya = PDF 页 − 21。
+
+| 知识点 | 书/节 | 纸面页 | 原文可核对要点 |
+|---|---|---|---|
+| `FF02::1` 与 link-local 作用域 | Aweya §1.3 | p.5 | All-Nodes 地址目前无协议使用；节点按需加入 `FF02::101` 等 |
+| 前缀 `11111111` / `FF00::/8` | Aweya §1.3 | p.8 | IPv6 组播地址的二进制前缀 |
+| **Scope 六种取值** | Aweya §1.3 | p.8 | Interface / Link / Admin / Site / Organization / Global |
+| MLD 与 IGMP 的对应 | Aweya §1.3 | p.9 | MLD（RFC 2710/3810）对应 IGMP 的成员管理 |
+| `FF02::D` 为 All-PIM-Routers | Aweya §1.4 | p.15 | PIM 报文可发往 224.0.0.13 或 `FF02::D` |
+| IGMPv3 / MLDv2 的源过滤 | Aweya §1.5 | p.19 | 订阅 channel `(S,G)`；v4 用 IGMPv3、v6 用 MLDv2 |
+| SSM 的 v6 范围 | Aweya §5.17 | p.342 | `FF3x::/32` |
+
+---
+
+## 7. 延伸
+
+- 标准：RFC 3810（MLDv2）、RFC 2710（MLDv1）、RFC 3956（嵌入式 RP）、RFC 4607（SSM）、RFC 3306（unicast-prefix-based 组地址）
+- 下一章：组播安全（把前面所有"信任假设"逐个拆掉）
+- 回顾：第 2 章 IGMP、第 6 章 SSM、第 9 章 DC（v6 在 DC 中同样常见）

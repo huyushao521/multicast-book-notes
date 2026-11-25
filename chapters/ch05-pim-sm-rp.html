@@ -88,442 +88,519 @@
 
 <main class="main">
   <article class="content">
-<h1 id="ch05-pim-sm-rp">ch05 PIM-SM 状态机与 RP 发现体系</h1>
+<h1 id="5-pim-smregisterspt-rp">第 5 章 PIM-SM：Register、SPT 切换与 RP 发现</h1>
 <blockquote>
-<p><strong>来源</strong>：Aweya Ch5（P.241–P.380，状态机/定时器/DR/Register/Join-Prune/Assert/刷新/RP 发现/SSM）、Williamson Ch7–Ch8、P.148–P.213、Ch12（P.314–P.351）、iPexpert Ch4、Ch7（静态 RP）、Ch8（AutoRP）、Ch9（BSR）
-<strong>配图</strong>：<a href="../diagrams/d08-pim-sm.svg">D08 PIM-SM 三阶段</a>｜<a href="../diagrams/d09-rp-discovery.svg">D09 RP 发现体系</a></p>
+<p>精读来源：<strong>Aweya Ch5（§5.7 Register p.249–272、§5.14 SPT 切换 p.286–292、§5.16 RP 发现 p.301–332）</strong>、<strong>Williamson Ch5–Ch6（p.150–162，共享树与 SPT joins/prunes）、p.164（Register-Stop 语义）</strong>
+本章解决的问题：组播的"拉模型"里，<strong>源不知道谁要收、接收者不知道源在哪</strong>——RP 用一个固定汇合点把两件事解耦。代价是三条额外路径（注册隧道、RPT、SPT 切换）和四套发现机制。</p>
 </blockquote>
-<hr />
 <h2 id="_1">学习目标</h2>
 <ol>
-<li>完整复述 PIM-SM 的三种状态：(*,G)、(S,G)、(S,G,rpt) 及其相互转换；</li>
-<li>说清 Register / Register-Stop、(*,G) Join、(S,G) Join、(S,G,rpt) Prune 的语义；</li>
-<li>掌握 SPT 切换的触发条件与 SPT-bit 机制；</li>
-<li>掌握四种 RP 发现机制（静态 / AutoRP / BSR / Anycast-RP / Embedded-RP）的原理、适用与配置；</li>
-<li>独立完成一次 PIM-SM + BSR 的端到端部署与验证。</li>
+<li>说清 RP 到底解决什么问题：<strong>源的"上"与接收者的"下"如何在 RP 处对接</strong>；</li>
+<li>画出完整时序：IGMP → <code>(*,G)</code> Join 逐跳 → Register 封装 → <code>(S,G)</code> Join → SPT 切换 → <code>(S,G,rpt)</code> Prune；</li>
+<li>分清四个易混概念：<code>Register</code> / <code>Register-Stop</code> / <code>Null-Register</code> / <code>Register-Suppression</code>；</li>
+<li>解释 SPT 切换的三个判据（S 位、阈值、最后一跳发起）以及切换后为什么必须发 <code>(S,G,rpt)</code> Prune；</li>
+<li>对比四种 RP 发现方式（静态 / Auto-RP / BSR / Anycast）的<strong>故障域</strong>，而不是只背配置；</li>
+<li>在 <code>show ip mroute</code> 与 <code>show ip pim rp mapping</code> 之间建立对应关系，看到 <code>R</code>/<code>T</code>/<code>J</code> 标志就知道卡在哪一段。</li>
 </ol>
 <hr />
-<h2 id="1-pim-sm-aweya-521">1. PIM-SM 两个阶段（Aweya 5.2.1）</h2>
-<p><strong>阶段一：构建共享树（RPT）</strong>
-<strong>阶段二：切换到源树（SPT）</strong></p>
-<p><img alt="PIM-SM 三阶段" src="../diagrams/d08-pim-sm.svg" /></p>
-<h3 id="11">1.1 阶段一：源注册</h3>
-<ol>
-<li>源发组播包 → 源所在网段的 <strong>DR</strong> 收到（RPF 检查通过）；</li>
-<li>DR 把组播包<strong>封装进 Register 报文</strong>，发往 <strong>RP</strong>（组播包被"套娃"进单播）；</li>
-<li>RP 收到 Register → 解封装、创建 <code>(S,G)</code> 状态（<strong>注意：此时是共享树上的 (S,G)</strong>）→ 向源侧 DR 回 <strong>Register-Stop</strong>（当不需要继续注册时）；</li>
-<li>同时，RP 把组播包从共享树向下泛洪。</li>
-</ol>
-<h3 id="12">1.2 阶段二：接收者加入</h3>
-<ol>
-<li>接收端主机发 IGMP Report → <strong>Last-hop DR</strong>（收侧 DR）感知到本地有成员；</li>
-<li>收侧 DR 向 RP 发送 **(*,G) Join**（沿树向上游跳）；</li>
-<li>每跳路由器：若已有 <code>(*,G)</code> 状态则<strong>加入</strong>出接口列表；否则<strong>新建</strong> <code>(*,G)</code> 状态并继续向上发 Join；</li>
-<li>到达 RP：RP 把出接口列表加入 <code>(*,G)</code>，并把该组流量沿共享树下发。</li>
-</ol>
-<h3 id="13-spt">1.3 阶段三：SPT 切换（最关键）</h3>
-<p><strong>触发条件</strong>（满足其一）：</p>
-<table>
-<thead>
-<tr>
-<th>条件</th>
-<th>说明</th>
-<th>默认配置</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>收侧 DR 收到 <code>(S,G)</code> Join</td>
-<td>有人请求源树</td>
-<td>启用（默认行为）</td>
-</tr>
-<tr>
-<td>RPT 上的速率超阈值</td>
-<td><code>ip pim spt-threshold</code></td>
-<td>0 kbps（即立即切换）</td>
-</tr>
-<tr>
-<td>特定组不切换</td>
-<td><code>ip pim never-switch</code>（或 <code>no ip pim spt-threshold infinity</code>）</td>
-<td>按组配置</td>
-</tr>
-</tbody>
-</table>
-<p><strong>切换动作</strong>（Aweya 5.14）：</p>
-<ol>
-<li>收侧 DR 向上游发送 <strong><code>(S,G) Join</code></strong> → 建立源树路径；</li>
-<li>收侧 DR 向 RP 发送 <strong><code>(S,G,rpt) Prune</code></strong> → 剪断共享树上该支路；</li>
-<li>在共享树相关状态上置 <strong>SPT-bit（T 标志）</strong>，通知上游"别再往这送这个源的流"。</li>
-</ol>
-<p><strong>SPT-bit 与 RP-bit 的区别</strong>：</p>
-<ul>
-<li><strong>T（SPT-bit）</strong>：置在 <code>(S,G)</code> 与 <code>(*,G)</code> 的出接口上，语义"这个方向已经走 SPT 了"；</li>
-<li><strong>R（RP-bit）</strong>：置在 <code>(S,G)</code> 表项上，语义"这个源已经从 RPT 切换出去"。</li>
-</ul>
-<hr />
-<h2 id="2-aweya-53">2. 状态机细节（Aweya 5.3）</h2>
-<h3 id="21-g">2.1 (*,G) 状态</h3>
-<ul>
-<li>存在于从 RP 到接收者的路径上；</li>
-<li>出接口列表 = 所有"该组有接收者"的分支；</li>
-<li>存在意义：为共享树提供转发能力。</li>
-</ul>
-<h3 id="22-sg">2.2 (S,G) 状态</h3>
-<ul>
-<li>存在于从源到 RP（经 Register 后的下游泛洪）以及 SPT 路径上；</li>
-<li>存在意义：为某个特定源提供转发能力。</li>
-</ul>
-<h3 id="23-sgrpt">2.3 (S,G,rpt) 状态</h3>
-<ul>
-<li><strong>只在共享树（RPT）上存在</strong>，表示"这个源在共享树上还有一条被剪过/正在剪的支路"；</li>
-<li>收侧 DR 发 <code>(S,G,rpt) Prune</code> 后产生；</li>
-<li>RP 收到后置 <strong>RP-bit</strong>，并停止向该方向转发该源的流量。</li>
-</ul>
-<h3 id="24">2.4 状态转换表</h3>
-<table>
-<thead>
-<tr>
-<th>事件</th>
-<th>状态变化</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>收侧收到 IGMP Report</td>
-<td>创建/加入 <code>(*,G)</code>，向上发 <code>(*,G) Join</code></td>
-</tr>
-<tr>
-<td>收侧收到 <code>(S,G) Join</code>（或本地源）</td>
-<td>创建 <code>(S,G)</code>，向上发 <code>(S,G) Join</code>；向 RP 发 <code>(S,G,rpt) Prune</code></td>
-</tr>
-<tr>
-<td>RP 收到 Register</td>
-<td>创建 <code>(S,G)</code></td>
-</tr>
-<tr>
-<td>主机发 Leave</td>
-<td>收侧 DR 发 <code>(*,G) Prune</code> 向上；若无成员则删除 <code>(*,G)</code></td>
-</tr>
-<tr>
-<td>收侧切换到 SPT</td>
-<td>共享树侧置 SPT-bit，删除 <code>(S,G,rpt)</code></td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="3-pim-sm-aweya-54">3. PIM-SM 定时器（Aweya 5.4）</h2>
-<table>
-<thead>
-<tr>
-<th>定时器</th>
-<th>默认</th>
-<th>作用</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Keepalive（RP 侧）</td>
-<td>60 s</td>
-<td>RP 保持 <code>(S,G)</code> 活跃</td>
-</tr>
-<tr>
-<td>Register Retry</td>
-<td>60 s（可配 5–90）</td>
-<td>RP 未收到 Register 时重试</td>
-</tr>
-<tr>
-<td><strong>RP Announce（AutoRP）</strong></td>
-<td>60 s</td>
-<td>候选 RP 宣告间隔</td>
-</tr>
-<tr>
-<td><strong>RP Announce Age</strong></td>
-<td>180 s</td>
-<td>宣告老化</td>
-</tr>
-<tr>
-<td><strong>Mapping Agent Discovery</strong></td>
-<td>28 s</td>
-<td>AutoRP 映射代理宣告间隔</td>
-</tr>
-<tr>
-<td><strong>BSR RP-Announce</strong></td>
-<td>60 s</td>
-<td>BSR 刷新 RP 候选</td>
-</tr>
-<tr>
-<td><strong>BSR RP-Announce Age</strong></td>
-<td>180 s</td>
-<td></td>
-</tr>
-<tr>
-<td><strong>BSR Bootstrap Age</strong></td>
-<td>180 s</td>
-<td></td>
-</tr>
-<tr>
-<td><strong>Join/Prune Holdtime</strong></td>
-<td>210 s</td>
-<td>状态保活</td>
-</tr>
-<tr>
-<td><strong>Assert Holdtime</strong></td>
-<td>90 s</td>
-<td></td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="4-rp">4. RP 发现机制全景</h2>
-<p><img alt="RP 发现体系" src="../diagrams/d09-rp-discovery.svg" /></p>
-<h3 id="41-rp">4.1 静态 RP</h3>
-<div class="codehilite"><pre><span></span><code>ip pim rp-address 10.1.1.1
-ip pim rp-address 10.1.1.1 239.1.0.0 255.255.0.0   ! 带 group-list
-</code></pre></div>
-
-<ul>
-<li>简单可靠，但<strong>多 RP 时需要人工保证 Load-Balancing</strong>（哈希算法见 4.6）；</li>
-<li>大规模网络不推荐。</li>
-</ul>
-<h3 id="42-autorp-ipv4-asm">4.2 AutoRP（仅 IPv4、仅 ASM）</h3>
-<p><strong>两个角色</strong>：</p>
+<h2 id="1-sm">1. 问题定义：SM 要解决的是"两头互不知情"</h2>
 <table>
 <thead>
 <tr>
 <th>角色</th>
-<th>职责</th>
-<th>地址</th>
+<th>知道什么</th>
+<th>不知道什么</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>C-RP</strong>（Candidate RP）</td>
-<td>宣告"我愿意当这个组的 RP"</td>
-<td>宣告到 <strong>224.0.1.39</strong>（RP-Announce）</td>
+<td>源（首跳 DR）</td>
+<td>自己在发 <code>(S,G)</code></td>
+<td>有没有接收者、在哪</td>
 </tr>
 <tr>
-<td><strong>MA</strong>（Mapping Agent）</td>
-<td>仲裁并宣告"组 X 的 RP 是 Y"</td>
-<td>宣告到 <strong>224.0.1.39</strong>（RP-Mapping-Announce）/ <strong>224.0.1.40</strong>（Mapping-Discovery）</td>
+<td>接收者（最后一跳 DR）</td>
+<td>有人要 <code>G</code></td>
+<td>源在哪、源是否已经发流</td>
+</tr>
+<tr>
+<td>RP</td>
+<td>全组的 <code>(*,G)</code> 状态</td>
+<td>只有注册或 Join 告诉它的事</td>
 </tr>
 </tbody>
 </table>
-<p><strong>流程</strong>：</p>
-<ol>
-<li>MA 周期性发 <strong>224.0.1.40</strong>（Mapping-Discovery）宣告自己是 MA；</li>
-<li>C-RP 收到后，向 <strong>224.0.1.39</strong> 发 <strong>RP-Announce</strong>（含 RP 地址 + 组列表）；</li>
-<li>MA 收集 C-RP 的宣告，按组列表做<strong>最具体匹配</strong>（longest-match）决定最终 RP，并发 <strong>RP-Mapping-Announce</strong> 到 224.0.1.39；</li>
-<li>普通路由器监听 224.0.1.39，学习 Group→RP 映射（<code>show ip pim rp mapping</code>）。</li>
-</ol>
-<p><strong>限制与要点</strong>：</p>
+<p>三种结合方式：</p>
 <ul>
-<li><strong>依赖单播路由</strong>：必须能单播到达 224.0.1.39/32，否则整个机制失效；</li>
-<li><strong>依赖 IGMP</strong>：接收 224.0.1.39 需要有 IGMP 成员关系（PIM DR 自动处理）；</li>
-<li><strong>不能跨 AS</strong>（AutoRP 只在域内）；</li>
-<li>需要给 MA 与 RP 之间放行 224.0.1.39/32。</li>
+<li><strong>共享树（RPT）</strong>：接收者朝 RP 逐跳 Join <code>(*,G)</code>，RP 成为"已知的唯一汇聚地址"；</li>
+<li><strong>注册</strong>：源的 DR 把数据封装成单播 <code>Register</code> 直接投给 RP，RP 据此知道"有这个源"；</li>
+<li><strong>切换</strong>：最后一跳发现流量够大，改走源最短路径，同时把 RPT 剪掉。</li>
 </ul>
-<div class="codehilite"><pre><span></span><code>ip pim auto-rp mapping-agent 10.1.1.1     ! 在 MA 上
-ip pim auto-rp mapping-agent 10.1.1.1 ttl 15
-interface Gi0/1
- ip multicast ttl 15                       ! 关键：AutoRP 组播 TTL 必须够
-ip pim send-rp-announce if-type Gi0/1 scope 16   ! 在 C-RP 上
+<blockquote>
+<p>Williamson p.150 特别提醒用词：<strong>"共享树"不要和"源树/最短路径树"混称</strong>——原书把 <code>(*,G)</code> 叫 shared tree / RPT，把 <code>(S,G)</code> 叫 source tree / SPT。现网排障里"树没建起来"必须问清是哪棵树。</p>
+</blockquote>
+<hr />
+<h2 id="2-g-rp">2. 第一段：接收者如何把 <code>(*,G)</code> 送到 RP</h2>
+<h3 id="21">2.1 逐跳过程</h3>
+<div class="codehilite"><pre><span></span><code>Host ── IGMP Report ──&gt; 最后一跳 DR
+DR: 查 RP(G) ──&gt; 查单播路由到 RP ──&gt; 出接口 = RPF 接口
+DR 发 (*,G) Join（目的 224.0.0.13，TTL=1）给 RPF 邻居
+每一跳重复：查 RP → 查去 RP 的单播路由 → 继续上行
+到达 RP：RP 建 (*,G)，出接口表加入该下游
 </code></pre></div>
 
-<h3 id="43-bsrbootstrap-router">4.3 BSR（Bootstrap Router）——现代推荐</h3>
-<p><strong>角色</strong>：</p>
-<table>
-<thead>
-<tr>
-<th>角色</th>
-<th>职责</th>
-<th>报文</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>RP-Candidate</strong></td>
-<td>宣告"我愿意当 RP"</td>
-<td><strong>Candidate-RP-Advertisement</strong> → 224.0.1.39</td>
-</tr>
-<tr>
-<td><strong>BSR</strong></td>
-<td>收集候选，选主并分发映射</td>
-<td><strong>Bootstrap Message</strong> → 224.0.0.13</td>
-</tr>
-</tbody>
-</table>
-<p><strong>流程</strong>：</p>
-<ol>
-<li>RP-Candidate 周期发 <strong>Candidate-RP-Advertisement</strong>（到 224.0.1.39，TTL 1）给 BSR；</li>
-<li>BSR 依据 <strong>BSR Priority</strong>（高者胜）、<strong>RP 优先级</strong>（高者优）选主；</li>
-<li>BSR 周期发 <strong>Bootstrap Message</strong>（224.0.0.13，TTL 255）携带 <strong>Group→RP 映射</strong>与 <strong>BSR-RP-Info</strong>；</li>
-<li>全域路由器学习映射（<code>show ip pim rp mapping</code>）。</li>
-</ol>
-<p><strong>相对 AutoRP 的优势</strong>：</p>
+<p>关键点：<strong>Join 的目的地址永远是 224.0.0.13（All-PIM-Routers），逐跳单播给 RPF 邻居</strong>。所以"Join 发不出去"永远先看两件事：<code>show ip rpf &lt;RP&gt;</code> 是否可达、RPF 接口上是否启了 PIM。</p>
+<h3 id="22-rp-g">2.2 RP 的特殊性：<code>(*,G)</code> 没有"源"可查</h3>
+<p>普通 <code>(S,G)</code> 的 RPF 是"去往 S"。<code>(*,G)</code> 的 RPF 是"去往 RP"。这导致两类常见误判：</p>
 <ul>
-<li><strong>可跨 AS</strong>（BSM 是 224.0.0.13，TTL 可调）；</li>
-<li><strong>支持标准 group-list / ACL</strong>（<code>ip pim bootstrap bsr</code> 的 group-list 支持前缀列表）；</li>
-<li>映射信息单一来源（BSR），无 MA 仲裁歧义；</li>
-<li>业界标准（RFC 5059）。</li>
+<li>RP 自己有 <code>(*,G)</code> 但出接口为 Null → 正常（RP 是树根）；</li>
+<li>非 RP 路由器上 <code>(*,G)</code> 的入接口不是去 RP 的最短路 → 说明 RP 地址选错了（静态/BSR/Auto-RP 不一致），而不是"树坏了"。</li>
 </ul>
-<div class="codehilite"><pre><span></span><code>! BSR 上
-ip pim bootstrap bsr 10.1.1.1 hash-len 30 priority 100
-interface Gi0/1
- ip multicast ttl 255
-! RP-Candidate 上
-ip pim rp-candidate loopback
-interface Gi0/1
- ip multicast ttl 255
+<div class="codehilite"><pre><span></span><code>show<span class="w"> </span>ip<span class="w"> </span>mroute<span class="w"> </span><span class="m">239</span>.1.1.1<span class="w">                 </span><span class="c1"># 看 (*,G) 的 Incoming interface</span>
+show<span class="w"> </span>ip<span class="w"> </span>rpf<span class="w"> </span><span class="m">10</span>.1.1.1<span class="w">                     </span><span class="c1"># 与 Incoming interface 对比</span>
+show<span class="w"> </span>ip<span class="w"> </span>pim<span class="w"> </span>rp<span class="w"> </span>mapping<span class="w">                   </span><span class="c1"># 本机认为的 RP 是谁</span>
 </code></pre></div>
 
-<h3 id="44-anycast-rp">4.4 Anycast-RP</h3>
-<p><strong>动机</strong>：RP 是单点。Anycast-RP 让<strong>多个 RP 使用同一个 IP 地址</strong>（通常是一个 /32 Loopback，通过 BGP/OSPF 在全网宣告）。</p>
-<p><strong>原理</strong>：接收端 Join 到 Anycast 地址时，<strong>路由收敛使流量走最近的 RP</strong>；源注册也到最近的 RP。</p>
-<p><strong>必须解决的问题</strong>：源注册到 RP-A、接收者 Join 到 RP-B 时，RP-B 上没有源信息 → 需要<strong>两种机制之一</strong>：</p>
+<hr />
+<h2 id="3-register">3. 第二段：Register——源怎么"报到"</h2>
+<h3 id="31">3.1 报文与语义</h3>
+<p><code>Register</code> 是<strong>单播</strong> PIM 报文（不是 224.0.0.13），载荷里装的是完整的组播数据包（IP-in-IP 式封装）。首跳 DR 把源发来的每个包封装后单播给 RP：</p>
+<ul>
+<li>外层：DR → RP 的单播头；</li>
+<li>内层：原始的 <code>(S,G)</code> 组播包。</li>
+</ul>
+<p>Aweya p.268–272 明确写了 RP 解封装后的两个细节，很多人不知道：</p>
+<ol>
+<li><strong>RP 转发解封装后的包时会 TTL 减 1</strong>（相当于经过了一跳）；</li>
+<li><strong>RP 把 Register 外层的 ECN 位与 DSCP 复制到内层组播包</strong>上——所以"经过 RP 后 QoS 标记变了"可以在 RP 上找到原因，而不是怀疑上游。</li>
+</ol>
+<h3 id="32">3.2 四种"停止/继续"机制</h3>
 <table>
 <thead>
 <tr>
 <th>机制</th>
-<th>做法</th>
-<th>特点</th>
+<th>发起方</th>
+<th>作用</th>
+<th>默认值</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>MSDP Anycast-RP</strong></td>
-<td>RP 之间用 MSDP 交换 SA；SA 携带 <strong>RP-id（原始 RP 地址）</strong> 与 <strong>Originating RP</strong></td>
-<td>成熟、可跨域；MSDP Anycast-RP 场景下 <strong>SA 必须包含 RP-id</strong></td>
+<td><code>Register-Stop</code></td>
+<td>RP → 首跳 DR</td>
+<td>我不需要这个 <code>(S,G)</code>，别再发了</td>
+<td>携带 <code>(S,G)</code></td>
 </tr>
 <tr>
-<td><strong>PIM Anycast-RP</strong></td>
-<td>RP 之间用 MSDP 同步 <strong>Register</strong> 报文副本</td>
-<td>简化版，依赖 MSDP 但不依赖 SA 语义</td>
+<td>Register-Suppression</td>
+<td>DR 本地定时器</td>
+<td>收到 Stop 后静默期，不再封装</td>
+<td>60 s（Aweya p.249）</td>
+</tr>
+<tr>
+<td><code>Null-Register</code></td>
+<td>DR → RP</td>
+<td>静默期结束前的"探针"：还不需要数据吗？</td>
+<td>探测时间见 p.249</td>
+</tr>
+<tr>
+<td><code>(S,G)</code> Join</td>
+<td>RP → 源</td>
+<td>我需要，直接送过来（不再用隧道）</td>
+<td>触发式</td>
 </tr>
 </tbody>
 </table>
-<p><img alt="Anycast-RP 与 MSDP" src="../diagrams/d10-anycast-rp.svg" /></p>
-<div class="codehilite"><pre><span></span><code>! 三个 RP 都配置同一个 Anycast 地址 + 各自的 RP-id
-ip pim rp-address 10.100.100.100
-ip pim anycast-rp 10.100.100.100 10.1.1.1     ! 本机 RP-id
-! MSDP peer
-ip msdp peer 10.2.2.2 connect-source Loopback0
-ip msdp originator-id Loopback0               ! MSDP Anycast-RP 必需
-</code></pre></div>
-
-<h3 id="45-embedded-rpipv6-rfc-4607">4.5 Embedded-RP（IPv6 为主，RFC 4607）</h3>
-<p><strong>思路</strong>：把 RP 地址<strong>编码进组播地址本身</strong>，接收端从组地址直接推导 RP，<strong>不需要 MSDP</strong>。</p>
+<p><strong>这一组机制是全章最容易被误解的地方</strong>：<code>Register-Stop</code> 不是永久拒绝，只是一个定时静默。静默期到点后 DR 必须用 <code>Null-Register</code>（空载荷 Register）重新问一次，否则 RP 在上游重新出现接收者时<strong>永远等不到数据</strong>——这就是"新用户加入后 1 分钟内无流量"的一类根因。</p>
+<p>Aweya p.249–250 还给了 RP 侧的保护：RP 为注册建立的 <code>(S,G)</code> 状态至少保留 <strong>3 × Register_Suppression_Time</strong>，并把 Keepalive 定时器设为 <strong>3 × Register_Suppression_Time + Register_Probe_Time</strong>。否则 RP 可能在 DR 停止注册之前就把 <code>(S,G)</code> Join 撤掉，数据出现空窗。</p>
+<h3 id="33-rp-rpf">3.3 RP 侧的 RPF 校验</h3>
+<p>Register 到达 RP 后，RP 要判断"这个源到我这的路径对不对"：</p>
 <ul>
-<li>编码方式：组地址（如 <code>FF7x:...::/96</code>）低 32 bit 编码为 <code>FF02::FFxx:xxxx</code>（即 RP 地址）；</li>
-<li>前提：接收端能通过<strong>单播路由</strong>解析该地址；</li>
-<li>优势：<strong>天然跨域</strong>（IPv6 组播不需要 MSDP）——这是 IPv6 相对 IPv4 的重大简化。</li>
+<li>通过 → 解封装、建 <code>(S,G)</code>、朝 RPT 下游转发、并向源发 <code>(S,G)</code> Join；</li>
+<li>不通过 → 丢弃并回 <code>Register-Stop</code>（<code>Register</code> 里带 Border 位等标志，不同实现细节有差异）。</li>
 </ul>
-<h3 id="46-rp">4.6 RP 哈希与负载分担</h3>
-<p>多 RP 时的分配由 <strong>RP Hash Function</strong> 决定（Aweya 5.16.7）：</p>
+<blockquote>
+<p>现网推论：<strong>RP 必须有一条去往源的单播路由，且这条路由的下一跳方向要和源的 DR 一致</strong>。RP 位于网络中心、源在分支时，如果 RP 侧做了路由汇总或策略路由，注册会被静默丢弃——比"配置错误"更难查，因为<strong>数据面上你能看到 Register 在进，但 <code>(S,G)</code> 建不起来</strong>。</p>
+</blockquote>
+<hr />
+<h2 id="4-spt">4. 第三段：SPT 切换——为什么"能通"还要切</h2>
+<h3 id="41">4.1 切换的三个判据</h3>
+<table>
+<thead>
+<tr>
+<th>判据</th>
+<th>说明</th>
+<th>原文</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>谁发起</td>
+<td><strong>最后一跳（接收者侧 DR）</strong> 发起，不是 RP</td>
+<td>Aweya §5.14</td>
+</tr>
+<tr>
+<td>何时发起</td>
+<td>收到第一个包即可切（阈值默认 0 kbps），或超过配置速率阈值</td>
+<td>Aweya p.288：<code>a traffic rate threshold (specified in kilobits)</code></td>
+</tr>
+<tr>
+<td>怎么切</td>
+<td>向源发 <code>(S,G)</code> Join；同时向 RP 发 <code>(S,G,rpt)</code> Prune</td>
+<td>Aweya p.290–292</td>
+</tr>
+</tbody>
+</table>
+<p>阈值默认 0 的含义是"<strong>立刻切换</strong>"，所以现网绝大多数 PIM-SM 流量在第一个包之后就走了 SPT，RPT 只承担"首包引路"。这也解释了为什么"RPT 利用率低"是正常现象。</p>
+<h3 id="42-sgrpt">4.2 <code>(S,G,rpt)</code> 为什么必须发</h3>
+<p>切换后，流量会<strong>同时</strong>从两条路径到达最后一跳：SPT（源）与 RPT（RP）。</p>
 <ul>
-<li>Hash 输入 = <strong>组地址</strong>（不是源地址）→ 同一组的所有源都映射到同一个 RP；</li>
-<li>目的：保证共享树完整、避免跨 RP 转发；</li>
-<li>不同实现哈希算法不同（Cisco 默认基于组地址的 CRC）。</li>
+<li><code>(S,G)</code> 的 RPF 接口 = 去源的最短路 → 从 RPT 来的包 RPF 失败被丢弃（这就是"切换后双份流不会真的双份到桌面"的原因）；</li>
+<li>但上游到 RP 的整条 RPT 分支仍在转发 → 浪费带宽；</li>
+<li><code>(S,G,rpt)</code> Prune 沿 RPT 上行，一路剪到 RP，才真正省下带宽。</li>
 </ul>
-<p><strong>因此</strong>：多 RP 负载分担是<strong>按组</strong>而非按流量的。若业务组数量少而流量大，哈希不均会导致 RP 倾斜。</p>
-<hr />
-<h2 id="5">5. 排障命令速查</h2>
-<div class="codehilite"><pre><span></span><code>show ip pim rp mapping                     ! 学到的 Group→RP 映射（关键！）
-show ip pim rp mapping [group] [detail]
-show ip pim rp-address                     ! 本机静态配置
-show ip pim rp metric                      ! ?
-show ip pim tunnel                          ! ?（旧命令）
-show ip pim interface                      ! 各接口模式、DR、邻居
-show ip pim neighbor                       ! 邻居明细
-show ip pim rp-info                        ! ?（RP 候选信息）
-show ip pim bsr                            ! BSR 候选
-show ip pim rp-candidate                   ! 本机 RP 候选状态
-show ip pim sparse                          ! ?
-show ip pim state-refresh                  ! ?
-show ip msdp peer                          ! MSDP 邻居
-show ip msdp summary                       ! SA 数量与缓存
-show ip msdp sa-cache                      ! SA 缓存
+<div class="codehilite"><pre><span></span><code>show<span class="w"> </span>ip<span class="w"> </span>mroute<span class="w"> </span><span class="m">239</span>.1.1.1<span class="w"> </span><span class="p">|</span><span class="w"> </span>include<span class="w"> </span><span class="m">10</span>.1.1.1
+<span class="c1"># (10.1.1.1, 239.1.1.1), 00:12:03/00:02:57, flags: JT</span>
+<span class="c1">#   Incoming interface: GigabitEthernet0/1  &lt;- 去源（SPT）</span>
+<span class="c1">#   RPF nbr: 10.0.0.2</span>
+<span class="c1">#   Incoming interface: GigabitEthernet0/0  &lt;- 去 RP（RPT）</span>
+<span class="c1">#   RPF nbr: 10.0.0.1</span>
 </code></pre></div>
 
+<p><strong>读法</strong>：<code>J</code> 表示加入 SPT，<code>T</code> 表示"还要发 <code>(S,G,rpt)</code> Prune 到 RP"，<code>R</code> 出现在 RP 侧表示该 <code>(S,G)</code> 是通过注册建立。三个标志缺一，就对应一类具体故障（见案例 2、3、5）。</p>
+<p><img alt="PIM-SM 共享树与 SPT 切换" src="../diagrams/d08-pim-sm.svg" /></p>
 <hr />
-<h2 id="6-9">6. 生产案例（9 例）</h2>
-<h3 id="5-1rp">案例 5-1：RP 未配置/未学习到，注册报文被丢弃</h3>
-<p><strong>现象</strong>：<code>show ip mroute</code> 中源侧有 <code>(S,G)</code> 但无下游；接收端加入后无流量。
-<strong>定位</strong>：</p>
-<div class="codehilite"><pre><span></span><code>show ip pim rp mapping                    ! 是否为空
-show ip pim rp-address                    ! 本机配置
-show ip pim interface                     ! RP 接口是否 up
-debug ip pim register                     ! Register 是否发出
-debug ip msdp / debug ip pim bsr         ! AutoRP/BSR 学习过程
-</code></pre></div>
-
-<p><strong>根因</strong>：静态 RP 未配置，或 AutoRP/BSR 未学到映射（常见于 TTL 不足）。
-<strong>处置</strong>：配置静态 RP 作为兜底；检查 <code>ip multicast ttl</code> 是否足够（AutoRP 需 TTL ≥ 15，BSR BSM 需 TTL 255）。
-<strong>复盘</strong>：RP 发现机制必须"双保险"——主用动态发现 + 静态兜底。</p>
-<h3 id="5-2autorp-ttl">案例 5-2：AutoRP 完全失效（TTL 不足）</h3>
-<p><strong>现象</strong>：<code>show ip pim rp mapping</code> 空；<code>debug ip igmp</code> 看不到 224.0.1.39 的成员关系。
-<strong>定位</strong>：在 MA 上 <code>debug ip pim autorp</code> 看不到 Announce 发出；抓包发现 TTL=1。
-<strong>根因</strong>：接口默认 <code>ip multicast ttl 1</code>，AutoRP 的 224.0.1.39 是链路本地控制组（TTL 1），跨路由器后即消失。
-<strong>处置</strong>：相关接口配置 <code>ip multicast ttl 15</code>（AutoRP 推荐值）。
-<strong>复盘</strong>：AutoRP/BSR/PIM Hello 的 TTL 必须在接口上显式规划，配置模板要固化。</p>
-<h3 id="5-3bsr-rp-rp">案例 5-3：BSR 学到的 RP 与静态 RP 冲突</h3>
-<p><strong>现象</strong>：同一组在不同设备上被映射到不同 RP，出现"部分通部分不通"。
-<strong>定位</strong>：<code>show ip pim rp mapping</code> 在不同设备上结果不一致；<code>show ip pim rp-address</code> 有静态配置。
-<strong>根因</strong>：静态 RP 与 BSR 映射冲突（Cisco 上静态 RP 优先级高于 BSR，但优先级规则依版本而异），造成映射不一致。
-<strong>处置</strong>：统一 RP 发现方式，删除冗余配置；变更前 <code>clear ip pim rp mapping</code> 清理。
-<strong>复盘</strong>：一个组只能有一个"权威" RP 发现机制。</p>
-<h3 id="5-4rp">案例 5-4：RP 负载不均（哈希倾斜）</h3>
-<p><strong>现象</strong>：3 台 RP，CPU 与带宽严重不均，1 台近 100%。
-<strong>定位</strong>：<code>show ip pim rp mapping</code> 统计各 RP 承担的组数；业务组数量少而集中。
-<strong>根因</strong>：RP 哈希以<strong>组地址</strong>为输入，组少时必然倾斜；且部分业务组为大流量组。
-<strong>处置</strong>：调整业务组地址分布；或对大流量组使用 <strong>Anycast-RP</strong>（就近接入）；或把大组单独规划。
-<strong>复盘</strong>：RP 负载规划要基于"组数 × 组流量"，不能只看组数。</p>
-<h3 id="5-5spt">案例 5-5：SPT 切换导致共享树带宽突增</h3>
-<p><strong>现象</strong>：切到 SPT 后，某些链路上流量比预期大（RP 到接收者的共享树路径上仍有余量）。
-<strong>定位</strong>：<code>show ip mroute 239.1.1.1 detail</code> 中 <code>(S,G)</code> 已有 <code>JT</code> 标志，但共享树接口仍在列表中且带 <code>T</code>。
-<strong>根因</strong>：SPT-bit 已置但共享树出接口未及时剪除，或 <code>(S,G,rpt) Prune</code> 未送达 RP。
-<strong>处置</strong>：检查 RP 上 <code>(S,G)</code> 的 <code>R</code>（RP-bit）是否置位；检查收侧 DR 的 <code>(S,G,rpt) Prune</code> 是否发出。
-<strong>复盘</strong>：SPT 切换后要验证三件事：<code>(S,G)</code> 有 <code>J</code>、共享树侧有 <code>T</code>、RP 侧有 <code>R</code>。</p>
-<h3 id="5-6prune">案例 5-6：接收者离开后组播仍转发（Prune 未生效）</h3>
-<p><strong>现象</strong>：客户端下线后，共享树分支仍在转发组播。
-<strong>定位</strong>：<code>show ip mroute</code> 中该分支的 Join 计时器仍在刷新；<code>show ip igmp groups</code> 显示已无成员。
-<strong>根因</strong>：主机用的是 IGMPv1（无 Leave）；或 IGMPv2 的 Leave 被 ACL 过滤。
-<strong>处置</strong>：确认终端 IGMP 版本；放行 224.0.0.2（IGMPv2 Leave 目标）。
-<strong>复盘</strong>：组播的"退组"完全依赖 IGMP 版本，终端资产必须管控。</p>
-<h3 id="5-7register">案例 5-7：Register 隧道化导致大包分片与丢包</h3>
-<p><strong>现象</strong>：源为大包视频（&gt;1400 B），RP 收包有分片/丢包，媒体花屏。
-<strong>定位</strong>：<code>show ip mroute</code> 源侧 <code>(S,G)</code> 频繁闪断；RP 上出现 Register 重传。
-<strong>根因</strong>：Register 是<strong>单播封装</strong>，MTU 较小；若路径 MTU 小于封装后尺寸则分片，丢一片即整包丢失。
-<strong>处置</strong>：增大路径 MTU（<code>ip mtu</code>）或降低源端包长；评估改用 SSM（无 Register）。
-<strong>复盘</strong>：Register 封装开销 ≈ 28~32 字节，源侧路径 MTU 要预留。</p>
-<h3 id="5-8anycast-rp-join-rp">案例 5-8：Anycast-RP 下源注册与接收者 Join 落在不同 RP</h3>
-<p><strong>现象</strong>：部分接收者收不到流，报错 "no route to source" 或组播中断。
-<strong>定位</strong>：<code>show ip msdp summary</code> 无 SA；<code>show ip msdp sa-cache</code> 空；MSDP peer 已建立。
-<strong>根因</strong>：MSDP Anycast-RP 未配置 <code>ip msdp originator-id</code>，SA 消息中 RP-id 缺失，接收侧 RP 无法识别源归属。
-<strong>处置</strong>：配置 <code>ip msdp originator-id Loopback0</code>；确认 SA 中携带 RP-id。
-<strong>复盘</strong>：MSDP Anycast-RP 的 originator-id 是必配项，配置模板必须写死。</p>
-<h3 id="5-9rp">案例 5-9：RP 故障后组播中断（无冗余）</h3>
-<p><strong>现象</strong>：RP 宕机后，所有组播业务中断（接收端已加入但无流量）。
-<strong>定位</strong>：<code>show ip pim rp mapping</code> 显示该组只有 1 个 RP；该 RP down。
-<strong>根因</strong>：静态单 RP，无 Anycast/冗余。
-<strong>处置</strong>：部署 <strong>Anycast-RP + MSDP</strong>（或 SSM 彻底去 RP 化）。
-<strong>复盘</strong>：RP 冗余不是"做两台"，而是"让两个 RP 对客户端表现为同一个"——这正是 Anycast 的意义。</p>
-<hr />
-<h2 id="7">7. 自测清单</h2>
+<h2 id="5-rp">5. 第四段：RP 发现——四种机制，四个故障域</h2>
+<table>
+<thead>
+<tr>
+<th>机制</th>
+<th>谁告诉谁</th>
+<th>报文/地址</th>
+<th>冗余方式</th>
+<th>主要故障域</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>静态 RP</td>
+<td>人工</td>
+<td>无</td>
+<td>配多个 <code>ip pim rp-address</code> + ACL 分范围</td>
+<td>忘配、范围重叠、与动态冲突</td>
+</tr>
+<tr>
+<td>Auto-RP</td>
+<td>C-RP → MA → 全体</td>
+<td>224.0.1.39 / 224.0.1.40</td>
+<td>多 MA</td>
+<td>TTL、sparse-dense、RPF</td>
+</tr>
+<tr>
+<td>BSR</td>
+<td>C-RP → BSR → 逐跳 BSM</td>
+<td>单播 Advertise / 224.0.1.40</td>
+<td>多 C-BSR</td>
+<td>BSM 被过滤、优先级</td>
+</tr>
+<tr>
+<td>Anycast-RP</td>
+<td>同一 RP 地址多台</td>
+<td>IGP + MSDP 或 RFC 4610</td>
+<td>天然</td>
+<td>状态不同步、MSDP 未建</td>
+</tr>
+</tbody>
+</table>
+<h3 id="51-rp">5.1 静态 RP</h3>
+<p>最可靠也最容易埋雷：<strong>没有协商，就没有"不一致告警"</strong>。多台路由器手工配置时，漏配、写错范围、ACL 覆盖顺序错误都不会报错。</p>
+<h3 id="52-auto-rpcisco">5.2 Auto-RP（Cisco 私有）</h3>
+<p>Aweya p.303 的措辞值得记住：Auto-RP 由 Cisco 提出、<strong>已被 BSR 机制取代（obsoleted）</strong>，但仍大量存在于现网。</p>
+<ul>
+<li><code>C-RP</code> 周期性向 <strong>224.0.1.39</strong> 发 Announce（声明"我是哪些组的 RP"）；</li>
+<li><code>Mapping Agent</code> 监听 announce，向 <strong>224.0.1.40</strong> 发 Discovery（下发最终映射）；</li>
+<li>同一组范围有多个 C-RP 时，<strong>MA 选 IP 最高的</strong>（Aweya p.304）；</li>
+<li>MA 之间也会选（p.305–306），未当选的停止发送 Discovery，当选的继续。</li>
+</ul>
+<p>两个必须知道的现网约束：</p>
 <ol>
-<li>完整描述 PIM-SM 从源发起到接收者收流的全部报文顺序（含 Register/Register-Stop、(*,G) Join、(S,G) Join、(S,G,rpt) Prune）。</li>
-<li>SPT-bit（T）与 RP-bit（R）分别置在什么表项上？语义区别是什么？</li>
-<li>SPT 切换的触发条件有哪几个？默认配置下是什么行为？</li>
-<li>AutoRP 的 MA 与 C-RP 分别做什么？用哪两个组地址？</li>
-<li>AutoRP 与 BSR 在跨域能力、TTL 要求、group-list 支持上的差异？</li>
-<li>为什么 RP 哈希以组地址而非源地址为输入？</li>
-<li>Anycast-RP 要解决"源注册到 A、接收者 Join 到 B"的什么问题？两种解法分别是什么？</li>
+<li><strong>接口需要 <code>sparse-dense-mode</code></strong>（或 dense 泛洪可用），因为 224.0.1.39/40 需要先泛洪才能被听到；</li>
+<li><strong>TTL 默认很小</strong>，跨 WAN 时被 scope 边界挡住是高频故障——announce 出不了本区。</li>
 </ol>
-<h2 id="8">8. 延伸阅读</h2>
+<h3 id="53-bsr">5.3 BSR（标准）</h3>
 <ul>
-<li>Aweya Ch5（P.241–P.380）：PIM-SM 状态、定时器、DR、Register、Join/Prune、Assert、刷新、RP 发现、SSM 扩展</li>
-<li>Williamson Ch7–Ch8（P.148–P.213）、Ch12（P.314–P.351）</li>
-<li>iPexpert Ch4（P.4-1–4-45）、Ch7、Ch8、Ch9</li>
-<li>延伸：<code>RFC 7761</code>（PIM-SM）、<code>RFC 5059</code>（BSR）、<code>RFC 3917</code>（AutoRP）、<code>RFC 4607</code>（Embedded-RP）</li>
+<li><code>C-RP</code> <strong>单播</strong> <code>Candidate-RP-Advertisement</code> 给 BSR（Aweya p.320、p.322–323）；</li>
+<li><code>C-BSR</code> 之间选举：先比 <strong>BSR Priority</strong>（大者胜），相同比 IP（大者胜）（p.313、p.317）；</li>
+<li>当选 BSR 汇总后发 <strong>Bootstrap（BSM）</strong>，逐跳 224.0.0.13/224.0.1.40 泛洪到全域；</li>
+<li>C-RP 的优先级 <strong>Priority 0 最高</strong>（p.323），与"数值越大越优先"的直觉相反——这是配置评审时最常见的一句话错误；</li>
+<li>有 C-RP 下线时会立刻发 Advertise 撤回（p.323），所以"BSR 表里还有已下线的 RP"通常意味着报文丢了。</li>
+</ul>
+<h3 id="54-anycast-rp">5.4 Anycast-RP</h3>
+<p>为一个组配多台 RP、<strong>共用同一个 loopback 地址</strong>，IGP 做等距/就近。两种实现：</p>
+<ul>
+<li><strong>MSDP 型</strong>：RP 之间建 MSDP 全互联，源注册信息用 SA 互传；</li>
+<li><strong>PIM Anycast-RP（RFC 4610）</strong>：Aweya p.331–332 明确指出——<strong>不需要 MSDP</strong>，RP 之间用 PIM 自身的 Anycast-RP 机制同步注册信息。</li>
+</ul>
+<blockquote>
+<p>这条区别很实用：现网有人看到"Anycast-RP 必须配 MSDP"的说法就把 MSDP 也上了，结果多了一套要维护的会话；用 RFC 4610 实现（如 <code>ip pim anycast-rp</code>）可以只保留 PIM。</p>
+</blockquote>
+<p><img alt="RP 发现与 Anycast-RP" src="../diagrams/d10-anycast-rp.svg" /></p>
+<hr />
+<h2 id="6">6. 定时器与状态速查</h2>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>默认/典型值</th>
+<th>出处</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Join/Prune 周期发送</td>
+<td>60 s</td>
+<td>Aweya p.260</td>
+</tr>
+<tr>
+<td><code>(*,G)</code>/<code>(S,G)</code> 状态超时</td>
+<td>210 s（3.5 × 60）</td>
+<td>Aweya p.191</td>
+</tr>
+<tr>
+<td>Register 抑制</td>
+<td>60 s</td>
+<td>Aweya p.249</td>
+</tr>
+<tr>
+<td>RP 侧 <code>(S,G)</code> 保留</td>
+<td>≥ 3 × 抑制时间</td>
+<td>Aweya p.269</td>
+</tr>
+<tr>
+<td>C-RP Advertisement 周期</td>
+<td>60 s（可配）</td>
+<td>Aweya p.322–323</td>
+</tr>
+<tr>
+<td>Assert 超时</td>
+<td>180 s</td>
+<td>RFC 7761</td>
+</tr>
+<tr>
+<td>DR 优先级</td>
+<td>Hello Option 19，0 = 弃权</td>
+<td>Aweya p.154–155</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="7">7. 八个工程案例</h2>
+<blockquote>
+<p>以下均为<strong>典型化场景</strong>（按现网高频故障构造），用于训练"症状 → 命令 → 根因"的推理，不是某次具体故障的取证。</p>
+</blockquote>
+<h3 id="1rp">案例 1：源在发、RP 在收，接收者全空</h3>
+<ul>
+<li><strong>现象</strong>：源端 <code>show ip mroute</code> 有 <code>(S,G)</code> 且计数增长；RP 上只有 <code>(*,G)</code>，无 <code>(S,G)</code>；接收端 <code>ping 239.x</code> 不通。</li>
+<li><strong>定位</strong>：<code>show ip pim tunnel</code>（RP 上是否有 Register 隧道）、<code>debug ip pim 239.1.1.1</code>（看 Register 是否被丢弃）、<code>show ip rpf &lt;S&gt;</code>（RP 侧）。</li>
+<li><strong>根因</strong>：RP 到源的单播路由下一跳与源 DR 不同向（汇总/策略路由），Register 被 RPF 检查丢弃。</li>
+<li><strong>处置</strong>：修正 RP 侧回程路由，或在 RP 上为源段加更具体路由。</li>
+<li><strong>复盘</strong>：<strong>"RP 必须能沿源的来路回去"</strong>——组播的 RPF 会沿着单播路径反向验证，汇总路由是常见杀手。</li>
+</ul>
+<h3 id="2-1-mbpsshow-ip-mroute-j">案例 2：流量通了但只有 1 Mbps，<code>show ip mroute</code> 无 <code>J</code> 标志</h3>
+<ul>
+<li><strong>现象</strong>：接收端能收到流，但带宽只有源速率的 1/10；最后一跳 <code>(S,G)</code> 的 flags 里没有 <code>J</code>，From 是 <code>Register</code> 隧道。</li>
+<li><strong>定位</strong>：<code>show ip mroute 239.1.1.1</code>（看 flags）、<code>show ip rpf &lt;S&gt;</code>（最后一跳）。</li>
+<li><strong>根因</strong>：SPT 切换未发生——最后一跳去源的单播路由不可达（或经防火墙被拦），只能靠 RP 的 RPT 转发。</li>
+<li><strong>处置</strong>：修通去源的单播路由；临时可接受 RPT 承载但吞吐受 RP 限制。</li>
+<li><strong>复盘</strong>：<strong><code>J</code> 缺失 = 没切 SPT</strong>，不是"树没建"；<code>R</code> 出现在 <code>(S,G)</code> 上说明该条目由注册建立。</li>
+</ul>
+<h3 id="3-spt-rp">案例 3：切到 SPT 后上游带宽没降，RP 侧一直有流量</h3>
+<ul>
+<li><strong>现象</strong>：接收端已切 SPT，但 RP 到上游的 RPT 链路利用率不降；RP 上 <code>(S,G)</code> 出接口仍活跃。</li>
+<li><strong>定位</strong>：<code>show ip mroute 239.1.1.1</code>（最后一跳是否有 <code>T</code> 标志）、RP 上 <code>show ip mroute 239.1.1.1 count</code>。</li>
+<li><strong>根因</strong>：<code>(S,G,rpt)</code> Prune 未送达（中间设备 ACL 拦 PIM、或某跳对 <code>(S,G,rpt)</code> 处理异常），RPT 分支未剪。</li>
+<li><strong>处置</strong>：放通 PIM（IP 协议号 103）与 224.0.0.13；逐跳核对 prune 是否被丢弃。</li>
+<li><strong>复盘</strong>：<strong>切换只完成了一半</strong>——"改走 SPT"和"剪掉 RPT"是两个动作，后者失败不影响连通性，只浪费带宽，因此长期无人发现。</li>
+</ul>
+<h3 id="4auto-rp-rp">案例 4：Auto-RP 只有本部生效，分支全走错 RP</h3>
+<ul>
+<li><strong>现象</strong>：总部区域正常；分支 <code>show ip pim rp mapping</code> 显示 <code>?</code> 或旧 RP。</li>
+<li><strong>定位</strong>：<code>show ip pim rp mapping</code>、<code>show ip mroute 224.0.1.40</code>（分支是否收到 Discovery）、<code>show ip pim interface</code>（是否 <code>sparse-dense-mode</code>）。</li>
+<li><strong>根因</strong>：224.0.1.40 的 TTL 默认 32 仍被 scope 边界挡，或 WAN 接口未开 sparse-dense 导致 announce/discovery 泛洪不出。</li>
+<li><strong>处置</strong>：扩大 Auto-RP 的 scope（<code>ip pim send-rp-announce ... scope N</code>）、统一边界 ACL。</li>
+<li><strong>复盘</strong>：<strong>Auto-RP 是"泛洪型"控制面</strong>，它的可达性取决于组播边界和 TTL，而不是单播路由。</li>
+</ul>
+<h3 id="5bsr-rp">案例 5：BSR 域内 RP 表不一致，部分组不通</h3>
+<ul>
+<li><strong>现象</strong>：核心看到 BSR 与 RP-Set；边缘 <code>show ip pim bsr-router</code> 为空；表现为"部分组正常、部分组不通"。</li>
+<li><strong>定位</strong>：<code>show ip pim bsr-router</code>、<code>show ip pim rp mapping</code>、<code>show ip mroute 224.0.1.40</code>。</li>
+<li><strong>根因</strong>：BSM 在中间链路被 ACL/CoPP 丢弃，边缘回退静态 RP，两套 RP 覆盖范围不同。</li>
+<li><strong>处置</strong>：放通 224.0.1.40/224.0.0.13 与 PIM 协议号；统一用 BSR 或统一用静态，别混。</li>
+<li><strong>复盘</strong>：<strong>混用两套发现机制时，静态 RP 往往"赢"</strong>，于是故障表现为"只有某几个组"——范围越小越难查。</li>
+</ul>
+<h3 id="6anycast-rp">案例 6：Anycast-RP 主备切换后新源注册失败</h3>
+<ul>
+<li><strong>现象</strong>：RP1 故障后 RPT 很快恢复，但<strong>新源</strong>发流收不到；老源正常。</li>
+<li><strong>定位</strong>：<code>show ip msdp peer</code>（若用 MSDP 型）、<code>show ip pim rp mapping</code>、两台 RP 的 <code>show ip mroute</code>。</li>
+<li><strong>根因</strong>：Anycast-RP 之间注册信息未同步（MSDP 会话 down 或 RFC 4610 配置缺 <code>ip pim anycast-rp</code>），新源注册到 RP1 后接收者挂在 RP2。</li>
+<li><strong>处置</strong>：补齐 Anycast-RP 同步机制；验证双向注册。</li>
+<li><strong>复盘</strong>：<strong>Anycast-RP 只保证"RP 地址总能被路由到"，不保证"状态同步"</strong>——这两个是独立的两件事。</li>
+</ul>
+<h3 id="7-rp-bsr">案例 7：静态 RP 与 BSR 同时存在，割接后大面积单通</h3>
+<ul>
+<li><strong>现象</strong>：割接后一部分组正常、一部分不通；<code>show ip pim rp mapping</code> 同时出现 Static 与 BSR 条目。</li>
+<li><strong>定位</strong>：<code>show ip pim rp mapping</code>（看每个组的 RP 来源）、<code>show running-config | include rp-address</code>。</li>
+<li><strong>根因</strong>：遗留静态 RP 覆盖了部分组（静态优先级高于动态），而新 BSR 只覆盖其余组；两套 RP 的源注册互不可见。</li>
+<li><strong>处置</strong>：清理遗留静态配置，按组范围显式划分。</li>
+<li><strong>复盘</strong>：<strong>任何"部分组不通"先打 RP 映射表</strong>，别从 mroute 开始猜。</li>
+</ul>
+<h3 id="8rp-cpu-register">案例 8：源高速率发流，RP CPU 飙高（Register 风暴）</h3>
+<ul>
+<li><strong>现象</strong>：RP CPU 60%+，<code>show proc cpu | include PIM</code> 高；抓包看到大量 Register 到 RP。</li>
+<li><strong>定位</strong>：<code>show ip pim tunnel</code>、<code>debug ip pim</code>（Register/Register-Stop 比例）、源 DR 上 <code>show ip mroute</code> 的 <code>(S,G)</code> 是否走 SPT。</li>
+<li><strong>根因</strong>：RP 回的 <code>Register-Stop</code> 源地址与 DR 期望不一致（多 RP / anycast 地址不匹配），DR 不认为收到 Stop，持续封装。</li>
+<li><strong>处置</strong>：统一 RP 地址与 <code>Register-Stop</code> 源地址；必要时在 RP 侧限速。</li>
+<li><strong>复盘</strong>：<strong>抑制机制依赖"Stop 的源地址 = 你要发给的 RP 地址"</strong>；Anycast 场景尤其容易破。</li>
+</ul>
+<hr />
+<h2 id="8">8. 十问自测</h2>
+<ol>
+<li><code>(*,G)</code> 的 RPF 查什么？<code>(S,G)</code> 查什么？</li>
+<li><code>Register</code> 是单播还是组播？目的地址是谁？</li>
+<li><code>Register-Stop</code> 之后 DR 会怎样？为什么还需要 <code>Null-Register</code>？</li>
+<li>RP 为什么必须保留 <code>(S,G)</code> 至少 3 × 抑制时间？</li>
+<li>SPT 切换由谁发起？默认阈值是多少？</li>
+<li><code>(S,G,rpt)</code> Prune 不发会有什么后果？为什么连通性不受影响？</li>
+<li><code>show ip mroute</code> 里 <code>J</code>、<code>T</code>、<code>R</code> 各代表什么？</li>
+<li>Auto-RP 的 224.0.1.39 与 224.0.1.40 分别承载什么？</li>
+<li>BSR 选举先比什么？C-RP 优先级 0 是高还是低？</li>
+<li>RFC 4610 的 PIM Anycast-RP 与 MSDP 型 Anycast-RP 的本质区别？</li>
+</ol>
+<hr />
+<h2 id="9">9. 原文精读索引</h2>
+<blockquote>
+<p>纸面页码：Williamson = PDF 页 − 21；Aweya = PDF 页 − 21（经 <code>tools/srcgrep.py</code> 与页脚实测核对）。</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>知识点</th>
+<th>书/节</th>
+<th>纸面页</th>
+<th>原文可核对要点</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>共享树 / 源树命名</td>
+<td>W Ch5</td>
+<td>p.150–151</td>
+<td>明确区分 shared tree（RPT）与 source tree（SPT）</td>
+</tr>
+<tr>
+<td>SPT Joins</td>
+<td>W Ch5</td>
+<td>p.156–157</td>
+<td>最后一跳向源发 <code>(S,G)</code> Join 的过程</td>
+</tr>
+<tr>
+<td>SPT Prunes</td>
+<td>W Ch5</td>
+<td>p.159</td>
+<td><code>(S,G,rpt)</code> 剪枝与 <code>(S,G)</code> 保留的差异</td>
+</tr>
+<tr>
+<td>Register-Stop 语义</td>
+<td>W Ch5</td>
+<td>p.164</td>
+<td>RP 单播 Register-Stop 给首跳 DR，告知"我不需要"</td>
+</tr>
+<tr>
+<td>RP 侧注册处理</td>
+<td>W Ch5</td>
+<td>p.265</td>
+<td>RP 对 Register 回 <code>(S,G)</code> Register-Stop 的步骤</td>
+</tr>
+<tr>
+<td>Register 封装与 Stop</td>
+<td>Aweya §5.7</td>
+<td>p.249–250</td>
+<td>抑制时间 60 s、Probe 时间、RP 保留 3× 抑制时间</td>
+</tr>
+<tr>
+<td>Register 解封装细节</td>
+<td>Aweya §5.7</td>
+<td>p.268–272</td>
+<td>TTL 减 1、ECN/DSCP 由外层复制到内层</td>
+</tr>
+<tr>
+<td>Join/Prune 状态机</td>
+<td>Aweya §5.8</td>
+<td>p.272</td>
+<td><code>(*,G)</code>/<code>(S,G,rpt)</code>/<code>(S,G)</code> 三套下游状态</td>
+</tr>
+<tr>
+<td>SRT→SPT 的动机</td>
+<td>Aweya §5.14</td>
+<td>p.286</td>
+<td>通过 SPT 提升转发效率</td>
+</tr>
+<tr>
+<td><strong>SPT 切换阈值（kbps）</strong></td>
+<td>Aweya §5.14</td>
+<td>p.288</td>
+<td><code>a traffic rate threshold (specified in kilobits)</code>，超过即触发</td>
+</tr>
+<tr>
+<td>SPT Join / Prune 时序</td>
+<td>Aweya §5.14</td>
+<td>p.290–292</td>
+<td>切换后向 RP 发 <code>(S,G,rpt)</code> Prune</td>
+</tr>
+<tr>
+<td>RP 发现机制清单</td>
+<td>Aweya §5.16</td>
+<td>p.301</td>
+<td>Static / Embedded-RP / Auto-RP / BSR</td>
+</tr>
+<tr>
+<td>Auto-RP 与 MA</td>
+<td>Aweya §5.16</td>
+<td>p.303–305</td>
+<td>Cisco 提出、已被 BSR 取代；224.0.1.39/40；MA 选最高 IP</td>
+</tr>
+<tr>
+<td>BSR Priority 选举</td>
+<td>Aweya §5.16</td>
+<td>p.313、317</td>
+<td>Bootstrap 报文含 BSR Priority 字段</td>
+</tr>
+<tr>
+<td>C-RP Advertise 与优先级</td>
+<td>Aweya §5.16</td>
+<td>p.320–323</td>
+<td>单播给 BSR；Priority 0 最高；下线立即撤回</td>
+</tr>
+<tr>
+<td>PIM Anycast-RP（RFC 4610）</td>
+<td>Aweya §5.16.5</td>
+<td>p.331–332</td>
+<td>多台 RP 共用 anycast 地址，<strong>不需要 MSDP</strong></td>
+</tr>
+<tr>
+<td>Join/Prune 周期与超时</td>
+<td>Aweya §5.4</td>
+<td>p.260、191</td>
+<td>60 s 周期；210 s 超时</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="10">10. 延伸</h2>
+<ul>
+<li>下一章：SSM 与 BIDIR-PIM（把 RP 这个"汇合点"彻底去掉 / 变成双向）</li>
+<li>标准：RFC 7761（PIM-SM v2）、RFC 4601（旧版）、RFC 4610（Anycast-RP）、RFC 5059（BSR）</li>
+<li>排障：回看第 12 章的四步法——<strong>RP 映射表 → <code>(*,G)</code> → <code>(S,G)</code> → 数据面</strong></li>
 </ul>
   </article>
   <footer class="page-foot">

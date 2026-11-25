@@ -260,7 +260,7 @@ show ip pim neighbor              ! 各台 DR priority
 
 ## 8. 原文精读索引
 
-> 纸面页码实测：Williamson = PDF 页 − 22；Aweya = PDF 页 − 21。
+> 纸面页码实测：Williamson = PDF 页 − 21；Aweya = PDF 页 − 21。
 
 | 知识点 | 书/节 | 纸面页 | 原文可核对要点 |
 |---|---|---|---|

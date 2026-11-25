@@ -309,7 +309,9 @@ show ip access-lists              ! 检查 interface ACL 是否 permit igmp
 
 ## 10. 原文精读索引
 
-> 纸面页码：Williamson = PDF 页 − 22；Aweya = PDF 页 − 21（均经 `tools/srcgrep.py` 实测命中核对）。
+> 纸面页码：Williamson = PDF 页 − 21；Aweya = PDF 页 − 21（均经 `tools/srcgrep.py` 实测命中核对）。
+>
+> ⚠️ ch01–ch02 的 Williamson 页码按 −22 估算，个别可能相差 1 页；本章起统一按实测 −21。
 
 | 知识点 | 书/节 | 纸面页 | 原文可核对要点 |
 |---|---|---|---|
