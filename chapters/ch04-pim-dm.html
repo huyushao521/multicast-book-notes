@@ -88,216 +88,295 @@
 
 <main class="main">
   <article class="content">
-<h1 id="ch04-pim-dm-pim-sdm">ch04 PIM-DM 与 PIM-SDM（洪泛剪枝模型）</h1>
+<h1 id="4-pim-dm-">第 4 章 PIM-DM：推模型与泛洪-剪枝</h1>
 <blockquote>
-<p><strong>来源</strong>：Williamson Ch6（原理）/ Ch10（配置）/ Ch13（DVMRP 互操作，P.352–P.404）、Aweya Ch4（P.205–P.240）、iPexpert Ch3（PIM-DM）、Ch5（PIM-SDM）
-<strong>配图</strong>：<a href="../diagrams/d07-pim-dm.svg">D07 PIM-DM 洪泛与剪枝</a></p>
+<p>精读来源：<strong>Williamson Ch2（p.46–48，Dense Mode 只用 SPT、Prune 状态机）、Ch10（"Using PIM Dense Mode"，p.42 明确指向该章）</strong>、<strong>Aweya Ch1（p.16–18）、Ch3（p.148–150，Graft/Graft-Ack 报文类型）</strong>
+本章解决的问题：没有 RP、没有接收者信息时，<strong>怎么"先送出去再收回来"</strong>——以及这个模型为什么在现网基本被淘汰，却仍然值得学。</p>
 </blockquote>
-<hr />
 <h2 id="_1">学习目标</h2>
 <ol>
-<li>解释 PIM-DM 的"先泛洪后剪枝"模型，与 ASM/SM 的差异；</li>
-<li>说清 (S,G) 状态的建立、剪枝、Graft 与 State-Refresh 机制；</li>
-<li>理解 PIM-SDM（稀疏-稠密混合）的自动回落机制与适用场景；</li>
-<li>掌握 PIM-DM 排障命令与典型故障；</li>
-<li>判断一个业务该用 PIM-DM、PIM-SDM 还是 PIM-SM。</li>
+<li>说清 PIM-DM 是"隐式 join"（implicit join）：为什么泛洪本身就是一种加入；</li>
+<li>画出初始泛洪 → Prune → 重新泛洪的完整时序；</li>
+<li>记住 Prune 定时器（210 s）与 State Refresh（60 s）的关系，解释"3 分钟抖动"这一经典现象；</li>
+<li>说清 Graft 的触发与报文类型（6/7），以及它为什么是单播；</li>
+<li>说明 PIM-DM 只用 SPT、状态数 = 源数 × 组数 的后果；</li>
+<li>判断什么场景下 DM 反而比 SM 合适（以及绝大多数场景不适用的原因）。</li>
 </ol>
 <hr />
-<h2 id="1-pim-dm">1. 为什么还需要 PIM-DM</h2>
-<p>PIM-DM 是<strong>最原始</strong>的组播协议（DVMRP 的简化版），设计前提是"<strong>接收者密集分布在全网</strong>"。</p>
+<h2 id="1">1. 推模型：先送，再问"要不要"</h2>
+<p>Aweya p.16 的原文措辞很准确：<strong>PIM-DM 采用 "implicit join model"，路由器用 "flood-and-prune" 行为</strong>——没有显式的加入流程，<strong>泛洪到达即等于加入</strong>。</p>
+<p>对比两种模型的本质差别：</p>
 <table>
 <thead>
 <tr>
 <th>维度</th>
-<th>PIM-DM</th>
-<th>PIM-SM</th>
+<th>PIM-DM（推）</th>
+<th>PIM-SM（拉）</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>初始行为</td>
-<td><strong>先泛洪</strong>全网，再剪除无用分支</td>
-<td>从 RP 开始<strong>按需</strong>建树</td>
+<td>收到第一个包就朝所有 PIM 邻居泛洪</td>
+<td>只朝有 Join 的路径发</td>
 </tr>
 <tr>
-<td>状态</td>
-<td>只有 <code>(S,G)</code>，无共享树</td>
-<td><code>(*,G)</code> + <code>(S,G)</code></td>
+<td>接收者信息</td>
+<td>事后通过 Prune 得到</td>
+<td>事前通过 Join 得到</td>
 </tr>
 <tr>
-<td>需要 RP</td>
-<td>否</td>
-<td>是</td>
+<td>树</td>
+<td><strong>只用 SPT（S,G）</strong></td>
+<td>RPT（*,G）+ 可选 SPT</td>
 </tr>
 <tr>
-<td>源注册</td>
-<td>无</td>
-<td>Register</td>
+<td>状态数</td>
+<td>源数 × 组数</td>
+<td>组数（RPT）+ 活跃源的 SPT</td>
 </tr>
 <tr>
-<td>收敛速度</td>
-<td>慢（先泛洪后剪）</td>
-<td>快（按需）</td>
+<td>首包延迟</td>
+<td>低（不等建树）</td>
+<td>高（等 Join/注册）</td>
 </tr>
 <tr>
-<td>适用</td>
-<td>源稀疏、接收者密集（如企业网内"全网都收"的培训流）</td>
-<td>通用</td>
+<td>带宽浪费</td>
+<td>收敛期显著</td>
+<td>几乎无</td>
 </tr>
 </tbody>
 </table>
-<p><strong>当前现网定位</strong>：PIM-DM 基本只出现在以下场景：
-1. <strong>遗留网络</strong>（老设备、老终端、老业务）；
-2. <strong>与 DVMRP 互联</strong>（Williamson Ch13 专门讲这个）；
-3. <strong>PIM-SDM 模式</strong>：在 PIM-SM 域的"稀疏侧"自动回落。</p>
-<blockquote>
-<p>实战建议：新建组播网络一律用 PIM-SM/SSM；PIM-DM 只在"必须兼容"的场景使用，并且要在设计文档中说明理由。</p>
-</blockquote>
+<p>Williamson p.46 明确写着：<strong>"Dense mode protocols such as DVMRP and PIM-DM employ only SPTs"</strong>——DM 里不存在共享树，这是它状态爆炸的根据。</p>
 <hr />
-<h2 id="2-pim-dm-aweya-48">2. PIM-DM 核心流程（Aweya 4.8）</h2>
-<h3 id="21">2.1 初始泛洪</h3>
-<ol>
-<li>源发包，DR 收到后检查 RPF 接口，<strong>从所有其他接口泛洪</strong>；</li>
-<li>每台下游路由器收到后，若 RPF 检查通过且<strong>没有该 (S,G) 状态</strong>，则：
-   - 建立 <code>(S,G)</code> 状态；
-   - 若该接口上<strong>无成员</strong>（无 IGMP 成员、无下游 (S,G)）→ 向上游发送 <strong>Prune</strong>；
-   - 若有成员 → 继续泛洪。</li>
-</ol>
-<h3 id="22-prune">2.2 剪枝消息（Prune）</h3>
+<h2 id="2">2. 五个阶段：从泛洪到稳定</h2>
+<h3 id="1flood">阶段 1：初始泛洪（Flood）</h3>
+<p>源 S 发出第一个包 → 源 DR 从<strong>所有 PIM 接口</strong>泛洪（除入接口）→ 每台路由器做 RPF 检查：</p>
 <ul>
-<li>Prune 携带 <strong>Prune State Refresh（PSR）位</strong>：<code>1</code> = 希望上游发 State-Refresh（"别再洪泛了"）；<code>0</code> = 希望上游继续泛泛（默认，因上游可能还有其他源）。</li>
-<li><strong>Prune Override</strong>：若某条链路是 <strong>点到点链路</strong>且两端都是 PIM 路由器，上游收到 Prune 后<strong>不会剪除该链路</strong>（因为链路上可能有其他路由器需要这条 flooded 树）→ 这是 PIM-DM 在点到点网络上的"洪泛保留"优化。</li>
+<li>RPF 通过 → 继续朝下游泛洪，并建（S,G）；</li>
+<li>RPF 失败 → 丢弃（这就是"泛洪不会成环"的原因）。</li>
 </ul>
-<h3 id="23-graft">2.3 Graft 机制</h3>
-<p>被剪掉的支路上有新接收者出现时，需要<strong>重新接入</strong>：</p>
-<div class="codehilite"><pre><span></span><code>接收侧 → 上游: Join（携带该 (S,G) 的 Graft）
-上游 → 接收侧: Graft-Ack（确认）
+<h3 id="2prune">阶段 2：剪枝（Prune）</h3>
+<p>叶路由器发现"本网段没有接收者（无 IGMP 成员、无下游 PIM 邻居）" → 向上游发 <strong>Prune</strong>。</p>
+<p>上游收到 Prune 后把该接口置为 <strong>Pruned 状态</strong>（W p.47 原文："the router places that interface into Pruned state"），并：
+- 若所有下游接口都被剪掉 → 继续向上游发 Prune；
+- 若还有其他下游 → 只剪这一个口。</p>
+<h3 id="3prune">阶段 3：Prune 超时与重新泛洪</h3>
+<p>W p.47 的关键一句：<strong>"Prunes have a timeout value associated with them such that, when they time out, they cause…"</strong>——剪枝状态会过期，过期后流量<strong>重新泛洪</strong>下来，再被重新剪掉。</p>
+<div class="codehilite"><pre><span></span><code>210 s（默认 Prune 超时）→ 状态失效 → 重新泛洪 → 重新剪枝
 </code></pre></div>
 
-<ul>
-<li>Graft 沿树上行传播直到源侧 DR；</li>
-<li>中间路由器如果因为 State-Refresh 已删除状态，则重新建立；</li>
-<li><strong>Graft 风暴风险</strong>：多个下游同时 Graft → 上游需用 <strong>Graft 抑制/合并机制</strong>。</li>
-</ul>
-<h3 id="24-state-refresh">2.4 State-Refresh 机制</h3>
-<p><strong>问题</strong>：PIM-DM 的洪泛是"周期性重来"还是"记忆型"？答案是记忆型——状态保存在路由器上。但如果上游重启或状态丢失，需要重新洪泛。</p>
-<p><strong>State-Refresh 报文</strong>：</p>
-<ul>
-<li>周期性地沿树向下发，带 <code>(S,G)</code> 与<strong>跳数度量</strong>；</li>
-<li>下游收到后：刷新状态老化时间、确认路径正确；</li>
-<li>若收到的度量与本地不符 → 说明路径变化 → <strong>删除旧状态并重新洪泛</strong>。</li>
-</ul>
-<p>关键参数：</p>
-<div class="codehilite"><pre><span></span><code>ip pim state-refresh interval 60      ! 发送周期（秒）
-ip pim state-refresh ttl 255           ! State-Refresh 的 TTL
-</code></pre></div>
-
-<h3 id="25-assert-in-pim-dm">2.5 Assert in PIM-DM</h3>
-<p>与 PIM-SM 的 Assert 类似，但比较维度是 <strong>(S,G) 的跳数度量</strong>（Aweya 4.9）：多路访问网段上离源最近的路由器成为 Assert Winner，避免重复转发。</p>
-<hr />
-<h2 id="3-pim-sdm-williamson-ch510ipexpert-ch5">3. PIM-SDM（稀疏-稠密混合，Williamson Ch5/10、iPexpert Ch5）</h2>
-<p><strong>动机</strong>：真实网络常常"大部分区域稀疏（只有少数接收者），少部分区域稠密（大量接收者）"。</p>
-<p><strong>PIM-SDM 的机制</strong>：</p>
-<ol>
-<li>默认按 <strong>PIM-SM</strong> 运作（有 RP，走共享树）；</li>
-<li>当 RP 上收到某源的 <strong>Register</strong> 但该源没有对应的 <code>(S,G)</code> 共享树状态时（说明该源所在区域是"稠密"的），该区域<strong>自动切换到 PIM-DM 行为</strong>：源侧直接向全网泛洪；</li>
-<li>稠密区与稀疏区之间通过 <strong>PIM-DM/PIM-SM 边界</strong>协调（Williamson Ch10 有专门的边界配置）。</li>
-</ol>
-<div class="codehilite"><pre><span></span><code>! 稀疏-稠密边界路由器上的配置
-ip pim sparse-dense-mode
-interface Gi0/1
- ip pim sparse-dense-mode
-</code></pre></div>
-
-<p><strong>代价</strong>：</p>
-<ul>
-<li>边界路由器上需要 <strong>MSDP</strong> 来交换跨域的源信息；</li>
-<li>复杂度显著上升，状态量增加。</li>
-</ul>
-<blockquote>
-<p>现实中 <strong>PIM-SDM 已很少使用</strong>，主流是纯 PIM-SM / SSM。阅读本书主要是理解其"边界"与"回落"思想。</p>
-</blockquote>
-<hr />
-<h2 id="4-dvmrp-williamson-ch13">4. 与 DVMRP 的互操作（Williamson Ch13）</h2>
-<p>DVMRP（Distance Vector Multicast Routing Protocol）是老牌组播协议，历史上用于 MBone。</p>
-<p><strong>关键概念</strong>：</p>
-<ul>
-<li><strong>DVMRP Distance</strong>：到源的跳数度量，用于 Assert 与剪枝决策；</li>
-<li><strong>Distance Offset（偏移）</strong>：允许在边界对度量做偏移，避免 DVMRP 域与 PIM 域之间出现度量冲突；</li>
-<li><strong>PIM-DVMRP 边界</strong>：DVMRP 域与 PIM 域互联时用隧道（GRE）或物理接口，边界路由器做 <strong>unicast-multicast congruence（单播-组播一致）</strong> 检查——DVMRP 依赖单播路由，边界处必须保证两边单播路径一致，否则 RPF 判定不一致导致环路。</li>
-</ul>
-<blockquote>
-<p>现实价值：几乎为零。除非你要维护一套 20 年前的 MBone 遗留网络。这一章读懂"为什么组播强依赖单播一致性"即可。</p>
-</blockquote>
-<hr />
-<h2 id="5">5. 排障命令</h2>
-<div class="codehilite"><pre><span></span><code>! PIM-DM 专用
-show ip pim interface                       ! 模式：sparse / dense / sparse-dense
-show ip mroute dense                        ! 仅看稠密模式表项
-show ip mroute 239.1.1.1 detail             ! 查看 Prune / Assert / Graft 状态
-show ip pim neighbor                        ! 邻居与 DR
-debug ip pim dense-mode                     ! 密度模式调试
-debug pim message dense-mode                ! 报文级调试
-debug ip mpacket                           ! 数据包级（含 RPF 判定）
-
-! 状态刷新
-show ip pim state-refresh                  ! PSR 状态
+<p>这就是 PIM-DM 的经典缺陷：<strong>在没有任何接收者的分支上，每 3 分钟仍会有一次泛洪</strong>。</p>
+<h3 id="4state-refreshrfc-3973">阶段 4：State Refresh（RFC 3973 的补丁）</h3>
+<p>为解决"周期性泛洪"，PIM-DM 引入 <strong>State Refresh</strong> 报文：上游每 <strong>60 s</strong> 向下游发一次"剪枝状态仍然有效"，下游据此刷新 Prune 定时器，<strong>不必等超时再泛洪</strong>。</p>
+<p>前提：<strong>整域内所有路由器都支持并启用 State Refresh</strong>（Hello 里带 Option 6）。只要有一台老设备不支持，退化回 210 s 泛洪。</p>
+<h3 id="5graft">阶段 5：Graft（新接收者加入）</h3>
+<p>被剪掉的分支来了新接收者时，不需要等 3 分钟：路由器发 <strong>Graft</strong>（类型 <strong>6</strong>）<strong>单播</strong>沿 RPF 方向逐跳上行，上游回 <strong>Graft-Ack</strong>（类型 <strong>7</strong>）（Aweya p.149–150 原文列出这两类报文与"Unicast to RPF interface of source"）。</p>
+<div class="codehilite"><pre><span></span><code>新成员出现 → 叶路由器发 Graft（单播） → 上游立即恢复转发 → 回 Graft-Ack
 </code></pre></div>
 
 <hr />
-<h2 id="6-6">6. 生产案例（6 例）</h2>
-<h3 id="4-1pim-dm">案例 4-1：PIM-DM 网络中组播风暴（带宽打满）</h3>
-<p><strong>现象</strong>：某分支链路带宽 100% 打满，但只有 3 个接收端。
-<strong>定位</strong>：<code>show ip mroute 239.1.1.1 detail</code> 显示大量接口在 Outgoing list；<code>debug ip pim dense-mode</code> 看到持续泛洪。
-<strong>根因</strong>：PIM-DM 在<strong>多路访问网段</strong>（同交换机下多台路由器）泛洪时，需要 Assert 消重；若 Assert 被 ACL 过滤或接口配置为 <code>ip pim dense-mode</code> 但未启用 Assert 抑制，导致重复泛洪。
-<strong>处置</strong>：放行 224.0.0.13；确认 <code>ip pim assert</code> 生效；检查网段是否需要改为 PIM-SM。
-<strong>复盘</strong>：新建网络不用 PIM-DM；存量 PIM-DM 改造为 PIM-SM 是根本解法。</p>
-<h3 id="4-2prune-graft">案例 4-2：Prune 后无法恢复（Graft 失败）</h3>
-<p><strong>现象</strong>：接收端新加入组后一直收不到流；重启接收侧路由器后恢复。
-<strong>定位</strong>：<code>debug pim message</code> 看到 Graft 发出但无 Graft-Ack 返回；上游状态中 (S,G) 不存在。
-<strong>根因</strong>：上游因 State-Refresh 已删除状态，Graft 无人应答，树上无路径。
-<strong>处置</strong>：手工触发一次洪泛（重启源侧 DR 或 <code>clear ip mroute *</code>）；长期方案是改用 PIM-SM。
-<strong>复盘</strong>：PIM-DM 的恢复机制脆弱，生产上出现过一次即应立项改造。</p>
-<h3 id="4-3prune-override">案例 4-3：Prune Override 导致支路无法剪除</h3>
-<p><strong>现象</strong>：某点到点链路上的组播流量一直不下线，即使对端无人接收。
-<strong>定位</strong>：链路上游收到 Prune 但未剪除；确认链路为点到点。
-<strong>根因</strong>：Prune Override 机制：点到点链路上游不剪除（怕影响链路上其他路由器）。
-<strong>处置</strong>：接受该行为；或改为 PIM-SM（共享树按需剪除，无此问题）。
-<strong>复盘</strong>：PIM-DM 的剪枝语义天然"粗"，业务上要接受一定冗余。</p>
-<h3 id="4-4pim-sdm">案例 4-4：PIM-SDM 域边界处组播单向可达</h3>
-<p><strong>现象</strong>：稀疏区与稠密区之间，稠密区→稀疏区正常，稀疏区→稠密区不通。
-<strong>定位</strong>：边界路由器 <code>show ip mroute</code> 两侧状态不一致；<code>show ip msdp peer</code> 显示 MSDP peer 缺失。
-<strong>根因</strong>：PIM-SDM 边界需要 MSDP 交换源信息，MSDP peer 未建立。
-<strong>处置</strong>：配置 MSDP peer 并保证 peer-RPF 通过。
-<strong>复盘</strong>：PIM-SDM 边界 = "PIM-DM 域 + PIM-SM 域 + MSDP"，缺一不可。</p>
-<h3 id="4-5state-refresh">案例 4-5：State-Refresh 路径不一致导致状态反复重建</h3>
-<p><strong>现象</strong>：组播流量周期性闪断，每隔几分钟重连一次。
-<strong>定位</strong>：<code>debug ip pim state-refresh</code> 显示收到的度量与本地记录不符；随后状态被删除并重新泛洪。
-<strong>根因</strong>：链路冗余切换后 State-Refresh 仍沿旧路径到达，度量不匹配。
-<strong>处置</strong>：确认链路切换后的收敛时间；升级软件版本（PIM State-Refresh 处理有增强）。
-<strong>复盘</strong>：组播对链路抖动的敏感度高于单播，冗余链路切换要专门做组播收敛测试。</p>
-<h3 id="4-6dvmrp-pim">案例 4-6：DVMRP 遗留域与 PIM 域互联后出现环路</h3>
-<p><strong>现象</strong>：组播包在两域之间来回转发，TTL 异常递减。
-<strong>定位</strong>：边界路由器 <code>debug ip mpacket</code> 显示包在 DVMRP 与 PIM 之间循环。
-<strong>根因</strong>：<strong>单播-组播一致性（unicast-multicast congruence）</strong> 被破坏——两域的单播路径不对称，而 DVMRP 与 PIM 都依赖单播做 RPF。
-<strong>处置</strong>：修正单播路由使两域对称；或改用隧道 + 静态 mroute 明确路径。
-<strong>复盘</strong>：这是"组播强依赖单播"最极端的例子，遗留互联必须做对称性设计。</p>
+<h2 id="3-assert-dm">3. Assert 在 DM 里更频繁</h2>
+<p>DM 的泛洪特性使"同一网段多台上游都往下发"的概率大增，Assert（第 3 章）在 DM 域里会<strong>非常频繁</strong>地触发。这也是 DM 在共享 LAN（尤其是双上联）里表现差的原因之一。</p>
+<hr />
+<h2 id="4-cisco">4. 配置（Cisco）</h2>
+<div class="codehilite"><pre><span></span><code>ip multicast-routing
+interface GigabitEthernet0/1
+ ip pim dense-mode            ! 老写法；新平台为 ip pim dense-mode / sparse-dense-mode
+! 边界（必须有，否则泛洪出域）
+ip access-list standard DM-BOUNDARY
+ permit 239.0.0.0 0.255.255.255
+interface GigabitEthernet0/0
+ ip multicast boundary DM-BOUNDARY
+</code></pre></div>
+
+<p>排障命令：</p>
+<div class="codehilite"><pre><span></span><code>show ip mroute                     ! 看 (S,G) 的 flags：D= Dense, P= Pruned
+show ip mroute 239.1.1.10          ! 看各接口状态：prune/dense
+show ip pim interface              ! 模式与邻居数
+show ip pim neighbor
+debug ip pim                       ! 看 prune/graft（高 CPU 风险）
+</code></pre></div>
+
+<hr />
+<h2 id="5">5. 拓扑图</h2>
+<p><img alt="PIM-DM 的泛洪与剪枝过程" src="../diagrams/d07-pim-dm.svg" /></p>
+<p><strong>图 4-1 泛洪-剪枝</strong>：源 S 首包朝所有 PIM 接口泛洪（绿线）；无接收者的分支发 Prune（红线）后被置为 Pruned；210 s 后状态失效会重新泛洪（虚线），除非启用 State Refresh。</p>
+<p><img alt="源树与共享树的结构差异" src="../diagrams/d06-trees.svg" /></p>
+<p><strong>图 4-2 为什么 DM 只有源树</strong>：左侧（S,G）源树就是 DM 的全部；DM 不使用中间那棵（*,G）共享树，因此每个源都要独立建树。</p>
+<hr />
+<h2 id="6-8">6. 工程案例（8 例）</h2>
+<h3 id="4-1dm-3">案例 4-1：DM 域每 3 分钟一次"无缘无故的带宽尖峰"</h3>
+<p><strong>现象</strong>：某工厂监控网用 PIM-DM，核心-分支专线每约 3 分钟出现一次 30 Mbps 尖峰（该分支无任何接收者），持续 1–2 秒。</p>
+<p><strong>定位</strong></p>
+<div class="codehilite"><pre><span></span><code>show ip mroute 239.1.1.20          ! 分支侧无 (S,G)；上游接口周期性 prune
+show ip mroute 239.1.1.20 count     ! 上游计数每 210 s 增加
+show ip pim neighbor detail        ! Hello 选项中无 &quot;State Refresh&quot;
+</code></pre></div>
+
+<p><strong>根因</strong>：Prune 超时 <strong>210 s</strong> 后状态失效 → 重新泛洪 → 被重新剪掉。域内混入了不支持 State Refresh 的老设备，导致整域退化。</p>
+<p><strong>处置</strong>：全域名设备启用 State Refresh（<code>ip pim state-refresh origination-interval 60</code> 源侧 + 全域名支持）；无法统一时改用 <strong>PIM-SM</strong>。</p>
+<p><strong>复盘</strong>：<strong>看到"≈210 s（3 分半）周期"的异常，直接判定 PIM-DM Prune 超时</strong>，不必查数据面。</p>
+<h3 id="4-2dm-3">案例 4-2：DM 网络里加一个新接收者，要等 3 分钟才有画面</h3>
+<p><strong>现象</strong>：新开一个监控终端，加入后要 2–3 分钟才出图。</p>
+<p><strong>定位</strong></p>
+<div class="codehilite"><pre><span></span><code>show ip mroute 239.1.1.20          ! 该分支接口处于 pruned
+debug ip pim graft                 ! 无 Graft 发出
+</code></pre></div>
+
+<p><strong>根因</strong>：Graft 依赖"接口状态仍存在但被剪"；若该（S,G）在上游已<strong>超时删除</strong>（而非仅 Pruned），新成员加入只能等下一条数据触发重新泛洪。加上 Graft 的 RPF 上游若配置了 <code>ip pim dense-mode</code> 但中间链路丢包，Graft-Ack 丢失会重试。</p>
+<p><strong>处置</strong>：确认 State Refresh 启用（保证状态不消失）；中继链路检查 MTU/分片（Graft-Ack 很小，一般不是 MTU 问题）；开启 <code>ip pim state-refresh</code> 后延迟降到秒级。</p>
+<p><strong>复盘</strong>：<strong>DM 的加入延迟取决于"状态是否还在"</strong>，不是"配置对不对"。</p>
+<h3 id="4-3dm">案例 4-3：DM 泛洪打满低带宽专线，业务中断</h3>
+<p><strong>现象</strong>：某分支 2 Mbps 专线，总部推 6 Mbps 视频，分支无接收者，但专线被打满。</p>
+<p><strong>定位</strong></p>
+<div class="codehilite"><pre><span></span><code>show interface Serial0/0/0 | include &quot;output rate&quot;
+show ip mroute 239.1.1.30          ! 分支侧 pruned，但每 210 s 泛洪一段
+</code></pre></div>
+
+<p><strong>根因</strong>：DM 的初始泛洪与周期泛洪不看下游带宽；加上<strong>未配置边界</strong>，整段 239/8 都在泛洪。</p>
+<p><strong>处置</strong>：边界 ACL 只放行业务组；专线侧对组播做限速（<code>rate-limit</code>/QoS policing）；架构上改为 SM。</p>
+<p><strong>复盘</strong>：<strong>DM 与低带宽/高延迟链路天生不兼容</strong>。凡是 WAN 场景，一律不选 DM。</p>
+<h3 id="4-4dm">案例 4-4：DM 域内状态数爆炸，设备内存告警</h3>
+<p><strong>现象</strong>：500 路源 × 20 个组，核心路由器 mroute 条目 10 万+，CPU 40%，内存告警。</p>
+<p><strong>定位</strong></p>
+<div class="codehilite"><pre><span></span><code>show ip mroute summary             ! 条目数
+show ip mroute count | include &quot;Group&quot;
+</code></pre></div>
+
+<p><strong>根因</strong>：DM 只用 SPT，状态数 = <strong>源数 × 组数</strong>；而其中大量源长期无接收者，状态只靠 Prune 维持，永远不释放。</p>
+<p><strong>处置</strong>：迁移 PIM-SM（状态数降到组数量级，且可用 <code>spt-threshold infinity</code> 进一步压）；短期加 <code>ip pim dense-mode</code> 的边界与源过滤。</p>
+<p><strong>复盘</strong>：<strong>状态规模是选择 DM/SM 的第一判据</strong>，不是"哪种更简单"。</p>
+<h3 id="4-5dm-sm">案例 4-5：DM 与 SM 混跑，边界处形成环路</h3>
+<p><strong>现象</strong>：改造期部分区域用 SM、部分用 DM，边界出现重复包与"流量绕两圈"。</p>
+<p><strong>定位</strong></p>
+<div class="codehilite"><pre><span></span><code>show ip mroute 239.1.1.40          ! 同一 (S,G) 在两个方向都有 OIF
+debug ip pim                       ! 看到 prune 与 join 交替
+</code></pre></div>
+
+<p><strong>根因</strong>：DM 的泛洪不认 SM 的（*,G）状态，SM 的 RP 又对 DM 域泛洪"不设防"，两边都把对方当"下游"，形成<strong>推-拉冲突</strong>。</p>
+<p><strong>处置</strong>：边界路由器用 <code>ip pim sparse-dense-mode</code> 并在边界做<strong>组播边界 + 明确的 RP 覆盖范围</strong>；改造应"按域切换"，避免长期混跑。</p>
+<p><strong>复盘</strong>：<strong>DM/SM 混合是事故高发区</strong>，必须画出"哪个域用哪种模式"的边界图。</p>
+<h3 id="4-6show-ip-mroute-d-p">案例 4-6：<code>show ip mroute</code> 显示 D 与 P 同时存在，误判为故障</h3>
+<p><strong>现象</strong>：运维看到 <code>(S,G) flags: D P</code>，以为状态异常。</p>
+<p><strong>定位</strong></p>
+<div class="codehilite"><pre><span></span><code>show ip mroute 239.1.1.50
+! (10.1.1.100, 239.1.1.50), flags: D  ← Dense
+!   Incoming interface: Gi0/0, RPF nbr 10.1.1.2
+!   Outgoing interface list:
+!     Gi0/1, Forward/Dense, 00:00:12/00:02:48
+!     Gi0/2, Prune/Dense, 00:02:30/00:00:30   ← P 表示该口被剪
+</code></pre></div>
+
+<p><strong>根因</strong>：不是故障。<code>D</code> 表示该路由是 Dense 模式条目，<code>Prune/Dense</code> 表示<strong>该出接口</strong>处于剪枝状态。</p>
+<p><strong>处置</strong>：无需处置；把 <code>Forward/Dense</code> 与 <code>Prune/Dense</code> 的区别写进运维手册。</p>
+<p><strong>复盘</strong>：<strong>读懂 flags 能省一半无效工单</strong>。DM 的核心 flag 只有 D、P、A（Assert）。</p>
+<h3 id="4-7-dr">案例 4-7：源侧 DR 不是预期设备，注册/泛洪路径错</h3>
+<p><strong>现象</strong>：多台路由器接同一服务器网段，泛洪从"非预期"的那台出去，绕行 3 跳。</p>
+<p><strong>定位</strong></p>
+<div class="codehilite"><pre><span></span><code>show ip pim interface Gi0/3        ! DR 字段显示非预期设备
+show ip pim neighbor              ! 各台 DR priority
+</code></pre></div>
+
+<p><strong>根因</strong>：DM 里 DR 主要承担 IGMP Querier 与本地转发职责，选举按 priority/IP；网段内 IP 最大的设备当选，而设计上希望"出口路由器"当选。</p>
+<p><strong>处置</strong>：出口路由器设 <code>ip pim dr-priority 100</code>；其他设默认。</p>
+<p><strong>复盘</strong>：<strong>DR 要显式设计</strong>（与第 3 章同一结论）。</p>
+<h3 id="4-8dm">案例 4-8：DM 用于小规模监控网反而最省事（正面案例）</h3>
+<p><strong>现象</strong>：某园区 3 台路由器、1 个源、8 个接收者，全部在同一广播域内，用 SM 需配 RP、易出错。</p>
+<p><strong>定位</strong>：规模评估——源 1 个、组 3 个、域内 3 跳。</p>
+<p><strong>结论</strong>：改用 PIM-DM 后配置只有 3 行（<code>ip multicast-routing</code> + 接口 <code>ip pim dense-mode</code>），无 RP、无 MSDP，稳定运行。</p>
+<p><strong>复盘</strong>：<strong>DM 并非"技术落后"，而是"规模不经济"</strong>。源少、组少、域小、带宽充裕的场景，DM 的运维成本最低。判断标准：<strong>状态数（源×组）&lt; 100 且域内无 WAN 链路</strong>。</p>
 <hr />
 <h2 id="7">7. 自测清单</h2>
 <ol>
-<li>PIM-DM 的"先泛洪后剪枝"与 PIM-SM 的"按需建树"在收敛时间与状态量上的差别？</li>
-<li>Prune 报文中的 PSR 位作用是什么？</li>
-<li>Prune Override 在什么链路类型下生效？为什么？</li>
-<li>Graft/Graft-Ack 机制解决什么问题？它的风险是什么？</li>
-<li>State-Refresh 报文里的度量不匹配会导致什么动作？</li>
-<li>PIM-SDM 自动切换到 DM 的触发条件是什么？</li>
-<li>单播-组播一致性的含义是什么？破坏它会导致什么后果？</li>
+<li>什么是 "implicit join"？它和 SM 的显式 Join 有何本质差别？</li>
+<li>PIM-DM 的初始泛洪为什么不会成环？</li>
+<li>Prune 的默认超时是多少？超时后会发生什么？</li>
+<li>State Refresh 解决什么问题？它成立的前提是什么？</li>
+<li>Graft 是单播还是组播？为什么？</li>
+<li>Assert 在 DM 中为什么更频繁？</li>
+<li>DM 的状态数公式？为什么它会"内存爆炸"？</li>
+<li><code>Forward/Dense</code> 与 <code>Prune/Dense</code> 的区别？</li>
+<li>什么规模的网络适合 DM？给出三个判据。</li>
+<li>DM 改造为 SM 时，最先要处理的是什么（提示：边界与 RP）？</li>
 </ol>
-<h2 id="8">8. 延伸阅读</h2>
+<hr />
+<h2 id="8">8. 原文精读索引</h2>
+<blockquote>
+<p>纸面页码实测：Williamson = PDF 页 − 22；Aweya = PDF 页 − 21。</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>知识点</th>
+<th>书/节</th>
+<th>纸面页</th>
+<th>原文可核对要点</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>密集/稀疏两种模型</td>
+<td>W Ch2</td>
+<td>p.46</td>
+<td>"Dense mode protocols (DVMRP and PIM-DM)"；"employ only SPTs"</td>
+</tr>
+<tr>
+<td>Flood and Prune 行为</td>
+<td>W Ch2</td>
+<td>p.46–47</td>
+<td>Prune 把接口置 Pruned 状态；Prune 有超时，超时后重新泛洪（Figure 2-20）</td>
+</tr>
+<tr>
+<td>推模型的适用与代价</td>
+<td>W Ch2</td>
+<td>p.48</td>
+<td>密集模式在成员稀疏时浪费带宽</td>
+</tr>
+<tr>
+<td>PIM-DM 详细章节指引</td>
+<td>W Ch2</td>
+<td>p.42</td>
+<td>原文指向 "Chapter 10, Using PIM Dense Mode"</td>
+</tr>
+<tr>
+<td>implicit join / flood-and-prune</td>
+<td>Aweya Ch1</td>
+<td>p.16–17</td>
+<td>"PIM-DM operates on an implicit join model"</td>
+</tr>
+<tr>
+<td>SM 与 DM 的模型对比</td>
+<td>Aweya Ch1</td>
+<td>p.17–18</td>
+<td>稀疏模式显式 join；密集模式初始泛洪</td>
+</tr>
+<tr>
+<td>Graft / Graft-Ack 类型值</td>
+<td>Aweya Ch3</td>
+<td>p.149–150</td>
+<td>"6 = Graft (PIM-DM only)"、"7 = Graft-Ack (PIM-DM only)"；Graft 单播至 RPF</td>
+</tr>
+<tr>
+<td>Join/Graft 对 Hold Time 的影响</td>
+<td>Aweya Ch3</td>
+<td>p.163</td>
+<td>收到 Join 或 Graft 会刷新 Hold Time</td>
+</tr>
+<tr>
+<td>Prune 210 s / State Refresh 60 s</td>
+<td>RFC 3973</td>
+<td>—</td>
+<td>标准默认值；本书未逐字给出数值，按 RFC 标注</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="9">9. 延伸</h2>
 <ul>
-<li>Aweya Ch4（P.205–P.240）：PIM-DM 协议状态、Prune/Join/Graft、Assert、State-Refresh</li>
-<li>Williamson Ch6（P.128–P.177）、Ch10（P.214–P.239）、Ch13（P.352–P.404）</li>
-<li>iPexpert Ch3（P.3-1–3-49）、Ch5（P.5-1–5-40）</li>
+<li>下一章：PIM-SM 与 RP 发现（全书的重点，也是现网默认选项）</li>
+<li>标准：RFC 3973（PIM-DM）、RFC 4601（PIM-SM）</li>
+<li>迁移建议：DM → SM 必须"按域切换 + 明确 RP 与边界"，不要长期混跑</li>
 </ul>
   </article>
   <footer class="page-foot">

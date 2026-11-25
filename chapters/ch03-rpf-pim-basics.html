@@ -88,457 +88,420 @@
 
 <main class="main">
   <article class="content">
-<h1 id="ch03-rpf-pim">ch03 RPF、分发树与 PIM 通用机制</h1>
+<h1 id="3-rpf-pim">第 3 章 RPF、分发树与 PIM 通用机制</h1>
 <blockquote>
-<p><strong>来源</strong>：Aweya Ch1.6（RPF）、Ch1.10（组播路由体系架构）、Ch3（PIM 报文格式）、Ch5.6（DR 选举）、Ch5.9（Assert）、iPexpert Ch3–Ch4
-<strong>配图</strong>：<a href="../diagrams/d05-rpf.svg">D05 RPF</a>｜<a href="../diagrams/d06-trees.svg">D06 分发树</a></p>
+<p>精读来源：<strong>Williamson Ch2（p.34–47，树与泛洪剪枝）、Ch3（p.60，DR）</strong>、<strong>Aweya Ch1（p.15–18）、Ch1.6（p.41–45，RPF 偏好顺序）、Ch3（p.152–160，Hello/DR Priority 选项）</strong>
+本章解决的问题：所有 PIM 家族共享的那部分机制——<strong>RPF 决定"收不收"，Hello/DR/Assert 决定"谁来发、谁来回"</strong>。</p>
 </blockquote>
-<hr />
 <h2 id="_1">学习目标</h2>
 <ol>
-<li>解释 RPF 的实现方式（严格 RPF / 静态 mroute / 无 RPF）及其环路风险；</li>
-<li>说清 PIM 的通用报文族（Hello/Join-Prune/Assert/Bootstrap/Candidate-RP/Register 等）及其字段；</li>
-<li>理解组播路由表（mroute）的表项结构：<code>(S,G)</code>、<code>(*,G)</code>、<code>(S,G,rpt)</code>、RPF 接口、Outgoing List、Flags；</li>
-<li>掌握 PIM DR 选举规则与 Assert 机制；</li>
-<li>建立"组播转发三要素：状态 + RPF + 出接口列表"的排障框架。</li>
+<li>说清 RPF 检查表的<strong>四条优先级</strong>（静态 mroute → 单播 → MBGP → 缺省），以及为什么"最specific"不是唯一规则；</li>
+<li>背出 PIM Hello 的默认周期与 holdtime，说明 Hello 里 <strong>Option 19 DR Priority</strong> 的作用；</li>
+<li>说清 DR 选举的两级比较，以及 <code>DR priority 0</code> 的工程含义；</li>
+<li>解释 Assert 为什么必须存在（多路由器同网段重复发包），以及它的比较顺序；</li>
+<li>说清 Join/Prune 的"周期性刷新 + 抑制"模型，理解为什么 PIM 是<strong>软状态</strong>；</li>
+<li>能用手上命令判断"是 RPF 问题、DR 问题，还是 Assert 问题"。</li>
 </ol>
 <hr />
-<h2 id="1-aweya-110">1. 组播路由体系架构（Aweya 1.10）</h2>
-<p>四层组件模型，理解它就理解了"一条组播流要经过多少个模块"：</p>
+<h2 id="1-rpf">1. RPF 再深入：四张表的优先级</h2>
+<p>RPF 不是简单的"查单播路由"，它是一个<strong>按优先级回退的查询链</strong>。Aweya 在 p.41–42 明确给出顺序：<strong>静态组播路由（<code>ip mroute</code>）优先，其次单播路由，同源多路由时比 Metric Preference（= 管理距离），再比 Metric，最后比等价路径</strong>。</p>
 <table>
 <thead>
 <tr>
-<th>组件</th>
-<th>缩写</th>
-<th>职责</th>
+<th>优先级</th>
+<th>来源</th>
+<th>典型命令</th>
+<th>什么时候用</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>Multicast Routing Protocol Engine</strong></td>
-<td>MRPE</td>
-<td>协议状态机：处理 Join/Prune/Register 等，维护协议状态</td>
-</tr>
-<tr>
-<td><strong>Multicast Routing Table Manager</strong></td>
-<td>MRTM</td>
-<td>把协议状态 + RPF 信息 → 写硬件 FIB（组播转发表）</td>
-</tr>
-<tr>
-<td><strong>Unicast Routing Protocol Components</strong></td>
-<td>—</td>
-<td>提供 RPF 所需的目标源路由信息（IBGP/静态/OSPF/ISIS）</td>
-</tr>
-<tr>
-<td><strong>Multicast Group Membership Discovery</strong></td>
-<td>MGMD</td>
-<td>IGMP/MLD，负责最后一跳成员发现</td>
-</tr>
-<tr>
-<td><strong>Multicast Source Discovery Protocol</strong></td>
-<td>MSDP</td>
-<td>跨域发现源（ASM 场景）</td>
-</tr>
-</tbody>
-</table>
-<blockquote>
-<p>排障时的价值：判断"是协议状态没建起来（MRPE）"、"是转发表没下发（MRTM）"、"是 RPF 查不到（Unicast）"还是"是成员没加入（MGMD）"——<strong>四选一，缩小 80% 的排查范围</strong>。</p>
-</blockquote>
-<hr />
-<h2 id="2-rpf">2. RPF 详解</h2>
-<p><img alt="RPF" src="../diagrams/d05-rpf.svg" /></p>
-<h3 id="21-rpf">2.1 为什么需要 RPF</h3>
-<p>组播树是以<strong>源为根</strong>的生成树。RPF 保证：</p>
-<ol>
-<li><strong>无环路</strong>：任何组播包只能沿"离源越来越近"的方向转发，包不会绕回；</li>
-<li><strong>防伪源</strong>：伪造源地址的包没有对应 RPF 接口，直接丢弃；</li>
-<li><strong>流量对称</strong>：RPF 保证组播与单播走相同路径，避免环路与路径不一致。</li>
-</ol>
-<h3 id="22-rpf">2.2 RPF 的三种实现</h3>
-<table>
-<thead>
-<tr>
-<th>模式</th>
-<th>配置</th>
-<th>用途</th>
-<th>风险</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>严格 RPF</strong></td>
-<td>默认，基于单播路由表/FIB</td>
-<td>正常组播</td>
-<td>单播拓扑异常会导致组播不通</td>
-</tr>
-<tr>
+<td>1</td>
 <td><strong>静态 mroute</strong></td>
-<td><code>ip mroute &lt;src&gt; &lt;mask&gt; &lt;interface&gt; [rpf]</code></td>
-<td>单播不可达场景（隧道、非 PIM 网络）</td>
-<td><strong>极易造成环路</strong>，必须成文设计</td>
+<td><code>ip mroute 10.1.0.0 255.255.0.0 192.168.1.1</code></td>
+<td>隧道、非对称、缺省路由场景</td>
 </tr>
 <tr>
-<td><strong>无 RPF</strong></td>
-<td><code>ip multicast-routing</code> 关闭（老设备）</td>
-<td>实验/老设备</td>
-<td>全网泛洪，慎用</td>
+<td>2</td>
+<td><strong>单播 RIB（含 MBGP 的单播表）</strong></td>
+<td>IGP/静态</td>
+<td>绝大多数情况</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>MBGP/multicast RIB</strong>（若平台分离）</td>
+<td><code>address-family ipv4 mdt</code> / <code>ip rpf</code> 专用表</td>
+<td>MVPN、跨域</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>缺省路由</strong></td>
+<td><code>0.0.0.0/0</code></td>
+<td>会造成"所有源都从同一口来"，需配合 <code>ip mroute</code> 修正</td>
 </tr>
 </tbody>
 </table>
-<h3 id="23-rpf">2.3 RPF 接口的动态性</h3>
-<ul>
-<li>RPF 接口 = 单播路由表中到源的<strong>出接口</strong>（Fib path）；</li>
-<li><strong>周期性校验</strong>：若单播路由变化（如收敛、链路切换），RPF 接口随之改变；组播状态也会随之重建；</li>
-<li><strong>RPF 接口类型</strong>（Aweya 1.6.5）：</li>
-</ul>
-<table>
-<thead>
-<tr>
-<th>类型</th>
-<th>说明</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>n</code></td>
-<td>Null —— 无路由，RPF 失败</td>
-</tr>
-<tr>
-<td><code>l</code></td>
-<td>线路（点到点）</td>
-</tr>
-<tr>
-<td><code>m</code></td>
-<td>多播（Multiaccess）</td>
-</tr>
-<tr>
-<td><code>i</code></td>
-<td>静态 mroute 指定</td>
-</tr>
-</tbody>
-</table>
-<h3 id="24">2.4 排障命令</h3>
-<div class="codehilite"><pre><span></span><code>show ip rpf 10.1.1.1                     ! RPF 接口与路由来源
-show ip rpf &lt;source&gt; detail              ! 含 RPF 表项与 FIB 细节
-show ip mroute                           ! 全部组播路由表
-show ip mroute 239.1.1.1                 ! 指定组
-show ip mroute 239.1.1.1 detail          ! 含 RPF 邻居与出接口列表
-show ip mroute active                    ! 活动状态（（S,G）/( *,G)）
-show ip mroute count                     ! 状态数统计
+<p><strong>关键点（W p.41–42）</strong>：RPF 检查与组播路由表（mroute）是<strong>两张独立的表</strong>。RPF 只看"去往源的最短路径"，mroute 只看"哪些接口要发"。所以：</p>
+<div class="codehilite"><pre><span></span><code>show ip rpf 10.1.1.100        ! 看 RPF 用哪条路由、哪个接口
+show ip mroute 239.1.1.10     ! 看 in/out 接口列表
+! 两者不一致 → 丢包，且不会报错
+</code></pre></div>
+
+<p><strong>RPF 失败的判定顺序</strong>（排障直接用）：</p>
+<div class="codehilite"><pre><span></span><code>包被丢弃
+ ├─ show ip rpf &lt;S&gt; 无输出?            → 路由缺失（最常见）
+ ├─ RPF 接口 ≠ 实际入接口?              → 不对称/ECMP/隧道
+ ├─ RPF 接口 = Null?                    → 源就在本机或直连但未起 PIM
+ └─ 全部正常但仍不通?                    → 转查 Assert / DR / 二层
 </code></pre></div>
 
 <hr />
-<h2 id="3-pim-aweya-ch3">3. PIM 通用报文族（Aweya Ch3）</h2>
-<h3 id="31-pim-common-header">3.1 公共头（PIM Common Header）</h3>
-<div class="codehilite"><pre><span></span><code> 0                   1                   2                   3
- 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|  Version | Type  |   Reserved    |           Checksum           |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                        Group Address                           |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                        Source Address                          |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-</code></pre></div>
-
-<ul>
-<li><code>Version</code> = 2，<code>Type</code> 区分报文类型；</li>
-<li>8 bit 保留域在 PIMv2 中被重新定义（Option Type 1–5：Join/Prune 长度、DR 优先级、Generation ID、DF 优先级/生成 ID 等）→ <strong>这是 BIDIR-PIM 能承载 DF 优先级的原因</strong>。</li>
-</ul>
-<h3 id="32">3.2 报文清单</h3>
+<h2 id="2-pim">2. PIM 的共同骨架</h2>
+<p>Aweya p.15 一句话点明结构：<strong>Hello、Join/Prune、Assert 及其选项是"所有 PIM 类型共有"的</strong>，DM/SM/BIDIR/SSM 只是"树怎么建"不同。四种报文的角色：</p>
 <table>
 <thead>
 <tr>
 <th>报文</th>
-<th>类型</th>
-<th>归属</th>
-<th>目的</th>
+<th>目的地址</th>
+<th>作用</th>
+<th>周期/触发</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Hello</td>
-<td>0</td>
-<td>全部</td>
-<td>邻居发现、DR 选举、参数协商</td>
+<td><strong>Hello</strong></td>
+<td><code>224.0.0.13</code>（All-PIM-Routers）</td>
+<td>邻居发现、参数协商、DR 选举</td>
+<td><strong>30 s</strong> 周期，holdtime <strong>3.5×30 = 105 s</strong></td>
 </tr>
 <tr>
-<td>Join/Prune</td>
-<td>1</td>
-<td>全部</td>
-<td>建/剪分发树</td>
+<td><strong>Join/Prune</strong></td>
+<td>上游邻居单播</td>
+<td>请求/撤销某（S,G）或（*,G）</td>
+<td>触发式 + 周期性刷新（默认 60 s）</td>
 </tr>
 <tr>
-<td>Assert</td>
-<td>4</td>
-<td>全部</td>
-<td>多路访问网段上消除重复转发</td>
+<td><strong>Assert</strong></td>
+<td><code>224.0.0.13</code></td>
+<td>同网段多路由器重复收流时选唯一转发者</td>
+<td>收到重复数据触发</td>
 </tr>
 <tr>
-<td>Graft / Graft-Ack</td>
-<td>5/6</td>
-<td>PIM-DM</td>
-<td>重新接入被剪掉的支路</td>
-</tr>
-<tr>
-<td>State-Refresh</td>
-<td>10</td>
-<td>PIM-DM</td>
-<td>周期刷新 (S,G) 状态</td>
-</tr>
-<tr>
-<td>Bootstrap (BSM)</td>
-<td>20</td>
-<td>PIM-SM</td>
-<td>分发 Group→RP 映射</td>
-</tr>
-<tr>
-<td>Candidate-RP-Advert</td>
-<td>19</td>
-<td>PIM-SM</td>
-<td>宣告 RP 候选</td>
-</tr>
-<tr>
-<td>Register / Register-Stop</td>
-<td>12/11</td>
-<td>PIM-SM</td>
-<td>源注册到 RP</td>
-</tr>
-<tr>
-<td>BIDIR 专用</td>
-<td>Offer/Winner/Backoff/Pass</td>
-<td>BIDIR</td>
-<td>DF 选举可靠性增强</td>
+<td><strong>Register / Register-Stop</strong></td>
+<td>单播到 RP</td>
+<td>源 DR 把流量交给 RP（PIM-SM 专有）</td>
+<td>数据触发</td>
 </tr>
 </tbody>
 </table>
-<h3 id="33-hello">3.3 Hello 报文关键字段</h3>
+<blockquote>
+<p>Hello 面向 <code>224.0.0.13</code>、TTL=1，<strong>不出本网段</strong>——所以你在跨网段抓不到 Hello，这不是配置问题。</p>
+</blockquote>
+<hr />
+<h2 id="3-hellopim">3. Hello：PIM 的"心跳 + 能力清单"</h2>
+<p>Hello 不只是保活，它是一个<strong>选项协商载体</strong>。Aweya p.152–155 列出了 Hello 的选项字段，其中对现网影响最大的是：</p>
 <table>
 <thead>
 <tr>
-<th>字段</th>
+<th>选项</th>
+<th>编号</th>
 <th>作用</th>
+<th>工程含义</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>Holdtime</strong></td>
-<td>邻居存活时间，默认 105 s</td>
+<td>Holdtime</td>
+<td>1</td>
+<td>邻居存活时间</td>
+<td>默认 105 s；链路抖动时先看它</td>
 </tr>
 <tr>
 <td><strong>DR Priority</strong></td>
-<td>DR 选举优先级，数值大者优（默认 1）</td>
+<td><strong>19</strong></td>
+<td><strong>DR 选举权重</strong>（PIM-SM 用）</td>
+<td>默认 1；<code>0</code> = 不参选</td>
 </tr>
 <tr>
-<td><strong>Generation ID</strong></td>
-<td>标识路由器实例，用于 BIDIR DF 选举</td>
+<td>Generation ID</td>
+<td>20</td>
+<td>重启检测</td>
+<td>设备重启后 GenID 变化，邻居立即重建状态</td>
 </tr>
 <tr>
-<td><strong>Keepalive Timer</strong></td>
-<td>双向保活确认，默认 0（关闭）</td>
+<td>LAN Delay</td>
+<td>2</td>
+<td>共享网段传播时延（prune 延迟）</td>
+<td>默认 500 ms</td>
 </tr>
 <tr>
-<td><strong>DR Priority/Neighbor Loss</strong></td>
-<td>检测邻居丢失</td>
+<td>Override Interval</td>
+<td>3</td>
+<td>覆盖 Join 的抖动</td>
+<td>默认 2500 ms</td>
 </tr>
 <tr>
-<td><strong>Bidir-Capable</strong></td>
-<td>BIDIR-PIM 能力标志（RFC 5015）</td>
+<td>State Refresh Capable</td>
+<td>6</td>
+<td><strong>PIM-DM 状态刷新能力</strong>（第 4 章）</td>
+<td>DM 域内必须一致，否则 3 分钟抖动</td>
 </tr>
 </tbody>
 </table>
-<p><strong>关键定时器汇总</strong>：</p>
+<div class="codehilite"><pre><span></span><code>show ip pim neighbor                  ! Uptime/Expires，Expires 应≈105s
+show ip pim neighbor 10.1.1.2 detail  ! 看 DR priority、GenID
+debug ip pim hello                    ! 抓 Hello 内容（谨慎，CPU 高）
+</code></pre></div>
+
+<p><strong>排障口诀</strong>：<code>show ip pim neighbor</code> 为空 → 先查"接口有没有 <code>ip pim sparse-mode</code>"，再查"对端有没有发"（<code>show ip pim interface</code> 的 <code>Nbr Count</code>），最后才查 ACL/CoPP。<strong>PIM 不发 Hello 的接口，永远不会建邻居，也就永远不会转发组播</strong>。</p>
+<hr />
+<h2 id="4-dr">4. DR 选举：为什么它决定"谁去注册"</h2>
+<p>每个网段选一台 DR，职责不同（W p.60 明确指出"DR 由组播路由协议选出，具体机制取决于协议"）：</p>
 <table>
 <thead>
 <tr>
-<th>定时器</th>
-<th>默认值</th>
-<th>说明</th>
+<th>场景</th>
+<th>DR 的职责</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Hello Holdtime</td>
-<td>105 s</td>
-<td>3.5 × Hello interval（30 s）</td>
+<td>有接收者</td>
+<td>代表网段向上游发 <strong>Join</strong>（IGMP 报告 → PIM Join）</td>
 </tr>
 <tr>
-<td>Assert Holdtime</td>
-<td>90 s</td>
-<td></td>
+<td>有源</td>
+<td>代表网段向 RP 发 <strong>Register</strong>（PIM-SM）</td>
 </tr>
 <tr>
-<td>Join/Prune Holdtime</td>
-<td>210 s</td>
-<td></td>
-</tr>
-<tr>
-<td>RP Announce（AutoRP）</td>
-<td>60 s</td>
-<td>宣告周期</td>
-</tr>
-<tr>
-<td>BSR RP-Announce</td>
-<td>60 s</td>
-<td></td>
-</tr>
-<tr>
-<td>SA Advert（MSDP）</td>
-<td>60 s</td>
-<td></td>
-</tr>
-<tr>
-<td>SA Cache</td>
-<td>180 s</td>
-<td></td>
+<td>共享网段</td>
+<td>避免每台路由器都向上游建树</td>
 </tr>
 </tbody>
 </table>
-<hr />
-<h2 id="4-mroute">4. 组播路由表 (mroute) 结构</h2>
-<div class="codehilite"><pre><span></span><code>IP Multicast Routing Table
-Flags: D - Dense, S - Sparse, B - Bidir Group,
-       s - SSM Group, C - Connected, L - Local, P - Pruned,
-       R - RP-bit set, J - Join SPT, T - SPT-bit set,
-       E - Extranet, X - External, H - Hot standby
-(*, 239.1.1.1), 00:00:00/32, uptime 00:12:33, expires 00:03:22
-  RP 10.1.1.1
-  Flags: S
-  Incoming interface: GigabitEthernet0/1, RPF
-  Outgoing interface list:
-    GigabitEthernet0/2, Forward/Sparse, 00:01:22/00:03:20
-(10.1.2.5, 239.1.1.1), 00:00:41/00:03:22, flags: JT
-  Incoming interface: GigabitEthernet0/1, RPF
-  Outgoing interface list:
-    GigabitEthernet0/2, Forward/Sparse, 00:00:41/00:03:22
+<p><strong>选举规则（PIM-SM）</strong>：</p>
+<div class="codehilite"><pre><span></span><code>1) DR Priority 高者胜（默认 1；0 = 弃权）
+2) Priority 相同 → IP 地址高者胜
+3) 收到更高 Priority/更高 IP 的 Hello → 让位
 </code></pre></div>
 
-<p><strong>必须能读懂的字段</strong>：</p>
+<p><strong><code>DR priority 0</code> 的工程用法</strong>：把某台路由器设为"永不参选"，常用于 <strong>Anycast RP / MSDP 场景的 RP 侧</strong>避免抢 DR，或让三层交换机（只是转发）不参与。</p>
+<p><strong>双 DR 的典型症状</strong>：两个上游同时收到 Join，形成两条并行树 → 接收者收到<strong>双份流</strong>（视频花屏、TCP 应用重复响应）。<code>show ip pim neighbor</code> 里两台都是 DR，或 <code>show ip pim interface</code> 的 DR 字段不一致，就是它。</p>
+<hr />
+<h2 id="5-assert">5. Assert：同网段"抢活干"的仲裁</h2>
+<p><strong>为什么需要</strong>：一条共享链路（如两台路由器都接同一 VLAN），若两台都从上游收到同一（S,G），都会往下游转发 → 重复包。Assert 就是<strong>在同一网段内选唯一转发者</strong>。</p>
+<p><strong>比较顺序</strong>（与单播选路同源，Aweya p.41–42 的偏好思想）：</p>
+<div class="codehilite"><pre><span></span><code>1) Metric Preference（到源的路由管理距离）—— 小者胜
+2) Metric（到源的度量）—— 小者胜
+3) IP 地址 —— 大者胜
+败者：把该接口置为 Assert Loser，停止转发，但保留状态
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code>show ip mroute 239.1.1.10          ! 看 (S,G) 的 flags: 出现 &quot;A&quot; 表示 Assert
+debug ip pim assert                 ! 观察谁赢
+show ip pim interface &lt;int&gt;         ! 看 DR / Assert 相关计数
+</code></pre></div>
+
+<p><strong>Assert 的隐性代价</strong>：败者并不删状态，只是"压住不发"；一旦胜者链路失效，要等 Assert 超时或重新收敛才切换（秒级抖动）。所以在<strong>双上联共享 VLAN</strong> 的设计里，Assert 会频繁发生，必须确认两条路径的 metric 有明确差异。</p>
+<hr />
+<h2 id="6-joinprune">6. Join/Prune：软状态与"周期性刷新"</h2>
+<p>PIM 没有"连接建立"概念，全是<strong>软状态</strong>：</p>
+<div class="codehilite"><pre><span></span><code>收到 IGMP Report → DR 向上游发 Join（触发式，立即）
+之后每 60 s 重发一次 Join（刷新）
+3 × 60 s（180 s）无刷新 → 状态超时删除
+收到 Prune → 起 210 s（DM）/ 立即生效（SM 的显式 Prune）
+</code></pre></div>
+
+<p><strong>为什么要周期刷新</strong>：拓扑变化、设备重启、链路切换都靠"刷新不上就超时"来自愈。代价是<strong>收敛慢</strong>——这就是案例 1-6"切换后 8 分钟才恢复"的根源：Join 刷新周期 + RPF 重校验周期叠加。</p>
+<p><strong>Join/Prune 的抑制</strong>：同一网段只有 DR 发 Join，其他路由器听到 Join 后不再重复发（抑制），否则上游会被 N-1 份冗余 Join 打爆。</p>
+<hr />
+<h2 id="7">7. 拓扑图</h2>
+<p><img alt="RPF 检查与 RPF 失败的四种形态" src="../diagrams/d05-rpf.svg" /></p>
+<p><strong>图 3-1 RPF 检查</strong>：R3 的 RPF 接口必须朝 R2。单播路由改成走 R4 后，组播被静默丢弃——<strong>症状是"没有报错、就是不通"</strong>。</p>
+<p><img alt="源树、单向共享树与双向共享树" src="../diagrams/d06-trees.svg" /></p>
+<p><strong>图 3-2 三种分发树对照</strong>：（S,G）源树最短但状态多；（*,G）共享树状态少但绕 RP；双向树无源注册。DR/Assert 决定"谁在这棵树上转发"，树形本身决定"路径长短"。</p>
+<hr />
+<h2 id="8-8">8. 工程案例（8 例）</h2>
+<h3 id="3-1show-ip-pim-neighbor">案例 3-1：<code>show ip pim neighbor</code> 空的三种原因，逐层定位</h3>
+<p><strong>现象</strong>：新开局两台路由器直连，PIM 邻居起不来，组播全断。</p>
+<p><strong>定位</strong></p>
+<div class="codehilite"><pre><span></span><code>show ip pim interface              ! 看 PIM 是否 enable、Nbr Count
+show ip pim neighbor               ! 空
+show ip interface brief            ! 接口 up/up
+show run interface Gi0/0 | include pim
+</code></pre></div>
+
+<p><strong>三类根因</strong>（按出现频率）：① 接口只配了 <code>ip multicast-routing</code> 但漏了 <code>ip pim sparse-mode</code>；② 中间是<strong>二层交换机 + 未放行 224.0.0.13</strong>（少见，因 TTL=1 且多为硬件转发）；③ 接口被 <code>ip pim passive</code>（只收不发）或 <code>ip pim sparse-mode</code> 被 <code>no</code> 掉。</p>
+<p><strong>处置</strong>：补齐接口模式；<code>ip pim passive</code> 只用于"有源/有接收者但不需要建邻居"的边缘口，误配就是"永远没邻居"。</p>
+<p><strong>复盘</strong>：PIM 邻居是组播的<strong>第一道门</strong>。开局验收顺序：接口 up → PIM enable → 邻居 up → IGMP 组表 → mroute。</p>
+<h3 id="3-2-dr">案例 3-2：双 DR 导致视频双份、花屏</h3>
+<p><strong>现象</strong>：某 VLAN 内两台三层交换机，接收端花屏，抓包显示<strong>同一 RTP 序号出现两次</strong>。</p>
+<p><strong>定位</strong></p>
+<div class="codehilite"><pre><span></span><code>! 两台设备
+show ip pim interface vlan 100     ! 两台都显示 DR = 本机
+show ip pim neighbor              ! 两台互为邻居，DR Priority 都是 1
+</code></pre></div>
+
+<p><strong>根因</strong>：两台设备 IP 不同，但<strong>其中一台的 Hello 里 DR Priority 被配成了 2</strong>（历史遗留），另一台是默认 1 —— 理论上高者胜，但该平台在 <strong>Hello 发送间隔内</strong>两台都认为自己是 DR，且上游链路是负载分担，导致两条树并存。</p>
+<p><strong>处置</strong>：统一 DR Priority（都设 1，让 IP 高者胜），或显式把其中一台设 <code>ip pim dr-priority 0</code>；同时确认上游到源的路径唯一。</p>
+<p><strong>复盘</strong>：<strong>DR 必须是"设计出来的"，不能是"碰出来的"</strong>。设计文档里应写清每个共享网段的 DR。</p>
+<h3 id="3-3assert">案例 3-3：Assert 霸占接口，主链路闲置</h3>
+<p><strong>现象</strong>：双上联（主 100G / 备 10G）接同一 VLAN，组播一直走 10G 备链路，主链路空载。</p>
+<p><strong>定位</strong></p>
+<div class="codehilite"><pre><span></span><code>show ip mroute 239.1.1.10        ! 出接口是备链路
+debug ip pim assert              ! 看到主链路侧为 Loser
+show ip route 10.1.1.100         ! 备链路 metric 更小（意外）
+</code></pre></div>
+
+<p><strong>根因</strong>：IGP metric 配置错误，备链路到源的 metric 反而更小 → Assert 判定备链路胜；属于"配置错误被 Assert 忠实地执行了"。</p>
+<p><strong>处置</strong>：修正 IGP metric；或对组播源网段用 <code>ip mroute</code> 固定主链路（慎用，会掩盖问题）。</p>
+<p><strong>复盘</strong>：Assert 的结果<strong>永远等于单播选路的结果</strong>。看到"组播走错链路"，先去查单播路由，别查 Assert。</p>
+<h3 id="3-4-mroute">案例 3-4：静态 mroute 掩盖了路由问题，切换后彻底断</h3>
+<p><strong>现象</strong>：某分支用 <code>ip mroute</code> 指向上游，长期正常；上游改造后组播全断，且<strong>删掉静态 mroute 反而恢复</strong>。</p>
+<p><strong>定位</strong></p>
+<div class="codehilite"><pre><span></span><code>show ip rpf 10.1.1.100           ! 用的是静态 mroute 指向旧上游
+show ip route 10.1.1.100         ! 单播已改走新上游
+show run | include ip mroute
+</code></pre></div>
+
+<p><strong>根因</strong>：静态 mroute 优先级最高，把新拓扑"钉"在旧路径上；旧上游已不再转发。</p>
+<p><strong>处置</strong>：删除或更新静态 mroute；若必须保留（如隧道场景），加监控告警（对 <code>show ip rpf</code> 结果做定期比对）。</p>
+<p><strong>复盘</strong>：<strong>静态 mroute 是止血药，不是长期方案</strong>。凡是加了 <code>ip mroute</code> 的地方，必须登记"为什么加、什么时候能删"。</p>
+<h3 id="3-5hello-holdtime">案例 3-5：Hello holdtime 抖动导致邻居反复重建</h3>
+<p><strong>现象</strong>：<code>show ip pim neighbor</code> 的 Uptime 不断归零，组播每几十秒断一次；CPU 正常。</p>
+<p><strong>定位</strong></p>
+<div class="codehilite"><pre><span></span><code>show ip pim neighbor              ! Uptime 30–100 s 波动
+show interface Gi0/1 | include &quot;input errors|CRC|drops&quot;
+show policy-map control-plane     ! CoPP 对 PIM 限速
+</code></pre></div>
+
+<p><strong>根因</strong>：链路有 CRC 错误（光衰），或 CoPP 把 PIM Hello 限速到很低 → Hello 丢失 3 次以上即超时（105 s）。本例是<strong>光模块收光功率临界</strong>，Hello 周期性丢失。</p>
+<p><strong>处置</strong>：更换光模块/清洁尾纤；CoPP 为 PIM 单独放行（建议 ≥100 pps，含 Join/Prune 突发）。</p>
+<p><strong>复盘</strong>：组播邻居抖动几乎总是<strong>物理层或控制面限速</strong>，不是 PIM 配置。</p>
+<h3 id="3-6join-3">案例 3-6：Join 刷新被抑制，链路切换后 3 分钟才恢复</h3>
+<p><strong>现象</strong>：主备切换后，接收者侧要 3 分钟才有画面。</p>
+<p><strong>定位</strong></p>
+<div class="codehilite"><pre><span></span><code>show ip mroute 239.1.1.10        ! (S,G) 存在但 OIF 为空，Expires 逐渐减少
+show ip pim neighbor             ! 新邻居已 up
+</code></pre></div>
+
+<p><strong>根因</strong>：共享网段内只有 DR 发 Join（抑制），切换期间 DR 角色未及时转移；新 DR 要等<strong>下一次 Join 刷新（60 s）</strong> 甚至更久才发，叠加状态超时（180 s）表现为 3 分钟。</p>
+<p><strong>处置</strong>：让 DR 选举更快响应（<code>ip pim dr-priority</code> 明确主备，配合 BFD 快速感知）；必要时缩短 <code>ip pim query-interval</code>（影响面大，慎用）。</p>
+<p><strong>复盘</strong>：<strong>PIM 是软状态协议，收敛以"秒到分钟"计</strong>。业务 SLA 要求秒级时，必须靠"拓扑快速感知 + 状态快速重建"（BFD + 稳定 RPF）组合。</p>
+<h3 id="3-7rpf-null">案例 3-7：源直连本机，RPF 接口是 Null</h3>
+<p><strong>现象</strong>：本机既是源（推流服务器）又是组播路由器的场景，其他网段收不到流。</p>
+<p><strong>定位</strong></p>
+<div class="codehilite"><pre><span></span><code>show ip rpf 10.1.1.100     ! 输出 RPF interface: Null, RPF neighbor: 0.0.0.0
+show ip mroute 239.1.1.10  ! Incoming interface: Null（正常，源在本机）
+show ip mroute 239.1.1.10 count   ! 无 (S,G) 转发计数
+</code></pre></div>
+
+<p><strong>根因</strong>：源在本机时 RPF 为 Null 是<strong>正常</strong>的，问题在别处——该平台要求对本地源显式 <code>ip pim register-source</code> 或先把流注入环回口，否则（S,G）不生成。</p>
+<p><strong>处置</strong>：配置 <code>ip pim register-source Loopback0</code>；确认 <code>ip multicast-routing</code> 与接口 PIM 均已启用；用 <code>show ip mroute 239.1.1.10 active</code> 确认有流量流入。</p>
+<p><strong>复盘</strong>：<strong>"RPF 是 Null"不等于故障</strong>。源在本机、源直连、或使用 <code>ip mroute 0.0.0.0 0.0.0.0</code> 时都可能是 Null，要结合"是否本机源"判断。</p>
+<h3 id="3-8pim-up-acl-igmp">案例 3-8：PIM 邻居 up 但组播不通——ACL 拦了 IGMP 报告</h3>
+<p><strong>现象</strong>：邻居正常、mroute 有（*,G）、上游也有流，但下游主机收不到。</p>
+<p><strong>定位</strong></p>
+<div class="codehilite"><pre><span></span><code>show ip igmp groups 239.1.1.10     ! 有表项
+show ip mroute 239.1.1.10          ! OIF 包含主机所在接口
+show ip interface Gi0/2 | include &quot;multicast&quot;
+show ip access-lists              ! 检查 interface ACL 是否 permit igmp
+</code></pre></div>
+
+<p><strong>根因</strong>：接口入方向 ACL 只放行了 UDP/组播数据，<strong>未放行 IGMP（协议号 2）</strong>，主机 Report 到不了路由器；但 mroute 里的（*,G）是<strong>别的网段</strong>的成员建的，OIF 恰好包含该接口（因为该口还有别的成员），导致"看起来应该能收到"。</p>
+<p><strong>处置</strong>：ACL 增加 <code>permit igmp any any</code>（或 <code>permit 2 any any</code>）。</p>
+<p><strong>复盘</strong>：<strong>组播的"数据面"和"控制面"是两条 ACL 路径</strong>。数据不通先查控制面是否被 ACL 拦，别只查数据 ACL。</p>
+<hr />
+<h2 id="9">9. 自测清单</h2>
+<ol>
+<li>RPF 的四级优先顺序？为什么静态 mroute 会"掩盖"单播路由问题？</li>
+<li>PIM Hello 的目的是什么？为什么它不出本网段？</li>
+<li>DR Priority 与 DR 的 IP 地址，比较顺序是什么？<code>dr-priority 0</code> 用来做什么？</li>
+<li>Assert 的比较顺序？败者会删除状态吗？</li>
+<li>PIM 为什么是软状态协议？Join 刷新周期与超时分别是多少？</li>
+<li><code>show ip rpf</code> 显示 Null 一定是故障吗？举两个正常场景。</li>
+<li>双 DR 会造成什么现象？如何确认？</li>
+<li>组播走错链路（主备颠倒），应该先查 Assert 还是单播路由？</li>
+<li>PIM 邻居反复重建，最可能是哪两类原因？</li>
+<li>接口 ACL 只放行 UDP 会怎样？</li>
+</ol>
+<hr />
+<h2 id="10">10. 原文精读索引</h2>
+<blockquote>
+<p>纸面页码：Williamson = PDF 页 − 22；Aweya = PDF 页 − 21（均经 <code>tools/srcgrep.py</code> 实测命中核对）。</p>
+</blockquote>
 <table>
 <thead>
 <tr>
-<th>字段</th>
-<th>排障含义</th>
+<th>知识点</th>
+<th>书/节</th>
+<th>纸面页</th>
+<th>原文可核对要点</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>Flags: JT</code></td>
-<td><strong>J</strong> = 已加入 SPT；<strong>T</strong> = SPT-bit 已置（共享树侧被剪）</td>
+<td>Hello/Join-Prune/Assert 为 PIM 共有</td>
+<td>Aweya Ch1</td>
+<td>p.15</td>
+<td>"Hello and Assert, along with their Options, are common to all PIM protocol types"</td>
 </tr>
 <tr>
-<td><code>R</code></td>
-<td>RP-bit：该组已切换到 SPT（收到 <code>(S,G,rpt) Prune</code>）</td>
+<td>泛洪-剪枝与两种模型</td>
+<td>Aweya Ch1</td>
+<td>p.16–18</td>
+<td>PIM-DM "implicit join model"、"flood-and-prune"；SM 为显式 join</td>
 </tr>
 <tr>
-<td><code>Incoming interface ... RPF</code></td>
-<td>RPF 接口是否正确（<strong>RPF 失败的第一现场</strong>）</td>
+<td>源侧 DR 概念</td>
+<td>Aweya Ch1</td>
+<td>p.18, p.33</td>
+<td>"the source's Designated Router (DR)"</td>
 </tr>
 <tr>
-<td><code>Outgoing interface list</code></td>
-<td>无条目 → 树上无人；接口带 <code>Pruned</code> → 被剪</td>
+<td>RPF 偏好顺序</td>
+<td>Aweya Ch1.6</td>
+<td>p.41–42</td>
+<td>静态组播路由 → 单播；Metric Preference(AD) → Metric → 等价</td>
 </tr>
 <tr>
-<td><code>expires</code></td>
-<td>状态老化倒计时</td>
+<td>DR 每网段选举</td>
+<td>Williamson Ch3</td>
+<td>p.60</td>
+<td>"The multicast routing protocol selects the DR… depends on the protocol in use"</td>
 </tr>
 <tr>
-<td><code>00:03:20</code></td>
-<td>该接口的 Join 定时器（到期未刷新则状态消失）</td>
+<td>Flood and Prune 行为</td>
+<td>Williamson Ch2</td>
+<td>p.46–47</td>
+<td>Prune 把接口置 Pruned 状态；Prune 有超时，超时后重新泛洪</td>
+</tr>
+<tr>
+<td>PIM 报文格式</td>
+<td>Aweya Ch3</td>
+<td>p.152</td>
+<td>Figure 3.4–3.6（Hello/Join-Prune/Assert/Register）</td>
+</tr>
+<tr>
+<td><strong>DR Priority 选项（Type 19）</strong></td>
+<td>Aweya Ch3</td>
+<td>p.154–155</td>
+<td>"Option Type 19: DR Priority"、32 位无符号数</td>
+</tr>
+<tr>
+<td>Hello 默认定时器</td>
+<td>RFC 4601</td>
+<td>—</td>
+<td>30 s / holdtime 105 s（3.5×）；本书未逐字给出，按标准标注</td>
 </tr>
 </tbody>
 </table>
-<blockquote>
-<p><strong><code>show ip mroute</code> 是组播排障的第一命令</strong>（iPexpert 反复强调：把控制面与数据面分开，先看控制面）。</p>
-</blockquote>
 <hr />
-<h2 id="5-pim-dr-assert">5. PIM DR 选举与 Assert</h2>
-<h3 id="51-dr-aweya-562">5.1 DR 选举（Aweya 5.6.2）</h3>
-<p><strong>目的</strong>：多路访问网段上，<strong>每个网段只有一个 DR</strong> 负责：
-- 代表本网段向上游发送 Join/Prune；
-- 接收上游的 Join/Prune 并在本网段泛洪；
-- 源侧 DR 负责向 RP 发 <strong>Register</strong>；
-- 收侧 DR 负责执行 <strong>SPT 切换</strong>（最后一跳）。</p>
-<p><strong>选举规则（RFC 7761）</strong>：</p>
-<ol>
-<li>比较 <strong>DR Priority</strong>（Hello 中携带），<strong>数值大者胜</strong>；</li>
-<li>相同则比较 <strong>Hello 中的源 IP</strong>（接口 IP），<strong>地址小者胜</strong>；</li>
-<li>再相同则比较 <strong>Generation ID</strong>（新版）；</li>
-<li>** PIM Hello 邻居数最少者优先**（tie-breaker，避免震荡）。</li>
-</ol>
-<p><strong>DR 故障切换</strong>：Holdtime（105 s）超时后重新选举；切换期间组播中断 → 生产上需 <strong>冗余 PIM 域/双上联</strong>。</p>
-<h3 id="52-assert">5.2 Assert 机制</h3>
-<p><strong>问题</strong>：在多路访问网段（如同一台交换机下多个路由器共享一个 LAN），两台路由器都收到同一份组播包，如果都向下游转发 → <strong>重复流量</strong>，浪费带宽。</p>
-<p><strong>解决</strong>：Assert 报文携带 (S,G) 的 <strong>metric（跳数）</strong>、<strong>RPT-bit 标志</strong>、<strong>preferred flag</strong>（是否走 SPT）。</p>
-<p><strong>Assert 选举优先级</strong>（Aweya 5.9.7）：</p>
-<ol>
-<li><strong>SPT preferred 优先</strong>（走 SPT 的胜出，标志位优先）；</li>
-<li><strong>RPT-bit 未置者优先</strong>（若都已走 SPT 则此步相同）；</li>
-<li><strong>metric 小者胜</strong>（离源更近）；</li>
-<li>相同则 <strong>IP 地址小者胜</strong>。</li>
-</ol>
-<p><strong>Assert Winner</strong> 停止转发并宣告；其他路由器收到 Assert 后停止向该网段转发，并安装 Assert 状态，直到 holdtime 到期。</p>
-<blockquote>
-<p>排障要点：<code>show ip mroute &lt;group&gt; detail</code> 中出现 <code>Asserts</code> 段，说明存在重复转发路径；若业务"带宽翻倍"，优先查 Assert。</p>
-</blockquote>
-<hr />
-<h2 id="6-6">6. 生产案例（6 例）</h2>
-<h3 id="3-1rpf">案例 3-1：RPF 失败——单播通、组播不通</h3>
-<p><strong>现象</strong>：组播全不通，单播正常；<code>show ip mroute</code> 中该组无 <code>(S,G)</code> 项。
-<strong>定位</strong>：</p>
-<div class="codehilite"><pre><span></span><code>show ip rpf 10.1.2.5                 ! RPF interface: Null / 不符
-show ip route 10.1.2.5               ! 单播路由是否存在
-debug ip mpacket 10.1.2.5 239.1.1.1  ! 见 &quot;RPF failed&quot; / &quot;no route&quot;
-</code></pre></div>
-
-<p><strong>根因</strong>：路由器缺少到源的<strong>单播路由</strong>（PIM 依赖 IGP，不自带路由）。
-<strong>处置</strong>：补齐到源的路由（IGP/静态），<strong>不要</strong>用静态 mroute 掩盖问题。
-<strong>复盘</strong>：PIM 域规划必须"一个 IGP 域 + 全网启用 PIM"，这是 iPexpert 反复强调的铁律。</p>
-<h3 id="3-2-mroute">案例 3-2：静态 mroute 造成组播环路</h3>
-<p><strong>现象</strong>：同组流量在两台设备间来回转发，带宽翻倍，且 TTL 异常。
-<strong>定位</strong>：<code>show ip mroute</code> 显示 RPF 接口为静态指定（<code>i</code>）；<code>debug ip mpacket</code> 显示包在两台设备间循环。
-<strong>根因</strong>：为解决 RPF 失败而配置的静态 mroute 指向了错误方向。
-<strong>处置</strong>：删除静态 mroute，改为补齐单播路由；确需静态 mroute 时在设计文档中写明理由与环路分析。
-<strong>复盘</strong>：静态 mroute 是"最后手段"，每次使用都要有环路风险评估（与你的笔记一致）。</p>
-<h3 id="3-3dr">案例 3-3：DR 频繁切换导致组播周期性中断</h3>
-<p><strong>现象</strong>：组播每 1~2 分钟中断几秒，客户端频繁重连。
-<strong>定位</strong>：<code>show ip pim interface</code> 显示 DR 反复变化；<code>show logging | include PIM</code> 出现 <code>DR changed</code>。
-<strong>根因</strong>：两台路由器的 <strong>DR Priority 相同且接口 IP 相同</strong>（如主备设备同 IP 未规划），或 Hello 被 ACL/认证阻塞导致邻居反复重建。
-<strong>处置</strong>：显式配置不同 <code>ip pim dr-priority</code>；检查 <code>ip pim hello</code> 邻居是否稳定（<code>show ip pim neighbor</code>）。
-<strong>复盘</strong>：PIM 邻居与 DR 选举必须纳入变更检查单。</p>
-<h3 id="3-4">案例 3-4：组播重复转发，带宽占用翻倍</h3>
-<p><strong>现象</strong>：交换机上该组流量是两倍预期；客户端正常但带宽异常。
-<strong>定位</strong>：<code>show ip mroute 239.1.1.1 detail</code> 出现 <code>Asserts</code>；<code>show ip pim neighbor</code> 显示同一网段两台 DR。
-<strong>根因</strong>：多路访问网段上 Assert 未生效或配置了 <code>ip pim assert</code> 关闭/ACL 拦截 Assert。
-<strong>处置</strong>：确认 Assert 报文未被过滤；检查是否有 <code>no ip pim sparse-mode</code> 接口混入。
-<strong>复盘</strong>：多路访问网段必须验证 Assert，尤其是双归接入场景。</p>
-<h3 id="3-5mroute">案例 3-5：mroute 状态存在但数据不转发</h3>
-<p><strong>现象</strong>：<code>show ip mroute</code> 有 <code>(S,G)</code> 且 Outgoing interface list 有接口，但接收端收不到。
-<strong>定位</strong>：<code>show ip mroute 239.1.1.1 detail</code> 看 Outgoing 接口的标志（是否 <code>Pruned</code>/<code>Forward</code>）；<code>show ip igmp groups</code> 看成员；接口 <code>show ip pim interface</code>。
-<strong>根因</strong>：出接口列表中的接口处于 <strong>Pruned</strong> 状态，或该接口没有 IGMP 成员（末端主机已离开但状态未刷新）。
-<strong>处置</strong>：确认 Join/Prune 交互；检查下游接口是否 <code>ip pim sparse-mode</code>。
-<strong>复盘</strong>：mroute 有条目 ≠ 能转发，必须看 Outgoing list 的细节标志。</p>
-<h3 id="3-6-ttl">案例 3-6：组播 TTL 被逐跳改写导致边界行为异常</h3>
-<p><strong>现象</strong>：跨三层设备后组播突然消失。
-<strong>定位</strong>：<code>debug ip mpacket</code> 显示 TTL=1；<code>show ip mroute</code> 中组被 prune。
-<strong>根因</strong>：某台设备出接口未配 <code>ip multicast ttl</code>，默认 TTL=1 阻断转发；或 <code>ip multicast threshold</code> 设置过低。
-<strong>处置</strong>：出接口 <code>ip multicast ttl 255</code>；检查 threshold 与域边界设计。
-<strong>复盘</strong>：组播 TTL 是"逐跳重写"而非"递减"，配置时按"域边界"而不是"跳数"思考。</p>
-<hr />
-<h2 id="7">7. 自测清单</h2>
-<ol>
-<li>MRPE / MRTM / MGMD / MSDP 四个组件分别负责什么？排障时如何用它们定位问题层次？</li>
-<li>严格 RPF 与静态 mroute 的差别是什么？各自的环路风险？</li>
-<li><code>show ip mroute</code> 中 <code>J</code>、<code>T</code>、<code>R</code>、<code>P</code> 四个标志分别代表什么？</li>
-<li>PIM DR 选举的完整比较顺序是什么？为什么 IP 地址"小者胜"？</li>
-<li>Assert 选举的四步优先级是什么？为什么要把 "SPT preferred" 放在 metric 之前？</li>
-<li>Hello holdtime 是多少？它与 Hello interval 的比例关系是什么？为什么是 3.5？</li>
-</ol>
-<h2 id="8">8. 延伸阅读</h2>
+<h2 id="11">11. 延伸</h2>
 <ul>
-<li>Aweya Ch1.6 / Ch1.10（P.60–P.79）、Ch3（P.169–P.188 报文格式）、Ch5.6（P.262–P.269）、Ch5.9（P.285–P.292）</li>
-<li>Williamson 附录 A（P.526–P.541）：PIM 报文格式速查</li>
-<li>延伸：<code>RFC 7761</code>（PIM-SM）、<code>RFC 5015</code>（BIDIR-PIM）、<code>RFC 3974</code>（MSDP）</li>
+<li>下一章：PIM-DM（把"泛洪-剪枝"落到报文级）</li>
+<li>标准：RFC 4601（PIM-SM）、RFC 3973（PIM-DM）、RFC 2362（旧版 SM）</li>
+<li>命令速查：<code>show ip rpf</code> / <code>show ip pim neighbor</code> / <code>show ip pim interface</code> / <code>debug ip pim assert</code></li>
 </ul>
   </article>
   <footer class="page-foot">
