@@ -12,12 +12,14 @@
 
 import argparse
 import http.server
+import json
 import os
 import re
 import shutil
 import socketserver
 import sys
 import functools
+import urllib.request
 
 import markdown
 
@@ -75,16 +77,39 @@ STATUS = {
     "ch12-troubleshooting": ("draft", "初稿：排障方法论，待回原文精读"),
 }
 
-STAR_CTA = u"""<div class="star-cta">
+STAR_ICON = ('<svg class="star-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">'
+             '<path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279'
+             'l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79'
+             'l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg>')
+
+
+def github_stars():
+    """构建时取一次 star 数；取不到就只渲染按钮文字，不阻塞构建。"""
+    slug = GITHUB_URL.rstrip("/").split("github.com/")[-1]
+    try:
+        req = urllib.request.Request(
+            "https://api.github.com/repos/" + slug,
+            headers={"User-Agent": "multicast-book-notes-build",
+                     "Accept": "application/vnd.github+json"},
+        )
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            n = json.loads(resp.read().decode("utf-8")).get("stargazers_count")
+        return str(n) if isinstance(n, int) else ""
+    except Exception:
+        return ""
+
+
+def render_star():
+    count = github_stars()
+    # 0 星或取不到时不显示计数，避免出现尴尬的「Star 0」
+    count_html = '<span class="star-count">%s</span>' % count if count and count != "0" else ""
+    return u"""<div class="star-cta">
   <div class="star-text">
-    <strong>如果这套笔记帮你省下了翻书的时间，去 GitHub 点个 Star ★</strong>
-    <span>仓库公开维护，每完成一章就推送一次；Star 是继续精读剩下 8 章的动力。</span>
+    <strong>这套笔记帮到你了吗？</strong>
+    <span>公开维护，每完成一章就推送一次。</span>
   </div>
-  <div class="star-actions">
-    <a class="star-btn" href="%s" target="_blank" rel="noopener">★ Star on GitHub</a>
-    <img class="star-badge" alt="GitHub stars" src="https://img.shields.io/github/stars/huyushao521/multicast-book-notes?style=social">
-  </div>
-</div>""" % GITHUB_URL
+  <a class="star-btn" href="%s" target="_blank" rel="noopener" aria-label="在 GitHub 上 Star 这个项目">%s<span class="star-label">Star</span>%s</a>
+</div>""" % (GITHUB_URL, STAR_ICON, count_html)
 
 # ---------------------------------------------------------------- 布局模板
 LAYOUT = u"""<!DOCTYPE html>
@@ -442,32 +467,51 @@ EXTRA_CSS = u"""
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  margin: 26px 0 8px;
-  padding: 16px 20px;
+  gap: 12px 20px;
+  margin: 24px 0 6px;
+  padding: 14px 18px;
   border: 1px solid var(--border);
-  border-left: 4px solid var(--accent);
-  border-radius: 12px;
-  background: linear-gradient(100deg, var(--accent-softer), var(--surface));
+  border-radius: 10px;
+  background: var(--surface);
 }
-.star-text { display: flex; flex-direction: column; gap: 4px; min-width: 240px; flex: 1 1 320px; }
-.star-text strong { font-size: 15px; color: var(--text); }
-.star-text span { font-size: 13px; color: var(--text-soft); }
-.star-actions { display: flex; align-items: center; gap: 12px; }
+.star-text { display: flex; flex-direction: column; gap: 2px; min-width: 200px; }
+.star-text strong { font-size: 14px; font-weight: 600; color: var(--text); }
+.star-text span { font-size: 12.5px; color: var(--text-muted); }
+
+/* 分段式按钮：左图标+文字，右计数，中间一条分隔线 */
 .star-btn {
-  display: inline-block;
-  padding: 8px 16px;
-  font-size: 13.5px;
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding-left: 12px;
+  font-size: 13px;
   font-weight: 600;
-  color: #fff;
-  background: var(--accent);
-  border-radius: 999px;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
   text-decoration: none;
   white-space: nowrap;
-  transition: transform .15s ease, box-shadow .15s ease;
+  transition: background .15s ease, border-color .15s ease, color .15s ease;
 }
-.star-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 14px var(--shadow); }
-.star-badge { height: 20px; }
+.star-btn .star-icon { flex: none; color: #d4a72c; }
+.star-btn .star-label { padding: 0 12px 0 6px; }
+.star-count {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  border-left: 1px solid var(--border);
+  border-radius: 0 5px 5px 0;
+  background: var(--surface);
+  font-size: 12.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-soft);
+}
+.star-btn:hover { background: var(--hover-bg); border-color: var(--text-faint); }
+.star-btn:hover .star-count { background: var(--border-soft); }
+.star-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ---------- 首页：制作进度 ---------- */
 .pg-box {
@@ -514,6 +558,9 @@ EXTRA_CSS = u"""
 @media (max-width: 700px) {
   .star-cta { flex-direction: column; align-items: flex-start; }
   .pg-table td.pg-note { display: none; }
+  .star-btn { width: 100%; justify-content: center; }
+  .star-btn .star-label { flex: 1; }
+  .star-count { justify-content: center; min-width: 44px; }
 }
 
 @media (max-width: 900px) {
@@ -651,7 +698,7 @@ def main():
 
     # 1) 首页
     idx_html = render_md(os.path.join(SRC, "index.md"))
-    idx_html = idx_html.replace("<!--STAR-->", STAR_CTA)
+    idx_html = idx_html.replace("<!--STAR-->", render_star())
     idx_html = idx_html.replace("<!--PROGRESS-->", render_progress())
     page = LAYOUT.format(title="学习路线总览", site_title=SITE_TITLE, site_sub=SITE_SUB,
                          nav=build_nav(None), content=idx_html, base="",
