@@ -57,6 +57,35 @@ PHASES = [
 
 MD_EXTENSIONS = ["extra", "tables", "fenced_code", "codehilite", "toc", "attr_list", "sane_lists", "admonition"]
 
+# ---------------------------------------------------------------- 制作进度
+# done  = 已按原文精读重写（含纸面页码索引 + 8 例工程案例 + 自测）
+# draft = 初稿，尚未回原文精读（首页会明确标注，避免以草稿当结论）
+STATUS = {
+    "ch01-basics": ("done", "精读 Williamson p.4–40、Aweya p.25–32"),
+    "ch02-igmp-l2": ("done", "精读 Williamson Ch3 全文 p.56–77、Ch14 抽取"),
+    "ch03-rpf-pim-basics": ("done", "精读 Aweya p.15–18 / 41–45 / 148–160"),
+    "ch04-pim-dm": ("done", "精读 Williamson p.42–48、Aweya p.16–18 / 149–163"),
+    "ch05-pim-sm-rp": ("draft", "初稿：PIM-SM 状态机与 RP 发现，待回原文精读"),
+    "ch06-ssm-bidir": ("draft", "初稿：SSM / BIDIR，待回原文精读"),
+    "ch07-msdp-mbgp": ("draft", "初稿：MSDP / MBGP，待回原文精读"),
+    "ch08-mvpn-scale": ("draft", "初稿：MVPN / MLDP，待回原文精读"),
+    "ch09-datacenter-cloud": ("draft", "初稿：数据中心与云，待回原文精读"),
+    "ch10-ipv6-multicast": ("draft", "初稿：IPv6 组播，待回原文精读"),
+    "ch11-security": ("draft", "初稿：安全与过滤，待回原文精读"),
+    "ch12-troubleshooting": ("draft", "初稿：排障方法论，待回原文精读"),
+}
+
+STAR_CTA = u"""<div class="star-cta">
+  <div class="star-text">
+    <strong>如果这套笔记帮你省下了翻书的时间，去 GitHub 点个 Star ★</strong>
+    <span>仓库公开维护，每完成一章就推送一次；Star 是继续精读剩下 8 章的动力。</span>
+  </div>
+  <div class="star-actions">
+    <a class="star-btn" href="%s" target="_blank" rel="noopener">★ Star on GitHub</a>
+    <img class="star-badge" alt="GitHub stars" src="https://img.shields.io/github/stars/huyushao521/multicast-book-notes?style=social">
+  </div>
+</div>""" % GITHUB_URL
+
 # ---------------------------------------------------------------- 布局模板
 LAYOUT = u"""<!DOCTYPE html>
 <html lang="zh-CN">
@@ -407,6 +436,86 @@ EXTRA_CSS = u"""
 /* 首页表格里的章节链接 */
 .content table a { font-weight: 600; }
 
+/* ---------- 首页：求 Star ---------- */
+.star-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 26px 0 8px;
+  padding: 16px 20px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: 12px;
+  background: linear-gradient(100deg, var(--accent-softer), var(--surface));
+}
+.star-text { display: flex; flex-direction: column; gap: 4px; min-width: 240px; flex: 1 1 320px; }
+.star-text strong { font-size: 15px; color: var(--text); }
+.star-text span { font-size: 13px; color: var(--text-soft); }
+.star-actions { display: flex; align-items: center; gap: 12px; }
+.star-btn {
+  display: inline-block;
+  padding: 8px 16px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 999px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.star-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 14px var(--shadow); }
+.star-badge { height: 20px; }
+
+/* ---------- 首页：制作进度 ---------- */
+.pg-box {
+  margin: 22px 0 8px;
+  padding: 18px 20px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.pg-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.pg-title { font-size: 14px; color: var(--text-soft); }
+.pg-title b { font-size: 15px; color: var(--text); }
+.pg-pct { font-size: 13px; font-weight: 700; color: var(--accent); }
+.pg-bar {
+  height: 8px;
+  margin: 10px 0 12px;
+  border-radius: 999px;
+  background: var(--border-soft);
+  overflow: hidden;
+}
+.pg-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), #2da44e);
+}
+.pg-legend { margin: 0 0 12px; font-size: 12.5px; line-height: 1.9; color: var(--text-muted); }
+.pg-legend strong { color: var(--text); }
+.pg-pill {
+  display: inline-block;
+  padding: 1px 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.pg-done { color: #1a7f37; background: rgba(45, 164, 78, .14); border: 1px solid rgba(45, 164, 78, .35); }
+.pg-draft { color: #9a6700; background: rgba(212, 167, 44, .16); border: 1px solid rgba(212, 167, 44, .4); }
+.content .pg-table { margin: 0 0 10px; font-size: 13px; }
+.content .pg-table th, .content .pg-table td { padding: 6px 10px; }
+.content .pg-table td.pg-note { color: var(--text-soft); font-size: 12.5px; }
+.pg-foot { margin: 0; font-size: 12px; color: var(--text-faint); line-height: 1.8; }
+
+@media (max-width: 700px) {
+  .star-cta { flex-direction: column; align-items: flex-start; }
+  .pg-table td.pg-note { display: none; }
+}
+
 @media (max-width: 900px) {
   .page-foot { padding: 0 18px 60px; }
   .pn { flex-direction: column; }
@@ -456,6 +565,50 @@ def build_nav(active_id=None, base=""):
     return "\n".join(out)
 
 
+def render_progress():
+    """首页「制作进度」：按 STATUS 生成进度条 + 逐章状态表。"""
+    seq = [(phase, cid, title) for phase, items in PHASES for cid, title in items]
+    total = len(seq)
+    done = sum(1 for _, cid, _ in seq if STATUS.get(cid, ("draft",))[0] == "done")
+    pct = int(round(done * 100.0 / total))
+
+    rows = []
+    for phase, cid, title in seq:
+        st, note = STATUS.get(cid, ("draft", ""))
+        if st == "done":
+            pill = '<span class="pg-pill pg-done">精读完成</span>'
+        else:
+            pill = '<span class="pg-pill pg-draft">初稿待精读</span>'
+        rows.append(
+            '<tr><td><a href="chapters/%s.html">%s</a></td>'
+            '<td class="pg-note">%s</td><td>%s</td></tr>' % (cid, title, note, pill)
+        )
+
+    return u"""<div class="pg-box">
+  <div class="pg-head">
+    <span class="pg-title">制作进度 <b>%d / %d 章</b></span>
+    <span class="pg-pct">%d%%</span>
+  </div>
+  <div class="pg-bar"><i style="width:%d%%"></i></div>
+  <p class="pg-legend">
+    <span class="pg-pill pg-done">精读完成</span> = 已回原文逐段精读，带纸面页码索引 + 8 例工程案例：
+    <strong>%d 章</strong>。
+    <span class="pg-pill pg-draft">初稿待精读</span> = 已能读通，但机制描述主要来自协议标准与工程经验，
+    <strong>尚未逐页核对原书</strong>，暂不可作为技术结论引用。
+  </p>
+  <table class="pg-table">
+    <thead><tr><th>章节</th><th>精读/核对范围</th><th>状态</th></tr></thead>
+    <tbody>
+%s
+    </tbody>
+  </table>
+  <p class="pg-foot">
+    书库共 4 本原书全文约 4.2 MB；目前已真正读入并核对约 0.25 MB（≈6%%），集中在已完成章节。
+    全部“工程案例”为教学用的典型化场景（按现网常见故障构造），并非书中原案例。
+  </p>
+</div>""" % (done, total, pct, pct, done, "\n".join(rows))
+
+
 def page_title_for(cid):
     for _, items in PHASES:
         for i, t in items:
@@ -498,6 +651,8 @@ def main():
 
     # 1) 首页
     idx_html = render_md(os.path.join(SRC, "index.md"))
+    idx_html = idx_html.replace("<!--STAR-->", STAR_CTA)
+    idx_html = idx_html.replace("<!--PROGRESS-->", render_progress())
     page = LAYOUT.format(title="学习路线总览", site_title=SITE_TITLE, site_sub=SITE_SUB,
                          nav=build_nav(None), content=idx_html, base="",
                          prevnext='<a class="next" href="chapters/ch01-basics.html">'

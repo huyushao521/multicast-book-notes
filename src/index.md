@@ -1,7 +1,15 @@
 # IP 组播学习路线 · 精读笔记 · 首页
 
 > **主书单**：*Developing IP Multicast Networks*（Beau Williamson）· *IP Multicast Routing Protocols: Concepts and Designs*（James Aweya）· *IP Multicast, Volume II*（Loveless / Blair / Durai）· *iPexpert IP Multicast Operations and Troubleshooting*
-> **产出**：12 章精读笔记 · 16 张 SVG 拓扑图 · **78 个生产案例** · 排障方法论与变更检查单
+> **产出**：12 章笔记 · 16 张 SVG 拓扑图 · 工程案例库 · 排障方法论与变更检查单（**当前进度见下方「制作进度」**）
+
+<!--STAR-->
+
+---
+
+## 制作进度
+
+<!--PROGRESS-->
 
 ---
 
@@ -25,15 +33,15 @@
 
 | 章 | 标题 | 核心问题 | 案例 |
 |---|---|---|---|
-| [第 1 章](../chapters/ch01-basics.html) | 基础模型、地址体系与分发树 | 地址分区怎么背？MAC 为什么会冲突？ | 7 |
+| [第 1 章](../chapters/ch01-basics.html) | 基础模型、地址体系与分发树 | 地址分区怎么背？MAC 为什么会冲突？ | 8 |
 | [第 2 章](../chapters/ch02-igmp-l2.html) | IGMP 与二层组播 | Querier 为什么必须有？Snooping 怎么工作？ | 8 |
 
 ### 阶段二 · 协议核心
 
 | 章 | 标题 | 核心问题 | 案例 |
 |---|---|---|---|
-| [第 3 章](../chapters/ch03-rpf-pim-basics.html) | RPF、分发树与 PIM 通用机制 | RPF 查什么？mroute 字段怎么读？ | 6 |
-| [第 4 章](../chapters/ch04-pim-dm.html) | PIM-DM 与 PIM-SDM | 先泛洪后剪枝的代价是什么？ | 6 |
+| [第 3 章](../chapters/ch03-rpf-pim-basics.html) | RPF、分发树与 PIM 通用机制 | RPF 查什么？mroute 字段怎么读？ | 8 |
+| [第 4 章](../chapters/ch04-pim-dm.html) | PIM-DM 与 PIM-SDM | 先泛洪后剪枝的代价是什么？ | 8 |
 | [第 5 章](../chapters/ch05-pim-sm-rp.html) | PIM-SM 状态机与 RP 发现体系 | Register / SPT 切换 / AutoRP / BSR 全流程 | 9 |
 | [第 6 章](../chapters/ch06-ssm-bidir.html) | SSM 与 BIDIR-PIM | 无 RP 无 MSDP 怎么做到？行情为何用 BIDIR？ | 6 |
 
@@ -70,9 +78,11 @@
 
 ---
 
-## 生产案例库（78 例）
+## 生产案例库（已完成 32 例，目标 78 例）
 
 每个案例统一采用：**现象 → 定位命令 → 根因 → 处置 → 复盘**。
+
+> **关于案例来源**：这些是**教学用的典型化场景**——按现网高频故障的共性构造（如 CoPP 限速造成的 260 s 周期抖动、ECMP 打散 `(S,G)`、双 DR 造成 双份流），**并非书中原始案例**，也不是某一次具体故障的取证记录。用来训练"看症状→选命令→定根因"的推理路径；真实排障仍需以现场输出为准。
 
 - [第 1 章 · 基础与地址](../chapters/ch01-basics.html) —— 行情只有部分终端收到、组播只能跑一跳、SSM 组地址被误配、Admin Scope 莫名剪断、GLOP 段误用、多出口导致 RPF 失败
 - [第 2 章 · IGMP 与二层](../chapters/ch02-igmp-l2.html) —— 有 Report 无成员表、幽灵流量、Fast Leave 误伤、IGMP 报文风暴、Fast Leave 与共享设备冲突
