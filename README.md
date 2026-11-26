@@ -34,7 +34,7 @@
 
 阶段三  域间与规模（2 章） 跨域怎么通 → 规模怎么撑
   ch07 MSDP 与 MBGP（Peer-RPF、SA Cache、Anycast-RP over MSDP）
-  ch08 大规模组播（MVPN / MLDP / Provider / 组播 TE / BIER）
+  ch08 大规模组播（MVPN / MLDP / Provider / 组播 TE）※ BIER 尚未展开
 
 阶段四  场景与实战（4 章） 数据中心 → IPv6 → 安全 → 排障
   ch09 数据中心与云中的组播（VXLAN/EVPN/ACI/公有云）
@@ -45,22 +45,24 @@
 
 ## 三、章节索引
 
-| 章 | 标题 | 在线阅读 | 主要来源 | 拓扑图 | 案例数 |
-|---|---|---|---|---|---|
-| 01 | [组播基础模型、地址体系与分发树](src/chapters/ch01-basics.md) | [阅读](chapters/ch01-basics.html) | Williamson Ch1–2 / Aweya Ch1.1–1.9 | [D01](diagrams/d01-address-scope.svg) [D02](diagrams/d02-mac-mapping.svg) [D05](diagrams/d05-rpf.svg) [D06](diagrams/d06-trees.svg) | 7 |
-| 02 | [IGMP 与二层组播](src/chapters/ch02-igmp-l2.md) | [阅读](chapters/ch02-igmp-l2.html) | Williamson Ch3/Ch14–15 / Aweya Ch2 / iPexpert Ch2 | [D03](diagrams/d03-igmp-basic.svg) [D04](diagrams/d04-snooping.svg) | 8 |
-| 03 | [RPF、分发树与 PIM 通用机制](src/chapters/ch03-rpf-pim-basics.md) | [阅读](chapters/ch03-rpf-pim-basics.html) | Aweya Ch1.6/1.10, Ch3, Ch5.6 / iPexpert Ch3–4 | [D05](diagrams/d05-rpf.svg) [D06](diagrams/d06-trees.svg) | 6 |
-| 04 | [PIM-DM 与 PIM-SDM](src/chapters/ch04-pim-dm.md) | [阅读](chapters/ch04-pim-dm.html) | Williamson Ch6/Ch10 / Aweya Ch4 / iPexpert Ch3、Ch5 | [D07](diagrams/d07-pim-dm.svg) | 6 |
-| 05 | [PIM-SM 状态机与 RP 发现](src/chapters/ch05-pim-sm-rp.md) | [阅读](chapters/ch05-pim-sm-rp.html) | Williamson Ch7/Ch8/Ch12 / Aweya Ch5 / iPexpert Ch4、Ch7–9 | [D08](diagrams/d08-pim-sm.svg) [D09](diagrams/d09-rp-discovery.svg) | 9 |
-| 06 | [SSM 与 BIDIR-PIM](src/chapters/ch06-ssm-bidir.md) | [阅读](chapters/ch06-ssm-bidir.html) | Williamson Ch9 / Aweya Ch7、5.17–5.18 / iPexpert Ch6 | [D10](diagrams/d10-anycast-rp.svg) [D11](diagrams/d11-bidir.svg) | 6 |
-| 07 | [MSDP 与 MBGP 域间组播](src/chapters/ch07-msdp-mbgp.md) | [阅读](chapters/ch07-msdp-mbgp.html) | Williamson Ch17 / Aweya Ch6 / iPexpert Ch10、Ch12 | [D12](diagrams/d12-msdp.svg) [D10](diagrams/d10-anycast-rp.svg) | 6 |
-| 08 | [大规模组播：MVPN/MLDP/Provider/TE](src/chapters/ch08-mvpn-scale.md) | [阅读](chapters/ch08-mvpn-scale.html) | Volume II Ch2–Ch3 / Williamson Ch16 | [D13](diagrams/d13-mvpn.svg) | 6 |
-| 09 | [数据中心与云中的组播](src/chapters/ch09-datacenter-cloud.md) | [阅读](chapters/ch09-datacenter-cloud.html) | Volume II Ch4–Ch5 | [D14](diagrams/d14-vxlan.svg) | 6 |
-| 10 | [IPv6 组播](src/chapters/ch10-ipv6-multicast.md) | [阅读](chapters/ch10-ipv6-multicast.html) | iPexpert Ch14 / Aweya 1.4.5 / Volume II Ch3 | [D15](diagrams/d15-ipv6.svg) | 6 |
-| 11 | [组播安全、过滤与限速](src/chapters/ch11-security.md) | [阅读](chapters/ch11-security.html) | iPexpert Ch13 / Volume II Ch1、Ch5 | [D16](diagrams/d16-security.svg) | 6 |
-| 12 | [排障方法论与综合案例](src/chapters/ch12-troubleshooting.md) | [阅读](chapters/ch12-troubleshooting.html) | iPexpert 全书 / Volume II Ch6 | 全部 | 6 |
+| 章 | 标题 | 在线阅读 | 主要来源 | 拓扑图 | 案例数 | 核对 |
+|---|---|---|---|---|---|---|
+| 01 | [组播基础模型、地址体系与分发树](src/chapters/ch01-basics.md) | [阅读](chapters/ch01-basics.html) | Williamson Ch1–2 / Aweya Ch1.1–1.9 | [D01](diagrams/d01-address-scope.svg) [D02](diagrams/d02-mac-mapping.svg) [D05](diagrams/d05-rpf.svg) [D06](diagrams/d06-trees.svg) | 8 | 已精读 |
+| 02 | [IGMP 与二层组播](src/chapters/ch02-igmp-l2.md) | [阅读](chapters/ch02-igmp-l2.html) | Williamson Ch3/Ch14–15 / Aweya Ch2 / iPexpert Ch2 | [D03](diagrams/d03-igmp-basic.svg) [D04](diagrams/d04-snooping.svg) | 8 | 已精读 |
+| 03 | [RPF、分发树与 PIM 通用机制](src/chapters/ch03-rpf-pim-basics.md) | [阅读](chapters/ch03-rpf-pim-basics.html) | Aweya Ch1.6/1.10, Ch3, Ch5.6 / iPexpert Ch3–4 | [D05](diagrams/d05-rpf.svg) [D06](diagrams/d06-trees.svg) | 8 | 已精读 |
+| 04 | [PIM-DM 与 PIM-SDM](src/chapters/ch04-pim-dm.md) | [阅读](chapters/ch04-pim-dm.html) | Williamson Ch6/Ch10 / Aweya Ch4 / iPexpert Ch3、Ch5 | [D07](diagrams/d07-pim-dm.svg) | 8 | 已精读 |
+| 05 | [PIM-SM 状态机与 RP 发现](src/chapters/ch05-pim-sm-rp.md) | [阅读](chapters/ch05-pim-sm-rp.html) | Williamson Ch7/Ch8/Ch12 / Aweya Ch5 / iPexpert Ch4、Ch7–9 | [D08](diagrams/d08-pim-sm.svg) [D09](diagrams/d09-rp-discovery.svg) | 8 | 已精读 |
+| 06 | [SSM 与 BIDIR-PIM](src/chapters/ch06-ssm-bidir.md) | [阅读](chapters/ch06-ssm-bidir.html) | Williamson Ch9 / Aweya Ch7、5.17–5.18 / iPexpert Ch6 | [D10](diagrams/d10-anycast-rp.svg) [D11](diagrams/d11-bidir.svg) | 8 | 已精读 |
+| 07 | [MSDP 与 MBGP 域间组播](src/chapters/ch07-msdp-mbgp.md) | [阅读](chapters/ch07-msdp-mbgp.html) | Williamson Ch17 / Aweya Ch6 / iPexpert Ch10、Ch12 | [D12](diagrams/d12-msdp.svg) [D10](diagrams/d10-anycast-rp.svg) | 8 | 已精读 |
+| 08 | [大规模组播：MVPN/MLDP/Provider/TE](src/chapters/ch08-mvpn-scale.md) | [阅读](chapters/ch08-mvpn-scale.html) | Volume II Ch2–Ch3 / Williamson Ch16 | [D13](diagrams/d13-mvpn.svg) | 8 | **部分核对** |
+| 09 | [数据中心与云中的组播](src/chapters/ch09-datacenter-cloud.md) | [阅读](chapters/ch09-datacenter-cloud.html) | Volume II Ch4–Ch5 | [D14](diagrams/d14-vxlan.svg) | 8 | 已精读 |
+| 10 | [IPv6 组播](src/chapters/ch10-ipv6-multicast.md) | [阅读](chapters/ch10-ipv6-multicast.html) | iPexpert Ch14 / Aweya 1.4.5 / Volume II Ch3 | [D15](diagrams/d15-ipv6.svg) | 8 | 已精读 |
+| 11 | [组播安全、过滤与限速](src/chapters/ch11-security.md) | [阅读](chapters/ch11-security.html) | iPexpert Ch13 / Volume II Ch1、Ch5 | [D16](diagrams/d16-security.svg) | 8 | 已精读 |
+| 12 | [排障方法论与综合案例](src/chapters/ch12-troubleshooting.md) | [阅读](chapters/ch12-troubleshooting.html) | iPexpert 全书 / Volume II Ch6 | 全部 | 8 | 已精读（方法论为原创） |
 
-> 合计 **78 个生产案例**（ch01:7 / ch02:8 / ch03:6 / ch04:6 / ch05:9 / ch06–ch12: 各 6）。
+> 合计 **96 个生产案例（12 章 × 8 例）**。每章均含：学习目标 / 核心精讲 / 拓扑图 / 8 例工程案例 / 10 问自测 / **原文精读索引（书·节·纸面页）** / 延伸。
+>
+> **核对口径**：`已精读` = 该章主体能在原书找到对应页码，索引表逐条可回查；`部分核对` = 章节主题在四本原书中覆盖不足（如 ch08 的 mVPN/mLDP），只能按 RFC 6513/6514/6388 整理，索引表显式标注「无原书覆盖」，**不编页码**。
 
 ## 四、推荐节奏（8 周）
 
@@ -72,7 +74,7 @@
 | W4 | ch06–ch07 | 完成 SSM / BIDIR / MSDP 三套实验，产出对比表 |
 | W5 | ch08–ch09 | 画出 MVPN Default/Data MDT 数据路径图；评估 VXLAN 组播可行性 |
 | W6 | ch10–ch11 | IPv6 组播 POC 清单 + 现网组播过滤加固方案 |
-| W7 | ch12 | 把 78 个案例过一遍，形成个人 case 库 |
+| W7 | ch12 | 把 96 个案例过一遍，形成个人 case 库 |
 | W8 | 复盘 | 选一个真实业务做端到端设计文档 |
 
 ## 五、每章统一模板
@@ -81,9 +83,10 @@
 ## 学习目标            —— 读完能做什么
 ## 核心精讲            —— 协议细节 / 报文 / 定时器 / 状态机 / 命令
 ## 拓扑图              —— SVG 图 + 图注
-## 生产案例 N 个        —— 现象 → 定位命令 → 根因 → 处置 → 复盘
-## 自测清单            —— 面试/评审级问题
-## 延伸                —— 原书章节页码索引
+## 8 个工程案例        —— 现象 → 定位命令 → 根因 → 处置 → 复盘
+## 10 问自测            —— 面试/评审级问题
+## 原文精读索引        —— 书 / 节 / 纸面页 / 可核对要点
+## 延伸                —— 标准与动手练习
 ```
 
 ## 六、贯穿全书的 5 条主线（复盘时用来串起来）
@@ -106,8 +109,11 @@ multicast-book-notes/
 ├── assets/css/site.css         ← 站点样式（浅色/深色主题）
 ├── diagrams/                   ← 16 张 SVG 拓扑图
 ├── tools/
-│   ├── build_site.py           ← 静态站点生成器（Markdown → HTML）
-│   └── gen_diagrams.py         ← 拓扑图生成脚本
+│   ├── build_site.py           ← 静态站点生成器（Markdown → HTML，含进度面板与 Star 按钮）
+│   ├── gen_diagrams.py         ← 拓扑图生成脚本
+│   ├── srcgrep.py              ← 原书检索：按关键词取纸面页码（支持 -f/-t 页码范围）
+│   ├── srcdump.py              ← 原书整页/整段导出，用于逐句核对
+│   └── check_links.py          ← 站内链接体检
 └── .nojekyll                   ← 让 GitHub Pages 按静态文件直出
 ```
 
