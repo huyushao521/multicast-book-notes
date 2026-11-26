@@ -212,6 +212,7 @@ Aweya p.40–42 明确了 RPF 的查表顺序：**静态 mroute → MBGP → 单
 | mesh-group 不互转 | Aweya §6.x | p.367、374 | 同组成员之间不再转发 SA |
 | MBGP 与 RPF 优先级 | Aweya §1.x | p.40–42 | 静态 → MBGP → 单播 → 默认；同前缀比 metric |
 | Anycast-RP 不需要 MSDP | Aweya §5.16.5 | p.331–332 | RFC 4610 的 PIM Anycast-RP 机制 |
+| MSDP 的完整机制与配置 | W Ch17 | p.391、509–515 | SA/RPF 规则、mesh-group、默认 peer |
 
 ---
 

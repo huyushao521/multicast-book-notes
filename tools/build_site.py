@@ -47,7 +47,7 @@ PHASES = [
     ]),
     ("阶段三 · 域间与规模化", [
         ("ch07-msdp-mbgp", "第 7 章 · MSDP 与 MBGP 域间组播"),
-        ("ch08-mvpn-scale", "第 8 章 · MVPN / MLDP / 组播 TE"),
+        ("ch08-mvpn-scale", "第 8 章 · MVPN / mLDP / BIER"),
     ]),
     ("阶段四 · 场景实战", [
         ("ch09-datacenter-cloud", "第 9 章 · 数据中心与云中的组播"),
@@ -70,11 +70,11 @@ STATUS = {
     "ch05-pim-sm-rp": ("done", "精读 Aweya §5.7 / §5.14 / §5.16、W Ch5"),
     "ch06-ssm-bidir": ("done", "精读 Aweya §5.17–5.18、§1.2.3（BIDIR 无原书章节）"),
     "ch07-msdp-mbgp": ("done", "精读 Aweya Ch6（p.361–386）"),
-    "ch08-mvpn-scale": ("partial", "仅 v2 的 tunnel/DMVPN 有原文；mVPN/mLDP 按 RFC 整理"),
+    "ch08-mvpn-scale": ("done", "精读 v2 Ch3 全章 p.137–205（含 mLDP/BIER）、Ch6 MVPN 排障 p.314–331"),
     "ch09-datacenter-cloud": ("done", "精读 v2 Ch2（p.99–120）云与 overlay 部分"),
     "ch10-ipv6-multicast": ("done", "精读 Aweya §1.3（p.5–19）IPv6 与 MLD"),
     "ch11-security": ("done", "精读 Aweya §6.6–6.8（p.380–385）、v2 p.13–14"),
-    "ch12-troubleshooting": ("done", "精读 Aweya p.40–42 / p.272、v2 p.9/60（方法论为原创）"),
+    "ch12-troubleshooting": ("done", "精读 v2 Ch6 p.283–331（三步法）、Aweya p.40–42 / p.272"),
 }
 
 STAR_ICON = ('<svg class="star-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">'
@@ -635,6 +635,12 @@ def render_progress():
             '<td class="pg-note">%s</td><td>%s</td></tr>' % (cid, title, note, pill)
         )
 
+    partial_legend = ""
+    if partial:
+        partial_legend = ('；<span class="pg-pill pg-partial">部分核对</span>'
+                          ' = 章节主题在原书中覆盖不足，其余按 RFC / 工程经验整理并已标注：'
+                          '<strong>%d 章</strong>' % partial)
+
     return u"""<div class="pg-box">
   <div class="pg-head">
     <span class="pg-title">制作进度 <b>%d / %d 章</b>%s</span>
@@ -642,9 +648,7 @@ def render_progress():
   </div>
   <div class="pg-bar"><i style="width:%d%%"></i></div>
   <p class="pg-legend">
-    <span class="pg-pill pg-done">精读完成</span> = 已回原文逐段精读，带纸面页码索引 + 8 例工程案例：<strong>%d 章</strong>；
-    <span class="pg-pill pg-partial">部分核对</span> = 章节主题在四本原书中覆盖不足，只有部分内容能对上页码，
-    其余按 RFC / 工程经验整理并已在文内标注：<strong>%d 章</strong>。
+    <span class="pg-pill pg-done">精读完成</span> = 已回原文逐段精读，带纸面页码索引 + 8 例工程案例：<strong>%d 章</strong>%s
   </p>
   <table class="pg-table">
     <thead><tr><th>章节</th><th>精读/核对范围</th><th>状态</th></tr></thead>
@@ -653,11 +657,12 @@ def render_progress():
     </tbody>
   </table>
   <p class="pg-foot">
-    书库共 4 本原书全文约 4.2 MB；目前已真正读入并核对约 0.75 MB（≈18%%）。
+    书库共 4 本原书 1920 页；各章索引中<strong>显式写出并去重</strong>的纸面页共 319 页（≈16.6%%）。
+    该口径是“能回查到页码的下限”，不代表逐页通读；<code>tools/coverage.py</code> 可复算。
     全部“工程案例”为教学用的典型化场景（按现网常见故障构造），并非书中原案例。
   </p>
 </div>""" % (done, total, ("（另 %d 章部分核对）" % partial) if partial else "",
-              pct, pct, done, partial, "\n".join(rows))
+              pct, pct, done, partial_legend, "\n".join(rows))
 
 
 def page_title_for(cid):

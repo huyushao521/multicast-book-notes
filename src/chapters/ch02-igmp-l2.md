@@ -300,7 +300,8 @@ show mac address-table vlan 500           ! 漫游后表项未更新
 | Snooping 原理 | W Ch14 | p.408–420 | 监听 Query/Report、路由器端口、未知组泛洪 |
 | CGMP | W Ch14 | p.420–430 | 路由器参与、交换机零解析 |
 | Snooping/Proxy 细节 | Aweya Ch2 | p.60–80 | Proxy 的代理行为与限制 |
-| 二层排障命令 | iPexpert Ch2 | — | show ip igmp snooping / mac address-table multicast |
+| 二层排障与 snooping 输出 | iP Ch2 | PDF p.40–46 | `show ip igmp snooping`、`mac address-table multicast` 实测输出 |
+| Snooping / CGMP 的实现与限制 | W Ch14 | p.407–415 | 交换机如何学组、router-port 维护、CGMP 的历史角色 |
 
 ---
 

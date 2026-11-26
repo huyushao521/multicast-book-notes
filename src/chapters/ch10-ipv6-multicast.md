@@ -195,6 +195,7 @@ IPv6 的 PIM 邻居用 link-local 地址标识（`FE80::/10`）。这带来两�
 | `FF02::D` 为 All-PIM-Routers | Aweya §1.4 | p.15 | PIM 报文可发往 224.0.0.13 或 `FF02::D` |
 | IGMPv3 / MLDv2 的源过滤 | Aweya §1.5 | p.19 | 订阅 channel `(S,G)`；v4 用 IGMPv3、v6 用 MLDv2 |
 | SSM 的 v6 范围 | Aweya §5.17 | p.342 | `FF3x::/32` |
+| IPv6 组播与 MLD 实测 | iP Ch14 | PDF p.472–473 | MLD/PIMv6 的邻居与组表输出 |
 
 ---
 

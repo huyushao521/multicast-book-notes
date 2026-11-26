@@ -1,7 +1,8 @@
 # 第 12 章 排障方法论：四步法与变更检查单
 
-> 精读来源：**Aweya p.40–42（RPF 四级回退链）、p.272（三套下游状态）、§5.7（Register 状态）、p.381–385（SA 过滤与缓存）**、**Volume II p.9 / p.60（`show ip mroute` 标志位释义）、p.118（RPF 接口是 tunnel 场景的唯一考虑）**
-> 本章解决的问题：前 11 章讲每块"应该怎么工作"，本章讲**出问题时按什么顺序看**——组播排障的最大浪费是"从 mroute 开始猜"，正确起点是**RP 映射表**。
+> 精读来源：**Volume II Ch6「Advanced Multicast Troubleshooting」p.283–331（三步法原文、域间/MVPN/VXLAN 的分层追加检查）**、**Aweya p.40–42（RPF 四级回退链）、p.272（三套下游状态）、§5.7（Register 状态）、p.381–385（SA 过滤与缓存）**、**Volume II p.9 / p.60（`show ip mroute` 标志位释义）、p.118（tunnel 场景的 RPF 接口）**
+> 本章解决的问题：前 11 章讲每块"应该怎么工作"，本章讲**出问题时按什么顺序看**。
+> **定性说明（本章已升级为"已精读"）**：原书的三步法是 **检查接收者 → 检查源 → 验证状态**（v2 p.283–284）。本文在此基础上做了两处工程化：前面加**第 0 步 RP 映射**（只对 ASM 成立，原书未把它列为独立步骤），后面加**第 4 步数据面/封装层**（由 Ch6 在域间 p.285、PIM-TE p.301、MVPN p.314、VXLAN p.322 各节追加的检查抽象而来）。因此"四步法"是**原文三步 + 两处扩展**，不是原创方法论。
 
 ## 学习目标
 
@@ -14,10 +15,18 @@
 
 ---
 
-## 1. 四步法
+## 1. 四步法（原文三步 + 收/发两端）
+
+原书的三步（v2 p.283–284）是：
 
 ```
-① RP 映射表  →  ② (*,G)  →  ③ (S,G)  →  ④ 数据面
+① 检查接收者（IGMP/DR 是否收到 Join） → ② 检查源（源是否在发、是否注册） → ③ 验证状态（mroute/mfib 的入出接口）
+```
+
+本文扩成四步，区别只在**把 ASM 的 RP 映射单独提前、把封装层拉到末尾**：
+
+```
+⓪ RP 映射表  →  ① (*,G)  →  ② (S,G)  →  ③ 数据面/封装
    show ip pim rp mapping   show ip mroute   show ip rpf   接口计数/抓包
 ```
 
@@ -25,10 +34,12 @@
 
 | 步 | 命令 | 通过条件 | 不通过说明 |
 |---|---|---|---|
-| ① | `show ip pim rp mapping` | 该组有**唯一且正确**的 RP | 无 RP / 多 RP 冲突 / RP 不在本域 |
-| ② | `show ip mroute <G>` | 有 `(*,G)`，Incoming interface 与 `show ip rpf <RP>` 一致 | 接收者未加入 / Join 未上行 / RPF 不通 |
-| ③ | `show ip mroute <G>` | 有 `(S,G)`，flags 含 `J`（已切 SPT） | 源未注册 / RP 未拉源 / RPF 到源失败 |
-| ④ | 接口计数、`tcpdump` | 出接口有流量、下游有包 | 二层 snooping / ACL / MTU / 双份 |
+| ⓪ | `show ip pim rp mapping` | 该组有**唯一且正确**的 RP（SSM 组可跳过） | 无 RP / 多 RP 冲突 / RP 不在本域 |
+| ① | `show ip mroute <G>` | 有 `(*,G)`，Incoming interface 与 `show ip rpf <RP>` 一致 | 接收者未加入 / Join 未上行 / RPF 不通 |
+| ② | `show ip mroute <G>` | 有 `(S,G)`，flags 含 `J`（已切 SPT） | 源未注册 / RP 未拉源 / RPF 到源失败 |
+| ③ | 接口计数、`tcpdump` | 出接口有流量、下游有包 | 二层 snooping / ACL / MTU / 双份 |
+
+> 原书没有把 RP 映射列为独立一步，是因为它的例子从"接收者侧"切入；但在现网"部分组不通"的工单里，RP 映射错误是第一大类（第 5 章案例 5、7）。**SSM 场景请直接跳过 ⓪**——SSM 没有 RP，按 ⓪ 查会白跑一遍。
 
 ![四步法与 RPF 检查点](../../diagrams/d05-rpf.svg)
 
@@ -158,8 +169,8 @@ Volume II p.9 / p.60 给了完整释义，结合各章故障对照如下：
 
 ## 7. 十问自测
 
-1. 四步法的顺序与每步的否决条件？
-2. 为什么从 RP 映射表开始而不是 mroute？
+1. 四步法与原书三步法的对应关系？哪一步是原文没有的？
+2. 为什么 SSM 场景要跳过第 ⓪ 步？
 3. `R` 与 `J` 同时缺失说明什么？
 4. `T` 缺失的后果是什么？
 5. `x` 标志代表什么？为什么容易误判？
@@ -177,6 +188,13 @@ Volume II p.9 / p.60 给了完整释义，结合各章故障对照如下：
 
 | 知识点 | 书/节 | 纸面页 | 原文可核对要点 |
 |---|---|---|---|
+| **三步法原文** | v2 Ch6 §6.1 | p.283–284 | 检查接收者 → 检查源 → 验证状态 |
+| 域间故障的追加检查 | v2 Ch6 | p.285 | MSDP/peer-RPF 与域边界 |
+| PIM-TE 场景的追加检查 | v2 Ch6 | p.301 | 隧道/`rpf topology` 相关项 |
+| MVPN 的分层排障 | v2 Ch6 | p.314–331 | "onion or parfait"，逐层剥 |
+| VXLAN 场景的追加检查 | v2 Ch6 | p.322 | underlay 复制与 BUM |
+| PIM-SM 输出与排障实验 | iP Ch4 | p.133–150 | `(*,G)`/`(S,G)` flags 实测 |
+| Auto-RP 的 debug 与排障 | iP Ch8 | p.256–271 | `send-rp-announce`、announce 日志 |
 | **RPF 四级回退链** | Aweya §1.x | p.40–42 | 静态 mroute → MBGP → 单播 RIB → 默认路由；同前缀再比 metric |
 | 三套下游状态机 | Aweya §5.8 | p.272 | `(*,G)`、`(S,G,rpt)`、`(S,G)` 分别维护 |
 | Register 状态与抑制 | Aweya §5.7 | p.249–250 | 抑制 60 s、Probe 时间、RP 保留 3× |
@@ -188,6 +206,6 @@ Volume II p.9 / p.60 给了完整释义，结合各章故障对照如下：
 
 ## 9. 延伸与收尾
 
-- 练习：iPexpert 的《IPv4/6 Multicast Operation and Troubleshooting》实验册（本笔记未逐页引用，仅作为动手练习清单）
+- 练习：iPexpert Ch4（p.133–150，PIM-SM 输出）与 Ch8（p.256–271，Auto-RP debug）的实验册，按章做一遍
 - 标准：RFC 7761（PIM-SM）、RFC 3973（PIM-DM）、RFC 5015（BIDIR）、RFC 4607（SSM）、RFC 3618（MSDP）
 - 回到开头：[第 1 章](ch01-basics.html) 的模型 → 本章的四步法，是同一个知识体系的两种用法：**建模型，再拆模型**

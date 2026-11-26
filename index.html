@@ -69,7 +69,7 @@
       <summary>阶段三 · 域间与规模化</summary>
       <ul>
         <li><a href="chapters/ch07-msdp-mbgp.html" data-path="chapters/ch07-msdp-mbgp.html">第 7 章 · MSDP 与 MBGP 域间组播</a></li>
-        <li><a href="chapters/ch08-mvpn-scale.html" data-path="chapters/ch08-mvpn-scale.html">第 8 章 · MVPN / MLDP / 组播 TE</a></li>
+        <li><a href="chapters/ch08-mvpn-scale.html" data-path="chapters/ch08-mvpn-scale.html">第 8 章 · MVPN / mLDP / BIER</a></li>
       </ul>
     </details>
     <details class="group part" data-part="阶段四" open>
@@ -105,14 +105,12 @@
 <h2 id="_1">制作进度</h2>
 <div class="pg-box">
   <div class="pg-head">
-    <span class="pg-title">制作进度 <b>11 / 12 章</b>（另 1 章部分核对）</span>
-    <span class="pg-pct">92%</span>
+    <span class="pg-title">制作进度 <b>12 / 12 章</b></span>
+    <span class="pg-pct">100%</span>
   </div>
-  <div class="pg-bar"><i style="width:92%"></i></div>
+  <div class="pg-bar"><i style="width:100%"></i></div>
   <p class="pg-legend">
-    <span class="pg-pill pg-done">精读完成</span> = 已回原文逐段精读，带纸面页码索引 + 8 例工程案例：<strong>11 章</strong>；
-    <span class="pg-pill pg-partial">部分核对</span> = 章节主题在四本原书中覆盖不足，只有部分内容能对上页码，
-    其余按 RFC / 工程经验整理并已在文内标注：<strong>1 章</strong>。
+    <span class="pg-pill pg-done">精读完成</span> = 已回原文逐段精读，带纸面页码索引 + 8 例工程案例：<strong>12 章</strong>
   </p>
   <table class="pg-table">
     <thead><tr><th>章节</th><th>精读/核对范围</th><th>状态</th></tr></thead>
@@ -124,15 +122,16 @@
 <tr><td><a href="chapters/ch05-pim-sm-rp.html">第 5 章 · PIM-SM 与 RP 发现</a></td><td class="pg-note">精读 Aweya §5.7 / §5.14 / §5.16、W Ch5</td><td><span class="pg-pill pg-done">精读完成</span></td></tr>
 <tr><td><a href="chapters/ch06-ssm-bidir.html">第 6 章 · SSM 与 BIDIR-PIM</a></td><td class="pg-note">精读 Aweya §5.17–5.18、§1.2.3（BIDIR 无原书章节）</td><td><span class="pg-pill pg-done">精读完成</span></td></tr>
 <tr><td><a href="chapters/ch07-msdp-mbgp.html">第 7 章 · MSDP 与 MBGP 域间组播</a></td><td class="pg-note">精读 Aweya Ch6（p.361–386）</td><td><span class="pg-pill pg-done">精读完成</span></td></tr>
-<tr><td><a href="chapters/ch08-mvpn-scale.html">第 8 章 · MVPN / MLDP / 组播 TE</a></td><td class="pg-note">仅 v2 的 tunnel/DMVPN 有原文；mVPN/mLDP 按 RFC 整理</td><td><span class="pg-pill pg-partial">部分核对</span></td></tr>
+<tr><td><a href="chapters/ch08-mvpn-scale.html">第 8 章 · MVPN / mLDP / BIER</a></td><td class="pg-note">精读 v2 Ch3 全章 p.137–205（含 mLDP/BIER）、Ch6 MVPN 排障 p.314–331</td><td><span class="pg-pill pg-done">精读完成</span></td></tr>
 <tr><td><a href="chapters/ch09-datacenter-cloud.html">第 9 章 · 数据中心与云中的组播</a></td><td class="pg-note">精读 v2 Ch2（p.99–120）云与 overlay 部分</td><td><span class="pg-pill pg-done">精读完成</span></td></tr>
 <tr><td><a href="chapters/ch10-ipv6-multicast.html">第 10 章 · IPv6 组播</a></td><td class="pg-note">精读 Aweya §1.3（p.5–19）IPv6 与 MLD</td><td><span class="pg-pill pg-done">精读完成</span></td></tr>
 <tr><td><a href="chapters/ch11-security.html">第 11 章 · 组播安全与过滤</a></td><td class="pg-note">精读 Aweya §6.6–6.8（p.380–385）、v2 p.13–14</td><td><span class="pg-pill pg-done">精读完成</span></td></tr>
-<tr><td><a href="chapters/ch12-troubleshooting.html">第 12 章 · 排障方法论</a></td><td class="pg-note">精读 Aweya p.40–42 / p.272、v2 p.9/60（方法论为原创）</td><td><span class="pg-pill pg-done">精读完成</span></td></tr>
+<tr><td><a href="chapters/ch12-troubleshooting.html">第 12 章 · 排障方法论</a></td><td class="pg-note">精读 v2 Ch6 p.283–331（三步法）、Aweya p.40–42 / p.272</td><td><span class="pg-pill pg-done">精读完成</span></td></tr>
     </tbody>
   </table>
   <p class="pg-foot">
-    书库共 4 本原书全文约 4.2 MB；目前已真正读入并核对约 0.75 MB（≈18%）。
+    书库共 4 本原书 1920 页；各章索引中<strong>显式写出并去重</strong>的纸面页共 319 页（≈16.6%）。
+    该口径是“能回查到页码的下限”，不代表逐页通读；<code>tools/coverage.py</code> 可复算。
     全部“工程案例”为教学用的典型化场景（按现网常见故障构造），并非书中原案例。
   </p>
 </div>
@@ -231,8 +230,8 @@
 </tr>
 <tr>
 <td><a href="chapters/ch08-mvpn-scale.html">第 8 章</a></td>
-<td>MVPN / MLDP / Provider / 组播 TE</td>
-<td>Default MDT 与 Data MDT 怎么分工？</td>
+<td>MVPN / mLDP / BIER / 组播 TE</td>
+<td>Default MDT 与 Data MDT 怎么分工？BIER 为何不要 PIM？</td>
 <td>8</td>
 </tr>
 </tbody>
@@ -332,7 +331,7 @@
 <li><a href="chapters/ch05-pim-sm-rp.html">第 5 章 · PIM-SM 与 RP</a> —— 源在发 RP 在收但接收者空、无 <code>J</code> 标志速率上不去、切 SPT 后 RP 侧仍有流、Auto-RP 不出域、BSR 域内 RP 表不一致、Anycast-RP 切换后注册失败、静态 RP 与 BSR 并存、Register 风暴打高 RP CPU</li>
 <li><a href="chapters/ch06-ssm-bidir.html">第 6 章 · SSM 与 BIDIR-PIM</a> —— 主机只能发 IGMPv2、232 段出现 <code>(*,G)</code>、双源热备切换断流、SSM 组被注册到 RP、BIDIR 配成 PIM-SM、双 DF 重复包、BIDIR 排障找不到源、同组跨模式不通</li>
 <li><a href="chapters/ch07-msdp-mbgp.html">第 7 章 · MSDP 与 MBGP</a> —— 邻居 IDLE、SA 收到但 cache 空、mesh-group 漏配 SA 打转、Anycast-RP 全互联 SA 风暴、跨域 <code>(S,G)</code> 建不起、新接收者等待、双出口 peer-RPF 丢弃、SSM 段出现 SA</li>
-<li><a href="chapters/ch08-mvpn-scale.html">第 8 章 · MVPN / mLDP</a> —— P-tunnel 通但客户组播不通、S-PMSI 切换带宽尖峰、bud node 复制致链路拥塞、改 RD 业务闪断、跨 AS Option B 不通、MTU 致大包丢、RR 未开 mVPN AFI、hub 复制能力不足</li>
+<li><a href="chapters/ch08-mvpn-scale.html">第 8 章 · MVPN / mLDP / BIER</a> —— 客户侧无 PIM、Data MDT 池耗尽复用、RR 当 root、改 RD 闪断、Profile 迁移部分组不通、bud node 复制打满链路、跨域两端 P-tunnel 建不起、BIER 试点卡在平台与 IGP</li>
 <li><a href="chapters/ch09-datacenter-cloud.html">第 9 章 · 数据中心与云</a> —— 上云后组播全断、VXLAN 组播复制跨 VTEP 不通、vPC 双份包、HSRP 切主后组播断、Anycast RP 跨 leaf 注册失败、主机侧泛洪到所有虚机、跨 VRF 串流、云安全组拦 IGMP</li>
 <li><a href="chapters/ch10-ipv6-multicast.html">第 10 章 · IPv6 组播</a> —— v4 通 v6 全断、MLD 被 ACL 拦、FF05 跨域不通、MLDv1 主机访问 SSM、PIM 邻居用全局地址、缺 Embedded-RP、v6 下 MSDP 不可用、uRPF 丢组播</li>
 <li><a href="chapters/ch11-security.html">第 11 章 · 安全与限速</a> —— 加入测试组拖垮全楼、冒充源注入行情、接入层泛洪打满上行、mesh-group 内 RP 被入侵、伪造 RP 黑洞全网、外部注入 BSM、PIM 状态耗尽重启、加固后 ACL 误拦 IGMP/MLD</li>

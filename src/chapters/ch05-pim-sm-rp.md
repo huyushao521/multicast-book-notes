@@ -304,6 +304,10 @@ Aweya p.303 的措辞值得记住：Auto-RP 由 Cisco 提出、**已被 BSR 机�
 | C-RP Advertise 与优先级 | Aweya §5.16 | p.320–323 | 单播给 BSR；Priority 0 最高；下线立即撤回 |
 | PIM Anycast-RP（RFC 4610） | Aweya §5.16.5 | p.331–332 | 多台 RP 共用 anycast 地址，**不需要 MSDP** |
 | Join/Prune 周期与超时 | Aweya §5.4 | p.260、191 | 60 s 周期；210 s 超时 |
+| PIM-SM 的 mroute 实测输出 | iP Ch4 | PDF p.133–150 | `(*,G)`/`(S,G)` 的 flags 与 RPF nbr 实例 |
+| Auto-RP announce 与 debug | iP Ch8 | PDF p.256–271 | `send-rp-announce`、`Auto-RP(0): Build/Send RP-Announce` 日志 |
+| Auto-RP 的 RP 与 MA 两种角色 | W Ch7 | p.176、242 | announce/discovery 组 224.0.1.39/40 与 TTL 限制 |
+| BSR 报文与优先级选举 | W Ch7 | p.191、213 | BSM 逐跳泛洪、C-RP priority |
 
 ---
 

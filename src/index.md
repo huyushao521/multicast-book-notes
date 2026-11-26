@@ -50,7 +50,7 @@
 | 章 | 标题 | 核心问题 | 案例 |
 |---|---|---|---|
 | [第 7 章](../chapters/ch07-msdp-mbgp.html) | MSDP 与 MBGP 域间组播 | Peer-RPF 四条规则怎么用？ | 8 |
-| [第 8 章](../chapters/ch08-mvpn-scale.html) | MVPN / MLDP / Provider / 组播 TE | Default MDT 与 Data MDT 怎么分工？ | 8 |
+| [第 8 章](../chapters/ch08-mvpn-scale.html) | MVPN / mLDP / BIER / 组播 TE | Default MDT 与 Data MDT 怎么分工？BIER 为何不要 PIM？ | 8 |
 
 ### 阶段四 · 场景实战
 
@@ -91,7 +91,7 @@
 - [第 5 章 · PIM-SM 与 RP](../chapters/ch05-pim-sm-rp.html) —— 源在发 RP 在收但接收者空、无 `J` 标志速率上不去、切 SPT 后 RP 侧仍有流、Auto-RP 不出域、BSR 域内 RP 表不一致、Anycast-RP 切换后注册失败、静态 RP 与 BSR 并存、Register 风暴打高 RP CPU
 - [第 6 章 · SSM 与 BIDIR-PIM](../chapters/ch06-ssm-bidir.html) —— 主机只能发 IGMPv2、232 段出现 `(*,G)`、双源热备切换断流、SSM 组被注册到 RP、BIDIR 配成 PIM-SM、双 DF 重复包、BIDIR 排障找不到源、同组跨模式不通
 - [第 7 章 · MSDP 与 MBGP](../chapters/ch07-msdp-mbgp.html) —— 邻居 IDLE、SA 收到但 cache 空、mesh-group 漏配 SA 打转、Anycast-RP 全互联 SA 风暴、跨域 `(S,G)` 建不起、新接收者等待、双出口 peer-RPF 丢弃、SSM 段出现 SA
-- [第 8 章 · MVPN / mLDP](../chapters/ch08-mvpn-scale.html) —— P-tunnel 通但客户组播不通、S-PMSI 切换带宽尖峰、bud node 复制致链路拥塞、改 RD 业务闪断、跨 AS Option B 不通、MTU 致大包丢、RR 未开 mVPN AFI、hub 复制能力不足
+- [第 8 章 · MVPN / mLDP / BIER](../chapters/ch08-mvpn-scale.html) —— 客户侧无 PIM、Data MDT 池耗尽复用、RR 当 root、改 RD 闪断、Profile 迁移部分组不通、bud node 复制打满链路、跨域两端 P-tunnel 建不起、BIER 试点卡在平台与 IGP
 - [第 9 章 · 数据中心与云](../chapters/ch09-datacenter-cloud.html) —— 上云后组播全断、VXLAN 组播复制跨 VTEP 不通、vPC 双份包、HSRP 切主后组播断、Anycast RP 跨 leaf 注册失败、主机侧泛洪到所有虚机、跨 VRF 串流、云安全组拦 IGMP
 - [第 10 章 · IPv6 组播](../chapters/ch10-ipv6-multicast.html) —— v4 通 v6 全断、MLD 被 ACL 拦、FF05 跨域不通、MLDv1 主机访问 SSM、PIM 邻居用全局地址、缺 Embedded-RP、v6 下 MSDP 不可用、uRPF 丢组播
 - [第 11 章 · 安全与限速](../chapters/ch11-security.html) —— 加入测试组拖垮全楼、冒充源注入行情、接入层泛洪打满上行、mesh-group 内 RP 被入侵、伪造 RP 黑洞全网、外部注入 BSM、PIM 状态耗尽重启、加固后 ACL 误拦 IGMP/MLD

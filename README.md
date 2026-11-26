@@ -34,7 +34,7 @@
 
 阶段三  域间与规模（2 章） 跨域怎么通 → 规模怎么撑
   ch07 MSDP 与 MBGP（Peer-RPF、SA Cache、Anycast-RP over MSDP）
-  ch08 大规模组播（MVPN / MLDP / Provider / 组播 TE）※ BIER 尚未展开
+  ch08 大规模组播（MVPN / mLDP / BIER / Provider / 组播 TE）
 
 阶段四  场景与实战（4 章） 数据中心 → IPv6 → 安全 → 排障
   ch09 数据中心与云中的组播（VXLAN/EVPN/ACI/公有云）
@@ -54,15 +54,17 @@
 | 05 | [PIM-SM 状态机与 RP 发现](src/chapters/ch05-pim-sm-rp.md) | [阅读](chapters/ch05-pim-sm-rp.html) | Williamson Ch7/Ch8/Ch12 / Aweya Ch5 / iPexpert Ch4、Ch7–9 | [D08](diagrams/d08-pim-sm.svg) [D09](diagrams/d09-rp-discovery.svg) | 8 | 已精读 |
 | 06 | [SSM 与 BIDIR-PIM](src/chapters/ch06-ssm-bidir.md) | [阅读](chapters/ch06-ssm-bidir.html) | Williamson Ch9 / Aweya Ch7、5.17–5.18 / iPexpert Ch6 | [D10](diagrams/d10-anycast-rp.svg) [D11](diagrams/d11-bidir.svg) | 8 | 已精读 |
 | 07 | [MSDP 与 MBGP 域间组播](src/chapters/ch07-msdp-mbgp.md) | [阅读](chapters/ch07-msdp-mbgp.html) | Williamson Ch17 / Aweya Ch6 / iPexpert Ch10、Ch12 | [D12](diagrams/d12-msdp.svg) [D10](diagrams/d10-anycast-rp.svg) | 8 | 已精读 |
-| 08 | [大规模组播：MVPN/MLDP/Provider/TE](src/chapters/ch08-mvpn-scale.md) | [阅读](chapters/ch08-mvpn-scale.html) | Volume II Ch2–Ch3 / Williamson Ch16 | [D13](diagrams/d13-mvpn.svg) | 8 | **部分核对** |
+| 08 | [大规模组播：MVPN/mLDP/BIER/TE](src/chapters/ch08-mvpn-scale.md) | [阅读](chapters/ch08-mvpn-scale.html) | Volume II Ch3 全章（p.137–205）/ Ch2 / Ch6 / Williamson Ch16 | [D13](diagrams/d13-mvpn.svg) | 8 | 已精读 |
 | 09 | [数据中心与云中的组播](src/chapters/ch09-datacenter-cloud.md) | [阅读](chapters/ch09-datacenter-cloud.html) | Volume II Ch4–Ch5 | [D14](diagrams/d14-vxlan.svg) | 8 | 已精读 |
 | 10 | [IPv6 组播](src/chapters/ch10-ipv6-multicast.md) | [阅读](chapters/ch10-ipv6-multicast.html) | iPexpert Ch14 / Aweya 1.4.5 / Volume II Ch3 | [D15](diagrams/d15-ipv6.svg) | 8 | 已精读 |
 | 11 | [组播安全、过滤与限速](src/chapters/ch11-security.md) | [阅读](chapters/ch11-security.html) | iPexpert Ch13 / Volume II Ch1、Ch5 | [D16](diagrams/d16-security.svg) | 8 | 已精读 |
-| 12 | [排障方法论与综合案例](src/chapters/ch12-troubleshooting.md) | [阅读](chapters/ch12-troubleshooting.html) | iPexpert 全书 / Volume II Ch6 | 全部 | 8 | 已精读（方法论为原创） |
+| 12 | [排障方法论与综合案例](src/chapters/ch12-troubleshooting.md) | [阅读](chapters/ch12-troubleshooting.html) | Volume II Ch6（p.283–331）/ iPexpert Ch4、Ch8 / Aweya | 全部 | 8 | 已精读 |
 
 > 合计 **96 个生产案例（12 章 × 8 例）**。每章均含：学习目标 / 核心精讲 / 拓扑图 / 8 例工程案例 / 10 问自测 / **原文精读索引（书·节·纸面页）** / 延伸。
 >
-> **核对口径**：`已精读` = 该章主体能在原书找到对应页码，索引表逐条可回查；`部分核对` = 章节主题在四本原书中覆盖不足（如 ch08 的 mVPN/mLDP），只能按 RFC 6513/6514/6388 整理，索引表显式标注「无原书覆盖」，**不编页码**。
+> **核对口径**：`已精读` = 该章主体能在原书找到对应页码，索引表逐条可回查。全书 12 章均已达到该标准。
+>
+> **覆盖率**：4 本原书共 1920 页，各章索引中显式写出的纸面页去重后为 319 页（≈16.6%）。这是"能回查到页码的下限"，不等于逐页通读；用 `python tools/coverage.py` 可复算。
 
 ## 四、推荐节奏（8 周）
 
