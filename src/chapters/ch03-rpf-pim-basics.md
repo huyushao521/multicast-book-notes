@@ -324,6 +324,8 @@ show ip access-lists              ! 检查 interface ACL 是否 permit igmp
 | PIM 报文格式 | Aweya Ch3 | p.152 | Figure 3.4–3.6（Hello/Join-Prune/Assert/Register） |
 | **DR Priority 选项（Type 19）** | Aweya Ch3 | p.154–155 | "Option Type 19: DR Priority"、32 位无符号数 |
 | Hello 默认定时器 | RFC 4601 | — | 30 s / holdtime 105 s（3.5×）；本书未逐字给出，按标准标注 |
+| RPF 检查与组播转发树 | W Ch2 | p.41–44 | “Reverse Path Forwarding” 的判断依据与转发树构建 |
+| 共享树与源树的概念对比 | W Ch2 | p.35–40 | 两类树的图示与取舍，后文 PIM-DM/SM 的基础 |
 
 ---
 

@@ -308,6 +308,11 @@ Aweya p.303 的措辞值得记住：Auto-RP 由 Cisco 提出、**已被 BSR 机�
 | Auto-RP announce 与 debug | iP Ch8 | PDF p.256–271 | `send-rp-announce`、`Auto-RP(0): Build/Send RP-Announce` 日志 |
 | Auto-RP 的 RP 与 MA 两种角色 | W Ch7 | p.176、242 | announce/discovery 组 224.0.1.39/40 与 TTL 限制 |
 | BSR 报文与优先级选举 | W Ch7 | p.191、213 | BSM 逐跳泛洪、C-RP priority |
+| PIM-SM 的完整配置与 show 输出 | W Ch11 | p.217–236 | SPT 切换过程、`show ip mroute` 实测 |
+| RP 选举与 tiebreaker 细节 | W Ch12 | p.315–328 | Auto-RP/BSR 下多 RP 的优先级比较规则 |
+| 静态 RP 的配置与验证 | iP Ch7 | PDF p.231–251 | `ip pim rp-address` 与 override 行为 |
+| BSR 选举与排障 | iP Ch9 | PDF p.315–324 | BSR/C-RP 报文、`debug ip pim bsr` |
+| Anycast-RP 配置与验证 | iP Ch11 | PDF p.393–402 | 多台 RP 共用 anycast 地址的实测 |
 
 ---
 

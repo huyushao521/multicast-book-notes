@@ -273,6 +273,10 @@ show ip pim neighbor              ! 各台 DR priority
 | Graft / Graft-Ack 类型值 | Aweya Ch3 | p.149–150 | "6 = Graft (PIM-DM only)"、"7 = Graft-Ack (PIM-DM only)"；Graft 单播至 RPF |
 | Join/Graft 对 Hold Time 的影响 | Aweya Ch3 | p.163 | 收到 Join 或 Graft 会刷新 Hold Time |
 | Prune 210 s / State Refresh 60 s | RFC 3973 | — | 标准默认值；本书未逐字给出数值，按 RFC 标注 |
+| PIM-DM 泛洪-剪枝-嫁接全流程 | W Ch6 | p.129、132 | 状态机演进与 RPF 检查的触发点 |
+| DVMRP 的 prune/graft 对照 | W Ch5 | p.47–53 | 老协议怎么剪枝，PIM-DM 沿用了哪些字段 |
+| PIM-DM 邻接与状态排障 | iP Ch3 | PDF p.55–60 | Hello/邻居建立与 `show ip mroute` 输出 |
+| PIM Sparse-Dense 接口模式 | iP Ch5 | PDF p.155–164 | 接口级 dense/sparse 混跑与迁移 |
 
 ---
 

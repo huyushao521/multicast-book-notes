@@ -46,7 +46,8 @@ def iter_index_rows():
             yield name, line
 
 
-def main():
+def compute():
+    """返回 (rows, {book: (cited, total)})，供 build_site 复用，保证首页数字与脚本一致。"""
     pages = {k: set() for k in TOTALS}
     rows = 0
     for _, line in iter_index_rows():
@@ -64,13 +65,19 @@ def main():
                 pages[b].update(range(lo, hi + 1))
         rows += 1
 
-    total_cited = 0
-    total_pages = 0
+    stat = {}
+    for k, (title, total) in TOTALS.items():
+        stat[k] = (len([p for p in pages[k] if 1 <= p <= total]), total)
+    return rows, stat
+
+
+def main():
+    rows, stat = compute()
+    total_cited = sum(v[0] for v in stat.values())
+    total_pages = sum(v[1] for v in stat.values())
     print('索引行: %d' % rows)
     for k, (title, total) in TOTALS.items():
-        n = len([p for p in pages[k] if 1 <= p <= total])
-        total_cited += n
-        total_pages += total
+        n = stat[k][0]
         print('%-6s %-58s %4d / %4d 页  %5.1f%%' % (k, title, n, total, 100.0 * n / total))
     print('合计: %d / %d 页  %.1f%%' % (total_cited, total_pages, 100.0 * total_cited / total_pages))
 

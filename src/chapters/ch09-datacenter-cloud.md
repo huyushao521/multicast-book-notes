@@ -172,6 +172,8 @@ show ip pim rp mapping                      # underlay 的 RP 是否正确
 | hub 复制与容量 | v2 Ch2 | p.118 | 200 MB × 100 spoke = 2 GB 出向 |
 | 区域 RP 分层设计 | v2 Ch2 | p.120 | 区域复制 + 全局组播衔接 |
 | `x - VxLAN group` 标志 | v2 Ch1/Ch2 | p.9、p.60 | `show ip mroute` 标志位释义中包含 VXLAN 组 |
+| 园区网二层组播与 Snooping | W Ch14 | p.407–417 | VLAN 内组播被交换机如何学习与转发 |
+| CGMP 的历史角色 | W Ch14 | p.427–430 | 思科私有方案，已被 IGMP Snooping 取代 |
 
 ---
 

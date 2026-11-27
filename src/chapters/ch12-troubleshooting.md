@@ -200,6 +200,8 @@ Volume II p.9 / p.60 给了完整释义，结合各章故障对照如下：
 | Register 状态与抑制 | Aweya §5.7 | p.249–250 | 抑制 60 s、Probe 时间、RP 保留 3× |
 | SA 过滤与缓存 | Aweya §6.8 / §6.14 | p.384–385、413 | 收发方向过滤；必须缓存；限速抑制风暴 |
 | `show ip mroute` 标志释义 | v2 Ch1/Ch2 | p.9、p.60 | 含 `x - VxLAN group`、`B`、`J`、`T`、`R` 等 |
+| `show ip mroute` 字段与排障用法 | W Ch11 | p.217–236 | 逐字段解释与典型失败样例 |
+| NBMA/GRE 场景的排障 | W Ch15 | p.445–450 | 隧道下的 RPF 接口与复制点 |
 | tunnel 场景的唯一考虑 | v2 Ch2 | p.118 | 点对点 GRE 下“唯一的考虑是 RPF 接口” |
 
 ---

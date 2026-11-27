@@ -253,6 +253,9 @@ Aweya p.21 写得很清楚：三种模式可以在一个域内共存，**Hello �
 | SSM 服务模型与 channel | Aweya §5.18 | p.343–344 | 只用 SPT；无 RP/RPT/BSR/Auto-RP/MSDP；channel = `(S,G)` |
 | IGMPv3 / MLDv2 的源过滤 | Aweya §5.18 | p.343 | SSM 依赖源过滤能力 |
 | SPT 切换阈值（对比用） | Aweya §5.14 | p.288 | 速率阈值（kbps）触发，默认 0 即立刻 |
+| 双向共享树的思想来源（CBT） | W Ch8 | p.179–184 | 注意：CBT 不是 BIDIR-PIM，只借用“双向共享树”的动机 |
+| 共享树的转发规则 | W Ch2 | p.37–40 | `(*,G)` 只沿树转发，源树与共享树并存的规则 |
+| BIDIR 的 DF 选举与 Assert | iP Ch6 | PDF p.199–215 | DF 选举过程与 Assert 仲裁的实测 |
 
 ---
 

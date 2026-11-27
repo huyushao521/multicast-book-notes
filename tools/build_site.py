@@ -635,6 +635,15 @@ def render_progress():
             '<td class="pg-note">%s</td><td>%s</td></tr>' % (cid, title, note, pill)
         )
 
+    try:
+        import coverage as cov_mod
+        _, cov_stat = cov_mod.compute()
+        cov_cited = sum(v[0] for v in cov_stat.values())
+        cov_total = sum(v[1] for v in cov_stat.values())
+        cov_pct = 100.0 * cov_cited / cov_total
+    except Exception:
+        cov_cited, cov_total, cov_pct = 0, 0, 0.0
+
     partial_legend = ""
     if partial:
         partial_legend = ('；<span class="pg-pill pg-partial">部分核对</span>'
@@ -657,12 +666,13 @@ def render_progress():
     </tbody>
   </table>
   <p class="pg-foot">
-    书库共 4 本原书 1920 页；各章索引中<strong>显式写出并去重</strong>的纸面页共 319 页（≈16.6%%）。
+    书库共 4 本原书 %d 页；各章索引中<strong>显式写出并去重</strong>的纸面页共 %d 页（≈%.1f%%）。
     该口径是“能回查到页码的下限”，不代表逐页通读；<code>tools/coverage.py</code> 可复算。
     全部“工程案例”为教学用的典型化场景（按现网常见故障构造），并非书中原案例。
   </p>
 </div>""" % (done, total, ("（另 %d 章部分核对）" % partial) if partial else "",
-              pct, pct, done, partial_legend, "\n".join(rows))
+              pct, pct, done, partial_legend, "\n".join(rows),
+              cov_total, cov_cited, cov_pct)
 
 
 def page_title_for(cid):

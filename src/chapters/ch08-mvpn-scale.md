@@ -471,6 +471,7 @@ Williamson Ch16（p.475–502）与 Volume II Ch2（p.105–134）合起来是�
 | DMVPN hub 复制算式 | v2 §2.x | p.118–119 | 200 MB × 100 spoke = 2 GB |
 | Service Reflection | v2 §2.x | p.105–117 | 组播目的地址↔单播 |
 | MVPN 分层排障 | v2 §6.x | p.314–331 | "onion or parfait" |
+| 组播流量工程的限速与隧道 | W Ch16 | p.476–479 | `ip multicast rate-limit` 与隧道承载的容量算式 |
 
 > 说明：本表 33 行全部按纸面页核对；Volume II 的纸面页 = PDF 页 − 18，Williamson = PDF 页 − 21。
 
