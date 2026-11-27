@@ -277,6 +277,8 @@ show ip pim neighbor              ! 各台 DR priority
 | DVMRP 的 prune/graft 对照 | W Ch5 | p.47–53 | 老协议怎么剪枝，PIM-DM 沿用了哪些字段 |
 | PIM-DM 邻接与状态排障 | iP Ch3 | PDF p.55–60 | Hello/邻居建立与 `show ip mroute` 输出 |
 | PIM Sparse-Dense 接口模式 | iP Ch5 | PDF p.155–164 | 接口级 dense/sparse 混跑与迁移 |
+| Graft / Graft-Ack 的报文与流程 | Aweya §3.3.1 | p.163–169 | 嫁接请求的重传与确认 |
+| State Refresh 机制 | Aweya | p.272–278 | 避免剪枝超时后重新泛洪的开销 |
 
 ---
 

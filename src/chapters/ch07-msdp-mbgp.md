@@ -216,6 +216,14 @@ Aweya p.40–42 明确了 RPF 的查表顺序：**静态 mroute → MBGP → 单
 | 域间方案的演进（BGMP → MSDP+MBGP） | W Ch17 | p.508–525 | 为什么最终落到 MSDP 而不是 BGMP |
 | MSDP peer 与 SA 缓存排障 | iP Ch10 | PDF p.363–370 | `show ip msdp sa-cache`、peer 状态机 |
 | MBGP 与 RPF 表的核对 | iP Ch12 | PDF p.419–431 | `show ip rpf` 与 `show ip bgp` 的对照 |
+| MSDP 的消息类型与 TLV 格式 | v2 Ch1 | p.45 | SA / SA-Request / SA-Response / Keepalive 四类；VALUE 含 Sprefix Len、组、源 |
+| MSDP 部署与本地化过滤 | v2 Ch1 | p.50–60 | `ip msdp peer ... connect-source`；例 1-18 用 MSDP filter 把本地组挡在域内 |
+| MBGP 的配置与验证 | v2 Ch1 | p.25–32 | 例 1-5 `show ip bgp neighbors` 的 AFI/SAFI 输出 |
+| 域间组播的两种设计模型 | v2 Ch1 | p.62–82 | Intra-AS multidomain 与 Inter-AS/Internet |
+| 跨域转发树的实测 | v2 Ch1 | p.80 | 企业源到 ISP-1 的完整树，mroute flags 含 `M - MSDP created entry` |
+| 不用主动源学习的域间方案 | v2 Ch1 | p.88–98 | 以 SSM/静态方式替代 MSDP 的设计取舍 |
+| MSDP 对等体的建立与状态 | Aweya Ch6 | p.362–368 | TCP 639 端口、peer 状态机与保活 |
+| SA 缓存的维护与超时 | Aweya | p.385 | 缓存条目的老化与 group/source 索引 |
 
 ---
 

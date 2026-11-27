@@ -256,6 +256,7 @@ Aweya p.21 写得很清楚：三种模式可以在一个域内共存，**Hello �
 | 双向共享树的思想来源（CBT） | W Ch8 | p.179–184 | 注意：CBT 不是 BIDIR-PIM，只借用“双向共享树”的动机 |
 | 共享树的转发规则 | W Ch2 | p.37–40 | `(*,G)` 只沿树转发，源树与共享树并存的规则 |
 | BIDIR 的 DF 选举与 Assert | iP Ch6 | PDF p.199–215 | DF 选举过程与 Assert 仲裁的实测 |
+| BIDIR-PIM 的 DF 选举报文 | Aweya §3.5.2 | p.178–181 | Offer/Winner/Backoff/Pass 四种子类型 |
 
 ---
 

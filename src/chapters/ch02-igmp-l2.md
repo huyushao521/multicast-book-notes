@@ -302,6 +302,9 @@ show mac address-table vlan 500           ! 漫游后表项未更新
 | Snooping/Proxy 细节 | Aweya Ch2 | p.60–80 | Proxy 的代理行为与限制 |
 | 二层排障与 snooping 输出 | iP Ch2 | PDF p.40–46 | `show ip igmp snooping`、`mac address-table multicast` 实测输出 |
 | Snooping / CGMP 的实现与限制 | W Ch14 | p.407–415 | 交换机如何学组、router-port 维护、CGMP 的历史角色 |
+| Snooping 的机制与部署建议 | Aweya §2.6 | p.100–111 | 为什么要约束组播流量、snooping 的转发规则与配置建议 |
+| IGMP Proxy 的行为要求 | Aweya §2.7 | p.128–139 | 上下行接口的角色划分与基本要求 |
+| Querier 选举与 Report 抑制 | Aweya §2.4 | p.69–74、80–82 | 非查询路由器静默、抑制对收敛的影响 |
 
 ---
 

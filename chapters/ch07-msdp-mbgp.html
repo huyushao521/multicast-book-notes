@@ -370,6 +370,54 @@
 <td>PDF p.419–431</td>
 <td><code>show ip rpf</code> 与 <code>show ip bgp</code> 的对照</td>
 </tr>
+<tr>
+<td>MSDP 的消息类型与 TLV 格式</td>
+<td>v2 Ch1</td>
+<td>p.45</td>
+<td>SA / SA-Request / SA-Response / Keepalive 四类；VALUE 含 Sprefix Len、组、源</td>
+</tr>
+<tr>
+<td>MSDP 部署与本地化过滤</td>
+<td>v2 Ch1</td>
+<td>p.50–60</td>
+<td><code>ip msdp peer ... connect-source</code>；例 1-18 用 MSDP filter 把本地组挡在域内</td>
+</tr>
+<tr>
+<td>MBGP 的配置与验证</td>
+<td>v2 Ch1</td>
+<td>p.25–32</td>
+<td>例 1-5 <code>show ip bgp neighbors</code> 的 AFI/SAFI 输出</td>
+</tr>
+<tr>
+<td>域间组播的两种设计模型</td>
+<td>v2 Ch1</td>
+<td>p.62–82</td>
+<td>Intra-AS multidomain 与 Inter-AS/Internet</td>
+</tr>
+<tr>
+<td>跨域转发树的实测</td>
+<td>v2 Ch1</td>
+<td>p.80</td>
+<td>企业源到 ISP-1 的完整树，mroute flags 含 <code>M - MSDP created entry</code></td>
+</tr>
+<tr>
+<td>不用主动源学习的域间方案</td>
+<td>v2 Ch1</td>
+<td>p.88–98</td>
+<td>以 SSM/静态方式替代 MSDP 的设计取舍</td>
+</tr>
+<tr>
+<td>MSDP 对等体的建立与状态</td>
+<td>Aweya Ch6</td>
+<td>p.362–368</td>
+<td>TCP 639 端口、peer 状态机与保活</td>
+</tr>
+<tr>
+<td>SA 缓存的维护与超时</td>
+<td>Aweya</td>
+<td>p.385</td>
+<td>缓存条目的老化与 group/source 索引</td>
+</tr>
 </tbody>
 </table>
 <hr />

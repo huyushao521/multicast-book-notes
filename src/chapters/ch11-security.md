@@ -224,6 +224,7 @@ Volume II p.13–14 的观点：**跨越国际互联网收发组播必须有安�
 | 组播边界的 access-list 实现 | iP Ch13 | PDF p.452–455 | 用 ACL 限定可用的组地址/源范围 |
 | SSM 与 Register 相关的进阶校验 | iP Ch13 | PDF p.458–467 | SSM 边界、RPF 校验与 Register 例外 |
 | 认证机制的补充说明 | Aweya | p.417–418 | 除 PIM Hello 之外的报文认证选项 |
+| 组播防火墙与域边界控制 | v2 Ch1 | p.82–88 | Firewalling IP Multicast、Controlling Domain Access、Service Filtering at the Edge |
 
 ---
 

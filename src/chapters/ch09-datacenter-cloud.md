@@ -174,6 +174,10 @@ show ip pim rp mapping                      # underlay 的 RP 是否正确
 | `x - VxLAN group` 标志 | v2 Ch1/Ch2 | p.9、p.60 | `show ip mroute` 标志位释义中包含 VXLAN 组 |
 | 园区网二层组播与 Snooping | W Ch14 | p.407–417 | VLAN 内组播被交换机如何学习与转发 |
 | CGMP 的历史角色 | W Ch14 | p.427–430 | 思科私有方案，已被 IGMP Snooping 取代 |
+| vPC 环境下的组播 | v2 Ch4 | p.207–211 | vPC 对组播复制与转发路径的影响 |
+| VXLAN flood-and-learn 与 EVPN | v2 Ch4 | p.213–224 | VTEP、BUM 处理、EVPN 下的组播转发 |
+| Ingress Replication 与主机间组播 | v2 Ch4 | p.224–227 | 用单播复制承载 VXLAN 组播 |
+| ACI 的 Snooping 与三层组播 | v2 Ch4 | p.227–235 | ACI fabric 的二层 snooping / 三层组播实现 |
 
 ---
 

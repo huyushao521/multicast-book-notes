@@ -313,6 +313,10 @@ Aweya p.303 的措辞值得记住：Auto-RP 由 Cisco 提出、**已被 BSR 机�
 | 静态 RP 的配置与验证 | iP Ch7 | PDF p.231–251 | `ip pim rp-address` 与 override 行为 |
 | BSR 选举与排障 | iP Ch9 | PDF p.315–324 | BSR/C-RP 报文、`debug ip pim bsr` |
 | Anycast-RP 配置与验证 | iP Ch11 | PDF p.393–402 | 多台 RP 共用 anycast 地址的实测 |
+| 运营商场景的 PIM 选型与 RP 放置 | v2 Ch5 | p.274–282 | SP/IPTV 下 PIM-SM 与 SSM 的取舍、RP 位置设计 |
+| IPTV 的组播交付 | v2 Ch5 | p.279–282 | 频道切换时延与复制点选择 |
+| Register 报文格式与封装 | Aweya §3.4.1 | p.171–173 | 单播封装、Register-Stop 的触发条件 |
+| Bootstrap 报文格式 | Aweya §3.4.3 | p.174–177 | BSM 的分片与优先级字段 |
 
 ---
 
